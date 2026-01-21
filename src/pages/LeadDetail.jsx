@@ -1155,7 +1155,7 @@ const LeadDetail = () => {
                           className="btn-sm btn-secondary"
                           onClick={() => navigate('/referrals/new', { state: { linkLeadId: userLead._id, leadTitle: lead?.title, leadCompany: lead?.company } })}
                         >
-                          + Add Referral
+                          + Add New Referral
                         </button>
                       </div>
                     </td>
@@ -1367,7 +1367,7 @@ const LeadDetail = () => {
 
               {availableReferrals.length === 0 && (
                 <p style={{ fontSize: '9pt', color: '#999999', marginTop: '8px', fontStyle: 'italic' }}>
-                  No referrals available. Create a new referral using "+ Add Referral".
+                  No referrals available. Create a new referral using "+ Add New Referral".
                 </p>
               )}
             </div>
