@@ -1,7 +1,7 @@
 // Updated LeadDetail.jsx component with proper status handling
 // Place this in: src/pages/LeadDetail.jsx
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useToast } from '../hooks/useToast.jsx';
@@ -13,6 +13,7 @@ const LeadDetail = () => {
   const navigate = useNavigate();
   const isNewLead = leadId === 'new';
   const { showToast, ToastComponent } = useToast();
+  const addLeadBtnRef = useRef(null);
 
   const [lead, setLead] = useState(null);
   const [userLead, setUserLead] = useState(null);
@@ -300,6 +301,10 @@ const LeadDetail = () => {
   const handleSave = async () => {
     try {
       if (isNewLead) {
+        // Disable the button via ref to prevent double-clicks without re-render
+        if (addLeadBtnRef.current) {
+          addLeadBtnRef.current.disabled = true;
+        }
         // Create new lead first, then create userLead
         const newLeadData = {
           title: lead.title,
@@ -1156,6 +1161,7 @@ const LeadDetail = () => {
 
           <div className="actions">
             <button
+              ref={isNewLead ? addLeadBtnRef : null}
               className="btn btn-primary"
               onClick={handleSave}
             >
