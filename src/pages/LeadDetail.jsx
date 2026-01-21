@@ -35,6 +35,7 @@ const LeadDetail = () => {
   // Import modal state
   const [showImportModal, setShowImportModal] = useState(false);
   const [importUrl, setImportUrl] = useState('');
+  const [dontShowImportModal, setDontShowImportModal] = useState(false);
 
   // Publish lead modal state
   const [showPublishModal, setShowPublishModal] = useState(false);
@@ -197,6 +198,12 @@ const LeadDetail = () => {
         priority: 'medium',
         notes: ''
       });
+
+      // Auto-show import modal for new leads unless user opted out
+      const skipImportModal = localStorage.getItem('skipImportModalOnNewLead') === 'true';
+      if (!skipImportModal) {
+        setShowImportModal(true);
+      }
 
       setLoading(false);
     } else {
@@ -603,10 +610,40 @@ const LeadDetail = () => {
                   }
                 }}
               />
+              {isNewLead && (
+                <label className="checkbox-label" style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '9pt', color: '#666' }}>
+                  <input
+                    type="checkbox"
+                    checked={dontShowImportModal}
+                    onChange={(e) => setDontShowImportModal(e.target.checked)}
+                  />
+                  Don't show this automatically
+                </label>
+              )}
             </div>
             <div className="modal-footer">
-              <button className="btn" onClick={() => setShowImportModal(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleImportUrl}>Import</button>
+              {isNewLead ? (
+                <>
+                  <button className="btn" onClick={() => {
+                    if (dontShowImportModal) {
+                      localStorage.setItem('skipImportModalOnNewLead', 'true');
+                    }
+                    setShowImportModal(false);
+                    setDontShowImportModal(false);
+                  }}>Skip - Fill Manually</button>
+                  <button className="btn btn-primary" onClick={() => {
+                    if (dontShowImportModal) {
+                      localStorage.setItem('skipImportModalOnNewLead', 'true');
+                    }
+                    handleImportUrl();
+                  }}>Import</button>
+                </>
+              ) : (
+                <>
+                  <button className="btn" onClick={() => setShowImportModal(false)}>Cancel</button>
+                  <button className="btn btn-primary" onClick={handleImportUrl}>Import</button>
+                </>
+              )}
             </div>
           </div>
         </div>
