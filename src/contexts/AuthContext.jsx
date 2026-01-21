@@ -22,11 +22,19 @@ export const AuthProvider = ({ children }) => {
         .single();
 
       if (error) {
+        // Ignore AbortError - happens during React StrictMode remounts
+        if (error.message?.includes('AbortError') || error.code === 'ABORT_ERR') {
+          return null;
+        }
         console.error('Error fetching user profile:', error);
         return null;
       }
       return data;
     } catch (err) {
+      // Ignore AbortError - happens during React StrictMode remounts
+      if (err.name === 'AbortError' || err.message?.includes('AbortError')) {
+        return null;
+      }
       console.error('Error fetching user profile:', err);
       return null;
     }
@@ -34,10 +42,12 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     let isMounted = true;
+    let timeoutId = null;
+    let sessionResolved = false;
 
     // Timeout fallback - if getSession takes too long, stop loading
-    const timeout = setTimeout(() => {
-      if (isMounted && loading) {
+    timeoutId = setTimeout(() => {
+      if (isMounted && !sessionResolved) {
         console.warn('Auth session check timed out');
         setLoading(false);
       }
@@ -46,6 +56,8 @@ export const AuthProvider = ({ children }) => {
     // Get initial session
     supabase.auth.getSession()
       .then(async ({ data: { session } }) => {
+        sessionResolved = true;
+        if (timeoutId) clearTimeout(timeoutId);
         if (!isMounted) return;
         const token = session?.access_token ?? null;
         setUser(session?.user ?? null);
@@ -55,9 +67,15 @@ export const AuthProvider = ({ children }) => {
           const profile = await fetchUserProfile(session.user.id);
           if (isMounted) setUserProfile(profile);
         }
-        setLoading(false);
+        if (isMounted) setLoading(false);
       })
       .catch((err) => {
+        sessionResolved = true;
+        if (timeoutId) clearTimeout(timeoutId);
+        // Ignore AbortError - happens during React StrictMode remounts
+        if (err.name === 'AbortError' || err.message?.includes('AbortError')) {
+          return;
+        }
         console.error('Error getting session:', err);
         if (isMounted) setLoading(false);
       });
@@ -65,13 +83,14 @@ export const AuthProvider = ({ children }) => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        if (!isMounted) return;
         const token = session?.access_token ?? null;
         setUser(session?.user ?? null);
         setCurrentAccessToken(token);
         setApiAccessToken(token); // Sync to API client
         if (session?.user) {
           const profile = await fetchUserProfile(session.user.id);
-          setUserProfile(profile);
+          if (isMounted) setUserProfile(profile);
         } else {
           setUserProfile(null);
         }
@@ -80,7 +99,7 @@ export const AuthProvider = ({ children }) => {
 
     return () => {
       isMounted = false;
-      clearTimeout(timeout);
+      if (timeoutId) clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, []);

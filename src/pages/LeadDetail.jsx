@@ -43,6 +43,12 @@ const LeadDetail = () => {
   const [pendingStatus, setPendingStatus] = useState(null);
   const [isPublishing, setIsPublishing] = useState(false);
 
+  // Link referral modal state
+  const [showLinkReferralModal, setShowLinkReferralModal] = useState(false);
+  const [availableReferrals, setAvailableReferrals] = useState([]);
+  const [selectedReferralId, setSelectedReferralId] = useState('');
+  const [referralSearchQuery, setReferralSearchQuery] = useState('');
+
   // Track initial values to detect changes
   const [initialValues, setInitialValues] = useState(null);
 
@@ -552,6 +558,57 @@ const LeadDetail = () => {
       }
     }
   };
+
+  const openLinkReferralModal = async () => {
+    try {
+      const allReferrals = await api.referrals.getAll();
+      // Filter out the already linked referral if one exists
+      const available = referral
+        ? allReferrals.filter(ref => ref._id !== referral._id)
+        : allReferrals;
+      setAvailableReferrals(available);
+      setReferralSearchQuery('');
+      setSelectedReferralId('');
+      setShowLinkReferralModal(true);
+    } catch (err) {
+      console.error('Error fetching referrals:', err);
+      showToast(`Error loading referrals: ${err.message}`, 'error');
+    }
+  };
+
+  const handleLinkReferral = async () => {
+    if (!selectedReferralId) {
+      showToast('Please select a referral', 'error');
+      return;
+    }
+
+    try {
+      // Get the selected referral and add this userLead to its linkedLeads
+      const selectedRef = availableReferrals.find(ref => ref._id === selectedReferralId);
+      const updatedLinkedLeads = [...(selectedRef.linkedLeads || []), userLead._id];
+      await api.referrals.update(selectedReferralId, { linkedLeads: updatedLinkedLeads });
+
+      showToast('Referral linked successfully', 'success');
+      setShowLinkReferralModal(false);
+      setSelectedReferralId('');
+
+      // Refresh to show the linked referral
+      fetchLeadDetails();
+    } catch (err) {
+      console.error('Error linking referral:', err);
+      showToast(`Error linking referral: ${err.message}`, 'error');
+    }
+  };
+
+  const filteredReferrals = availableReferrals.filter(ref => {
+    if (!referralSearchQuery) return true;
+    const query = referralSearchQuery.toLowerCase();
+    return (
+      ref.name?.toLowerCase().includes(query) ||
+      ref.company?.toLowerCase().includes(query) ||
+      ref.email?.toLowerCase().includes(query)
+    );
+  });
 
   if (loading) {
     return (
@@ -1087,12 +1144,20 @@ const LeadDetail = () => {
                   <tr>
                     <td>Referral</td>
                     <td>
-                      <button
-                        className="btn-sm btn-secondary"
-                        onClick={() => navigate('/referrals/new', { state: { linkLeadId: userLead._id, leadTitle: lead?.title, leadCompany: lead?.company } })}
-                      >
-                        + Add Referral
-                      </button>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <button
+                          className="btn-sm btn-secondary"
+                          onClick={openLinkReferralModal}
+                        >
+                          Link Referral
+                        </button>
+                        <button
+                          className="btn-sm btn-secondary"
+                          onClick={() => navigate('/referrals/new', { state: { linkLeadId: userLead._id, leadTitle: lead?.title, leadCompany: lead?.company } })}
+                        >
+                          + Add Referral
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )}
@@ -1254,6 +1319,65 @@ const LeadDetail = () => {
         leadCompany={lead?.company}
         isLoading={isPublishing}
       />
+
+      {/* Link Referral Modal */}
+      {showLinkReferralModal && (
+        <div className="modal-overlay" onClick={() => setShowLinkReferralModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Link Referral</h3>
+              <button className="modal-close" onClick={() => setShowLinkReferralModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p className="modal-instruction">Search and select an existing referral to link to this lead</p>
+
+              <label htmlFor="referral-search">Search Referrals</label>
+              <input
+                id="referral-search"
+                type="text"
+                className="modal-input"
+                placeholder="Search by name, company, or email..."
+                value={referralSearchQuery}
+                onChange={(e) => setReferralSearchQuery(e.target.value)}
+              />
+
+              <label htmlFor="referral-select" style={{ marginTop: '12px', display: 'block' }}>
+                Select Referral ({filteredReferrals.length} available)
+              </label>
+              <select
+                id="referral-select"
+                className="modal-select"
+                value={selectedReferralId}
+                onChange={(e) => setSelectedReferralId(e.target.value)}
+                size="8"
+              >
+                <option value="">-- Select a referral --</option>
+                {filteredReferrals.map((ref) => (
+                  <option key={ref._id} value={ref._id}>
+                    {ref.name} {ref.company ? `- ${ref.company}` : ''} {ref.email ? `(${ref.email})` : ''}
+                  </option>
+                ))}
+              </select>
+
+              {filteredReferrals.length === 0 && availableReferrals.length > 0 && (
+                <p style={{ fontSize: '9pt', color: '#999999', marginTop: '8px', fontStyle: 'italic' }}>
+                  No referrals match your search. Try a different query.
+                </p>
+              )}
+
+              {availableReferrals.length === 0 && (
+                <p style={{ fontSize: '9pt', color: '#999999', marginTop: '8px', fontStyle: 'italic' }}>
+                  No referrals available. Create a new referral using "+ Add Referral".
+                </p>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn" onClick={() => setShowLinkReferralModal(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleLinkReferral}>Link Referral</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

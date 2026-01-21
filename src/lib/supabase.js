@@ -9,5 +9,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-key'
+  supabaseAnonKey || 'placeholder-key',
+  {
+    auth: {
+      // Prevent auto-refresh race conditions in React StrictMode
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+      // Use a custom storage key to avoid conflicts
+      storageKey: 'gigfrog-auth',
+    },
+  }
 );
