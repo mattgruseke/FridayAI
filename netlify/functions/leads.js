@@ -116,11 +116,11 @@ export const handler = async (event) => {
 
       const data = JSON.parse(event.body);
 
-      // Set createdBy and isGlobal based on user role
+      // Set createdBy; isGlobal can be set by the user to publish to public database
       const leadData = {
         ...data,
         createdBy: user.id,
-        isGlobal: isAdmin(user), // Admin-created leads are global
+        isGlobal: data.isGlobal === true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };

@@ -52,6 +52,9 @@ const LeadDetail = () => {
   // Track initial values to detect changes
   const [initialValues, setInitialValues] = useState(null);
 
+  // Publish to public database state (for new leads only)
+  const [publishToPublic, setPublishToPublic] = useState(false);
+
   const parseJobUrl = async (url) => {
     try {
       // Use backend proxy to fetch URL and avoid CORS issues
@@ -333,7 +336,8 @@ const LeadDetail = () => {
           additionalLinks: lead.additionalLinks?.filter(l => l.url?.trim()) || [],
           contactLinkedIn: lead.contactLinkedIn,
           sourceApplicationLink: lead.sourceApplicationLink,
-          sourceLink: lead.sourceLink
+          sourceLink: lead.sourceLink,
+          isGlobal: publishToPublic
         };
 
         const createdLead = await api.leads.create(newLeadData);
@@ -1269,10 +1273,22 @@ const LeadDetail = () => {
             >
               {isNewLead ? 'Add Lead' : userLead ? 'Save Changes' : 'Save Lead to Pipeline'}
             </button>
+          
             <button className="btn btn-danger" onClick={handleDelete}>
               {userLead ? 'Remove from Pipeline' : 'Back'}
             </button>
+            
           </div>
+            {isNewLead && (
+              <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px', fontSize: '10pt' }}>
+                <input
+                  type="checkbox"
+                  checked={publishToPublic}
+                  onChange={(e) => setPublishToPublic(e.target.checked)}
+                />
+                Publish this lead to the public database
+              </label>
+            )}
         </div>
 
         <div className="side-col">
