@@ -4,6 +4,10 @@
   padding: 2px;
 }
 
+.headerIcon {
+  width: 30px;
+}
+
 .header-inner {
   background: #ff6600;
   padding: 4px;
