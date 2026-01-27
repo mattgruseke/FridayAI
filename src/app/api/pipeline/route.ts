@@ -27,8 +27,10 @@ export async function GET(request: Request) {
   const referralList = (referrals || [])
     .map(mapReferral)
     .filter(
-      (referral): referral is { linkedLeads?: string[] } =>
-        typeof referral === "object" && referral !== null
+      (
+        referral
+      ): referral is NonNullable<ReturnType<typeof mapReferral>> =>
+        referral !== null && typeof referral === "object"
     );
 
   const leads = (userLeads || []).map((row) => {
