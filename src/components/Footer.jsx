@@ -5,10 +5,14 @@ import { Link } from "react-router";
 const Footer = () => (
     <>
         <div class="footer">
-            <a href="#">Get Started</a> |
+            <a href="https://github.com/RocSites/jobFinder">Get Started</a> |
             <a href="#">FAQ</a> |
-            <a href="#">Donate</a> |
-            <a href="#">GitHub</a>
+            <a href="https://github.com/RocSites/jobFinder">GitHub</a>
+            <br/>
+            <br/>
+            <div>
+                <p>&copy; GigFrog, a<a href="https://www.rocsites.com/">RocSites</a>product</p>
+            </div>
         </div>
     </>
 )
