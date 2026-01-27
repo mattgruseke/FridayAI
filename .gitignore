@@ -28,3 +28,4 @@ dist-ssr
 .env
 .env.local
 .next
+tsconfig.tsbuildinfo
