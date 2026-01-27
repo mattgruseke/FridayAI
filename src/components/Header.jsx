@@ -70,6 +70,7 @@ const Header = () => {
         <>
             <div className="header">
                 <div className="header-inner">
+                    <img className="headerIcon" src="src/assets/frog.svg"/>
                     <Link to="/" className="logo active">GigFrog</Link>
 
                     {/* Desktop nav */}
