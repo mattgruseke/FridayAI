@@ -2,6 +2,7 @@ import './Header.css'
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import frogIcon from '../assets/frog.svg';
 
 const Header = () => {
     const { user, signOut, isAdmin } = useAuth();
@@ -70,7 +71,7 @@ const Header = () => {
         <>
             <div className="header">
                 <div className="header-inner">
-                    <img className="headerIcon" src="src/assets/frog.svg"/>
+                    <img className="headerIcon" src={frogIcon} alt="GigFrog"/>
                     <Link to="/" className="logo active">GigFrog</Link>
 
                     {/* Desktop nav */}
