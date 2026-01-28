@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import frogIcon from "../assets/frog.svg";
 
 const Header = () => {
   const { user, signOut, isAdmin } = useAuth();
@@ -81,6 +83,7 @@ const Header = () => {
       <div className="header">
         <div className="header-inner">
           <Link href="/" className="logo active">
+          <Image src={frogIcon} alt="GigFrog" width={24} height={24} />
             GigFrog
           </Link>
 

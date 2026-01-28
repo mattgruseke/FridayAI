@@ -3,7 +3,7 @@ import Providers from "./providers";
 import type { ReactNode } from "react";
 
 export const metadata = {
-  title: "JobFinder",
+  title: "GigFrog",
   description: "Find your next gig faster.",
 };
 
