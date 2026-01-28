@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { createClient } from "@/lib/supabase/server";
 import { mapReferral } from "@/lib/mappers";
 import { referralToDb } from "@/lib/transformers";
 
@@ -13,7 +13,8 @@ const stripUndefined = (value: Record<string, unknown>) =>
   );
 
 export async function GET(request: Request) {
-  const { user, errorResponse } = await requireUser(request);
+  const supabase = await createClient();
+  const { user, errorResponse } = await requireUser();
   if (errorResponse) return errorResponse;
 
   const { searchParams } = new URL(request.url);
@@ -21,7 +22,7 @@ export async function GET(request: Request) {
   const activity = searchParams.get("activity");
 
   if (activity === "true" && id) {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from("referrals")
       .select("activity_history")
       .eq("id", id)
@@ -36,7 +37,7 @@ export async function GET(request: Request) {
   }
 
   if (id) {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from("referrals")
       .select("*")
       .eq("id", id)
@@ -50,7 +51,7 @@ export async function GET(request: Request) {
     return jsonResponse(mapReferral(data));
   }
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabase
     .from("referrals")
     .select("*")
     .eq("user_id", user!.id)
@@ -64,7 +65,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const { user, errorResponse } = await requireUser(request);
+  const supabase = await createClient();
+  const { user, errorResponse } = await requireUser();
   if (errorResponse) return errorResponse;
 
   const payload = await request.json();
@@ -89,7 +91,7 @@ export async function POST(request: Request) {
     updated_at: now,
   };
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabase
     .from("referrals")
     .insert(newReferral)
     .select("*")
@@ -103,7 +105,8 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const { user, errorResponse } = await requireUser(request);
+  const supabase = await createClient();
+  const { user, errorResponse } = await requireUser();
   if (errorResponse) return errorResponse;
 
   const { searchParams } = new URL(request.url);
@@ -113,7 +116,7 @@ export async function PUT(request: Request) {
     return jsonResponse({ message: "Referral ID required" }, 400);
   }
 
-  const { data: existing, error } = await supabaseAdmin
+  const { data: existing, error } = await supabase
     .from("referrals")
     .select("*")
     .eq("id", id)
@@ -154,7 +157,7 @@ export async function PUT(request: Request) {
     updated_at: new Date().toISOString(),
   };
 
-  const { data, error: updateError } = await supabaseAdmin
+  const { data, error: updateError } = await supabase
     .from("referrals")
     .update(updateData)
     .eq("id", id)
@@ -170,7 +173,8 @@ export async function PUT(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const { user, errorResponse } = await requireUser(request);
+  const supabase = await createClient();
+  const { user, errorResponse } = await requireUser();
   if (errorResponse) return errorResponse;
 
   const { searchParams } = new URL(request.url);
@@ -180,7 +184,7 @@ export async function DELETE(request: Request) {
     return jsonResponse({ message: "Referral ID required" }, 400);
   }
 
-  const { error } = await supabaseAdmin
+  const { error } = await supabase
     .from("referrals")
     .delete()
     .eq("id", id)

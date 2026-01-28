@@ -1,19 +1,20 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { createClient } from "@/lib/supabase/server";
 
 const jsonResponse = (data: unknown, status = 200) =>
   NextResponse.json(data, { status });
 
 export async function POST(request: Request) {
-  const { user, errorResponse } = await requireUser(request);
+  const supabase = await createClient();
+  const { user, errorResponse } = await requireUser();
   if (errorResponse) return errorResponse;
 
   const payload = await request.json();
   const { mode, leadId } = payload;
 
   if (mode === "single" && leadId) {
-    const { data: userLead } = await supabaseAdmin
+    const { data: userLead } = await supabase
       .from("user_leads")
       .select("id")
       .eq("lead_id", leadId)
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
       return jsonResponse({ error: "Lead not found in your pipeline" }, 404);
     }
 
-    const { data: lead } = await supabaseAdmin
+    const { data: lead } = await supabase
       .from("leads")
       .select("*")
       .eq("id", leadId)
@@ -49,14 +50,14 @@ export async function POST(request: Request) {
         additional_links: null,
       };
 
-      await supabaseAdmin.from("leads").update(publicLeadData).eq("id", leadId);
+      await supabase.from("leads").update(publicLeadData).eq("id", leadId);
     }
 
     return jsonResponse({ message: "Lead published successfully", leadId });
   }
 
   if (mode === "all") {
-    const { data: userLeads } = await supabaseAdmin
+    const { data: userLeads } = await supabase
       .from("user_leads")
       .select("lead_id")
       .eq("user_id", user!.id);
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
 
     const leadIds = userLeads.map((item) => item.lead_id);
 
-    const { data: leads } = await supabaseAdmin
+    const { data: leads } = await supabase
       .from("leads")
       .select("id, is_global")
       .in("id", leadIds)
@@ -80,7 +81,7 @@ export async function POST(request: Request) {
     const now = new Date().toISOString();
 
     for (const lead of leads) {
-      await supabaseAdmin
+      await supabase
         .from("leads")
         .update({
           is_global: true,

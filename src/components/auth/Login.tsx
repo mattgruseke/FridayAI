@@ -1,30 +1,31 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import type { FormEvent } from 'react';
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '../contexts/AuthContext';
-import { getErrorMessage } from '../lib/errors';
+import { useState, useEffect } from "react";
+import type { FormEvent } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { signIn, resetPassword } from "@/app/(auth)/actions";
+import { getErrorMessage } from "@/lib/errors";
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string>('');
-  const [message, setMessage] = useState<string>('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string>("");
+  const [message, setMessage] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
 
-  const { signIn, resetPassword, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const redirectTo = searchParams?.get('from') || '/';
+  const redirectTo = searchParams?.get("from") || "/";
 
   useEffect(() => {
     // Check for verification success
-    if (searchParams?.get('verified') === 'true') {
-      setMessage('Email verified! You can now log in.');
+    if (searchParams?.get("verified") === "true") {
+      setMessage("Email verified! You can now log in.");
     }
 
     // Redirect if already authenticated
@@ -35,18 +36,21 @@ const Login = () => {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
       await signIn(email, password);
-      router.push(redirectTo);
+      // Use window.location for a full page reload to ensure cookies are picked up
+      window.location.href = redirectTo;
     } catch (err) {
       const message = getErrorMessage(err);
-      if (message.includes('Email not confirmed')) {
-        setError('Please verify your email before logging in. Check your inbox for the verification link.');
-      } else if (message.includes('Invalid login credentials')) {
-        setError('Invalid email or password.');
+      if (message.includes("Email not confirmed")) {
+        setError(
+          "Please verify your email before logging in. Check your inbox for the verification link."
+        );
+      } else if (message.includes("Invalid login credentials")) {
+        setError("Invalid email or password.");
       } else {
         setError(message);
       }
@@ -57,19 +61,19 @@ const Login = () => {
 
   const handleForgotPassword = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError('');
-    setMessage('');
+    setError("");
+    setMessage("");
     setLoading(true);
 
     if (!email) {
-      setError('Please enter your email address.');
+      setError("Please enter your email address.");
       setLoading(false);
       return;
     }
 
     try {
       await resetPassword(email);
-      setMessage('Password reset link sent! Check your email.');
+      setMessage("Password reset link sent! Check your email.");
       setShowForgotPassword(false);
     } catch (err) {
       setError(getErrorMessage(err));
@@ -82,8 +86,10 @@ const Login = () => {
     <div className="auth-container">
       <div className="auth-box">
         <div className="auth-header">
-          <Link href="/" className="auth-logo">GigFrog</Link>
-          <h1>{showForgotPassword ? 'Reset Password' : 'Log In'}</h1>
+          <Link href="/" className="auth-logo">
+            GigFrog
+          </Link>
+          <h1>{showForgotPassword ? "Reset Password" : "Log In"}</h1>
         </div>
 
         {error && <div className="auth-error">{error}</div>}
@@ -104,7 +110,7 @@ const Login = () => {
             </div>
 
             <button type="submit" className="auth-btn" disabled={loading}>
-              {loading ? 'Sending...' : 'Send Reset Link'}
+              {loading ? "Sending..." : "Send Reset Link"}
             </button>
 
             <button
@@ -142,7 +148,7 @@ const Login = () => {
             </div>
 
             <button type="submit" className="auth-btn" disabled={loading}>
-              {loading ? 'Logging in...' : 'Log In'}
+              {loading ? "Logging in..." : "Log In"}
             </button>
 
             <button
@@ -157,7 +163,7 @@ const Login = () => {
 
         <div className="auth-footer">
           <p>
-            Don't have an account? <Link href="/signup">Sign up</Link>
+            Don&apos;t have an account? <Link href="/signup">Sign up</Link>
           </p>
         </div>
       </div>

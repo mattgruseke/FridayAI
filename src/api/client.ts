@@ -2,27 +2,13 @@ import axios from "axios";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
-// Store access token at module level - set by AuthContext
-let cachedAccessToken: string | null = null;
-
-// Function to update the cached token (called from AuthContext)
-export const setAccessToken = (token: string | null) => {
-  cachedAccessToken = token;
-};
-
 const apiClient = axios.create({
   baseURL: API_URL,
   headers: {
     "Content-Type": "application/json",
   },
-});
-
-apiClient.interceptors.request.use((config) => {
-  if (cachedAccessToken) {
-    config.headers = config.headers ?? {};
-    config.headers.Authorization = `Bearer ${cachedAccessToken}`;
-  }
-  return config;
+  // Include credentials (cookies) with requests
+  withCredentials: true,
 });
 
 type FetchOptions = {

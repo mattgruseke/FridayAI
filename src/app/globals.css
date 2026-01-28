@@ -1,13 +1,13 @@
 @import "../components/Header.css";
 @import "../components/Footer.css";
-@import "../pages/Auth.css";
-@import "../pages/Home.css";
-@import "../pages/LeadDetail.css";
-@import "../pages/Leads.css";
-@import "../pages/Pipeline.css";
-@import "../pages/Profile.css";
-@import "../pages/ReferralDetail.css";
-@import "../pages/Referrals.css";
+@import "../views/Auth.css";
+@import "../views/Home.css";
+@import "../views/LeadDetail.css";
+@import "../views/Leads.css";
+@import "../views/Pipeline.css";
+@import "../views/Profile.css";
+@import "../views/ReferralDetail.css";
+@import "../views/Referrals.css";
 
 /* Global styles */
 
