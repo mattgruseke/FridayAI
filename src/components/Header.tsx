@@ -51,21 +51,9 @@ const Header = () => {
   const handleLogout = async () => {
     setMobileMenuOpen(false);
     setSidebarOpen(false);
-    try {
-      await signOut();
-    } catch (err) {
-      // Ignore AbortError - logout still works
-      if (
-        typeof err === "object" &&
-        err !== null &&
-        "name" in err &&
-        err.name !== "AbortError"
-      ) {
-        console.error("Logout error:", err);
-      }
-    }
-    // Always navigate to login after logout attempt
-    router.push("/login");
+    await signOut();
+    // Use window.location for a full page reload to ensure state is cleared
+    window.location.href = "/login";
   };
 
   const handleProfileClick = () => {

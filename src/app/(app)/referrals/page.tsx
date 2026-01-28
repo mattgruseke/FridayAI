@@ -1,4 +1,4 @@
-import Referrals from "@/pages/Referrals";
+import Referrals from "@/views/Referrals";
 
 export default function Page() {
   return <Referrals />;

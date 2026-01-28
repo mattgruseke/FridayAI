@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { optionalUser, requireUser, isAdminUser } from "@/lib/auth";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { createClient } from "@/lib/supabase/server";
 import { mapLead } from "@/lib/mappers";
 import { leadToDb } from "@/lib/transformers";
 
@@ -13,12 +13,13 @@ const stripUndefined = (value: Record<string, unknown>) =>
   );
 
 export async function GET(request: Request) {
-  const { user } = await optionalUser(request);
+  const supabase = await createClient();
+  const { user } = await optionalUser();
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 
   if (id) {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from("leads")
       .select("*")
       .eq("id", id)
@@ -48,7 +49,7 @@ export async function GET(request: Request) {
   const ascending = !sortParam.startsWith("-");
   const normalizedSort = sortField === "_id" ? "created_at" : sortField;
 
-  let query = supabaseAdmin
+  let query = supabase
     .from("leads")
     .select("*", { count: "exact" })
     .order(normalizedSort, { ascending });
@@ -86,7 +87,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const { user, errorResponse } = await requireUser(request);
+  const supabase = await createClient();
+  const { user, errorResponse } = await requireUser();
   if (errorResponse) return errorResponse;
 
   const payload = await request.json();
@@ -100,7 +102,7 @@ export async function POST(request: Request) {
     updated_at: now,
   };
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabase
     .from("leads")
     .insert(insertData)
     .select("*")
@@ -114,7 +116,8 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const { user, errorResponse } = await requireUser(request);
+  const supabase = await createClient();
+  const { user, errorResponse } = await requireUser();
   if (errorResponse) return errorResponse;
 
   const { searchParams } = new URL(request.url);
@@ -124,7 +127,7 @@ export async function PUT(request: Request) {
     return jsonResponse({ error: "Missing ID" }, 400);
   }
 
-  const { data: existing, error } = await supabaseAdmin
+  const { data: existing, error } = await supabase
     .from("leads")
     .select("*")
     .eq("id", id)
@@ -147,7 +150,7 @@ export async function PUT(request: Request) {
 
   updates.updated_at = new Date().toISOString();
 
-  const { data: updated, error: updateError } = await supabaseAdmin
+  const { data: updated, error: updateError } = await supabase
     .from("leads")
     .update(updates)
     .eq("id", id)
@@ -162,7 +165,8 @@ export async function PUT(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const { user, errorResponse } = await requireUser(request);
+  const supabase = await createClient();
+  const { user, errorResponse } = await requireUser();
   if (errorResponse) return errorResponse;
 
   const { searchParams } = new URL(request.url);
@@ -172,7 +176,7 @@ export async function DELETE(request: Request) {
     return jsonResponse({ error: "Missing ID" }, 400);
   }
 
-  const { data: existing, error } = await supabaseAdmin
+  const { data: existing, error } = await supabase
     .from("leads")
     .select("*")
     .eq("id", id)
@@ -187,7 +191,7 @@ export async function DELETE(request: Request) {
     return jsonResponse({ error: "Not authorized to delete this lead" }, 403);
   }
 
-  const { error: deleteError } = await supabaseAdmin
+  const { error: deleteError } = await supabase
     .from("leads")
     .delete()
     .eq("id", id);

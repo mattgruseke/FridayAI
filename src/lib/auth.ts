@@ -1,9 +1,8 @@
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { createClient } from "@/lib/supabase/server";
 
 type AuthResult = {
   user: { id: string } | null;
   errorResponse: Response | null;
-  token: string | null;
 };
 
 const unauthorized = () =>
@@ -12,44 +11,36 @@ const unauthorized = () =>
     headers: { "Content-Type": "application/json" },
   });
 
-export async function requireUser(request: Request): Promise<AuthResult> {
-  const authHeader = request.headers.get("authorization") || "";
-  const token = authHeader.startsWith("Bearer ")
-    ? authHeader.slice("Bearer ".length)
-    : null;
+export async function requireUser(): Promise<AuthResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
 
-  if (!token) {
-    return { user: null, errorResponse: unauthorized(), token: null };
+  if (error || !user) {
+    return { user: null, errorResponse: unauthorized() };
   }
 
-  const { data, error } = await supabaseAdmin.auth.getUser(token);
-  if (error || !data?.user) {
-    return { user: null, errorResponse: unauthorized(), token };
-  }
-
-  return { user: { id: data.user.id }, errorResponse: null, token };
+  return { user: { id: user.id }, errorResponse: null };
 }
 
-export async function optionalUser(request: Request): Promise<AuthResult> {
-  const authHeader = request.headers.get("authorization") || "";
-  const token = authHeader.startsWith("Bearer ")
-    ? authHeader.slice("Bearer ".length)
-    : null;
+export async function optionalUser(): Promise<AuthResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (!token) {
-    return { user: null, errorResponse: null, token: null };
+  if (!user) {
+    return { user: null, errorResponse: null };
   }
 
-  const { data } = await supabaseAdmin.auth.getUser(token);
-  if (!data?.user) {
-    return { user: null, errorResponse: null, token };
-  }
-
-  return { user: { id: data.user.id }, errorResponse: null, token };
+  return { user: { id: user.id }, errorResponse: null };
 }
 
 export async function isAdminUser(userId: string) {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createClient();
+  const { data, error } = await supabase
     .from("user_profiles")
     .select("role")
     .eq("id", userId)

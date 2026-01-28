@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import api from "../api/client";
 
 type PipelineLeadItem = {
@@ -24,13 +25,19 @@ type PipelineStage = {
 const Home = () => {
   const pathname = usePathname();
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
   const [pipeline, setPipeline] = useState<PipelineStage[]>([]);
   const [recentLeads, setRecentLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Only fetch data if user is authenticated
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
     fetchData();
-  }, [pathname]);
+  }, [pathname, isAuthenticated]);
 
   const fetchData = async () => {
     try {

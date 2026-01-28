@@ -1,4 +1,4 @@
-import Leads from "@/pages/Leads";
+import Leads from "@/views/Leads";
 
 export default function Page() {
   return <Leads />;

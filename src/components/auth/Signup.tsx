@@ -1,48 +1,51 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import type { FormEvent } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '../contexts/AuthContext';
-import { getErrorMessage } from '../lib/errors';
+import { useState, useEffect } from "react";
+import type { FormEvent } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { signUp, validateInviteCode } from "@/app/(auth)/actions";
+import { getErrorMessage } from "@/lib/errors";
 
 const Signup = () => {
   const [step, setStep] = useState(1); // 1 = invite code, 2 = account details
-  const [inviteCode, setInviteCode] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
+  const [inviteCode, setInviteCode] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const { signUp, validateInviteCode, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/');
+      router.push("/");
     }
   }, [isAuthenticated, router]);
 
   const handleValidateCode = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
       const { valid, error: codeError } = await validateInviteCode(inviteCode);
 
       if (!valid) {
-        setError(codeError || 'Invalid invite code.');
+        setError(codeError || "Invalid invite code.");
         setLoading(false);
         return;
       }
 
       setStep(2);
     } catch (err) {
-      setError(getErrorMessage(err) || 'Error validating invite code. Please try again.');
+      setError(
+        getErrorMessage(err) || "Error validating invite code. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -50,17 +53,17 @@ const Signup = () => {
 
   const handleSignUp = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     // Validate passwords match
     if (password !== confirmPassword) {
-      setError('Passwords do not match.');
+      setError("Passwords do not match.");
       return;
     }
 
     // Validate password strength
     if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
+      setError("Password must be at least 8 characters.");
       return;
     }
 
@@ -71,8 +74,8 @@ const Signup = () => {
       setSuccess(true);
     } catch (err) {
       const message = getErrorMessage(err);
-      if (message.includes('User already registered')) {
-        setError('An account with this email already exists.');
+      if (message.includes("User already registered")) {
+        setError("An account with this email already exists.");
       } else {
         setError(message);
       }
@@ -86,17 +89,20 @@ const Signup = () => {
       <div className="auth-container">
         <div className="auth-box">
           <div className="auth-header">
-            <Link href="/" className="auth-logo">GigFrog</Link>
+            <Link href="/" className="auth-logo">
+              GigFrog
+            </Link>
             <h1>Check Your Email</h1>
           </div>
 
           <div className="auth-success-message">
             <div className="success-icon">✓</div>
             <p>
-              We've sent a verification link to <strong>{email}</strong>
+              We&apos;ve sent a verification link to <strong>{email}</strong>
             </p>
             <p className="auth-hint">
-              Click the link in the email to verify your account, then you can log in.
+              Click the link in the email to verify your account, then you can
+              log in.
             </p>
           </div>
 
@@ -114,12 +120,18 @@ const Signup = () => {
     <div className="auth-container">
       <div className="auth-box">
         <div className="auth-header">
-          <Link href="/" className="auth-logo">GigFrog</Link>
+          <Link href="/" className="auth-logo">
+            GigFrog
+          </Link>
           <h1>Sign Up</h1>
           <div className="auth-steps">
-            <span className={`step ${step >= 1 ? 'active' : ''}`}>1. Invite Code</span>
+            <span className={`step ${step >= 1 ? "active" : ""}`}>
+              1. Invite Code
+            </span>
             <span className="step-divider">→</span>
-            <span className={`step ${step >= 2 ? 'active' : ''}`}>2. Account</span>
+            <span className={`step ${step >= 2 ? "active" : ""}`}>
+              2. Account
+            </span>
           </div>
         </div>
 
@@ -137,15 +149,16 @@ const Signup = () => {
                 placeholder="Enter your invite code"
                 required
                 autoComplete="off"
-                style={{ textTransform: 'uppercase' }}
+                style={{ textTransform: "uppercase" }}
               />
               <p className="form-hint">
-                GigFrog is currently invite-only. Enter your invite code to continue.
+                GigFrog is currently invite-only. Enter your invite code to
+                continue.
               </p>
             </div>
 
             <button type="submit" className="auth-btn" disabled={loading}>
-              {loading ? 'Validating...' : 'Continue'}
+              {loading ? "Validating..." : "Continue"}
             </button>
           </form>
         ) : (
@@ -199,7 +212,7 @@ const Signup = () => {
             </div>
 
             <button type="submit" className="auth-btn" disabled={loading}>
-              {loading ? 'Creating Account...' : 'Create Account'}
+              {loading ? "Creating Account..." : "Create Account"}
             </button>
           </form>
         )}

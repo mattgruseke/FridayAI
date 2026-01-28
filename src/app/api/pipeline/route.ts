@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { createClient } from "@/lib/supabase/server";
 import { mapLead, mapUserLead, mapReferral } from "@/lib/mappers";
 
 const jsonResponse = (data: unknown, status = 200) =>
   NextResponse.json(data, { status });
 
-export async function GET(request: Request) {
-  const { user, errorResponse } = await requireUser(request);
+export async function GET() {
+  const supabase = await createClient();
+  const { user, errorResponse } = await requireUser();
   if (errorResponse) return errorResponse;
 
-  const { data: userLeads, error } = await supabaseAdmin
+  const { data: userLeads, error } = await supabase
     .from("user_leads")
     .select("*, lead:lead_id(*)")
     .eq("user_id", user!.id);
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
     return jsonResponse({ error: error.message }, 500);
   }
 
-  const { data: referrals } = await supabaseAdmin
+  const { data: referrals } = await supabase
     .from("referrals")
     .select("*")
     .eq("user_id", user!.id);
