@@ -966,6 +966,7 @@ const LeadDetail = () => {
                     <select value={status || ''} onChange={handleStatusChange} disabled={!userLead && !isNewLead}>
                       {!status && !isNewLead && <option value="">Not saved yet</option>}
                       <option value="saved">Saved</option>
+                      <option value="contacted">Contacted</option>
                       <option value="applied">Applied</option>
                       <option value="interviewing">Interviewing</option>
                       <option value="offer">Offer</option>

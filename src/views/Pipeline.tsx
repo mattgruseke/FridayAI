@@ -24,6 +24,32 @@ type PipelineStage = {
   leads?: PipelineLeadItem[];
 };
 
+const PIPELINE_FILTERS_KEY = 'pipelineVisibleStatuses';
+const DEFAULT_VISIBLE = ['saved', 'contacted', 'applied', 'interviewing'];
+
+const MIGRATED_KEY = 'pipelineMigratedStatuses';
+
+function loadVisibleStatuses(): string[] {
+  if (typeof window === 'undefined') return DEFAULT_VISIBLE;
+  try {
+    const saved = localStorage.getItem(PIPELINE_FILTERS_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        // One-time migration: inject "contacted" for users with old saved prefs
+        const migrated: string[] = JSON.parse(localStorage.getItem(MIGRATED_KEY) || '[]');
+        if (!migrated.includes('contacted') && !parsed.includes('contacted')) {
+          parsed.push('contacted');
+          localStorage.setItem(PIPELINE_FILTERS_KEY, JSON.stringify(parsed));
+          localStorage.setItem(MIGRATED_KEY, JSON.stringify([...migrated, 'contacted']));
+        }
+        return parsed;
+      }
+    }
+  } catch {}
+  return DEFAULT_VISIBLE;
+}
+
 const Pipeline = () => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -38,6 +64,27 @@ const Pipeline = () => {
     interviewing: 0,
     offers: 0
   });
+
+  // Filter state
+  const [visibleStatuses, setVisibleStatuses] = useState<string[]>(loadVisibleStatuses);
+  const [savedStatuses, setSavedStatuses] = useState<string[]>(loadVisibleStatuses);
+
+  const hasUnsavedChanges =
+    JSON.stringify([...visibleStatuses].sort()) !== JSON.stringify([...savedStatuses].sort());
+
+  const toggleStatus = (statusId: string) => {
+    setVisibleStatuses(prev =>
+      prev.includes(statusId)
+        ? prev.filter(s => s !== statusId)
+        : [...prev, statusId]
+    );
+  };
+
+  const saveView = () => {
+    localStorage.setItem(PIPELINE_FILTERS_KEY, JSON.stringify(visibleStatuses));
+    setSavedStatuses(visibleStatuses);
+    showToast('View saved', 'success');
+  };
 
   // Publish modal state
   const [showPublishModal, setShowPublishModal] = useState(false);
@@ -164,6 +211,7 @@ const Pipeline = () => {
   // Status display mapping
   const statusColumns = [
     { id: 'saved', title: 'Saved' },
+    { id: 'contacted', title: 'Contacted' },
     { id: 'applied', title: 'Applied' },
     { id: 'interviewing', title: 'Interviewing' },
     { id: 'offer', title: 'Offer' },
@@ -200,8 +248,30 @@ const Pipeline = () => {
       </div> */}
       <Link href="/leads/new" className="btn-add-lead-pipeline">Add Lead</Link>
 
+      <div className="pipeline-filters">
+        <div className="filter-checkboxes">
+          {statusColumns.map(column => (
+            <label key={column.id} className="filter-checkbox">
+              <input
+                type="checkbox"
+                checked={visibleStatuses.includes(column.id)}
+                onChange={() => toggleStatus(column.id)}
+              />
+              {column.title}
+            </label>
+          ))}
+        </div>
+        <button
+          className={`btn-save-view${hasUnsavedChanges ? ' unsaved' : ''}`}
+          onClick={saveView}
+          disabled={!hasUnsavedChanges}
+        >
+          Save View
+        </button>
+      </div>
+
       <div className="pipeline-table">
-        {statusColumns.map(column => {
+        {statusColumns.filter(col => visibleStatuses.includes(col.id)).map(column => {
           const leads = getLeadsByStatus(column.id);
           const count = leads.length;
 
@@ -211,7 +281,9 @@ const Pipeline = () => {
                 {column.title} <span className="count">{count}</span>
               </div>
 
-              {leads.map(({ userLead, leadDetails, referral }) => (
+              {leads.map(({ userLead, leadDetails, referral }) => {
+                if (!userLead || !leadDetails) return null;
+                return (
                 <div
                   key={userLead._id}
                   className="job-card"
@@ -277,9 +349,33 @@ const Pipeline = () => {
                       <>
                         <button
                           className="btn-sm"
+                          onClick={() => handleStatusChange(userLead._id, 'contacted')}
+                        >
+                          Contacted →
+                        </button>
+                        <button
+                          className="btn-sm btn-danger"
+                          onClick={() => handleStatusChange(userLead._id, 'rejected', leadDetails)}
+                          title="Mark as Rejected"
+                        >
+                          Rejected
+                        </button>
+                      </>
+                    )}
+                    {column.id === 'contacted' && (
+                      <>
+                        <button
+                          className="btn-sm btn-secondary"
+                          onClick={() => handleStatusChange(userLead._id, 'saved')}
+                          title="Move back to Saved"
+                        >
+                          ← Back
+                        </button>
+                        <button
+                          className="btn-sm"
                           onClick={() => handleStatusChange(userLead._id, 'applied')}
                         >
-                          Mark Applied →
+                          Applied →
                         </button>
                         <button
                           className="btn-sm btn-danger"
@@ -294,8 +390,8 @@ const Pipeline = () => {
                       <>
                         <button
                           className="btn-sm btn-secondary"
-                          onClick={() => handleStatusChange(userLead._id, 'saved')}
-                          title="Move back to Saved"
+                          onClick={() => handleStatusChange(userLead._id, 'contacted')}
+                          title="Move back to Contacted"
                         >
                           ← Back
                         </button>
@@ -367,7 +463,8 @@ const Pipeline = () => {
                     )}
                   </div>
                 </div>
-              ))}
+                );
+              })}
 
               {count === 0 && (
                 <div className="empty-state">

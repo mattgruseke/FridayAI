@@ -40,6 +40,7 @@ export const mapUserLead = (row: AnyRecord | null) => {
     notes: row.notes,
     customFields: row.custom_fields ?? row.customFields,
     savedAt: row.saved_at ?? row.savedAt,
+    contactedAt: row.contacted_at ?? row.contactedAt,
     appliedAt: row.applied_at ?? row.appliedAt,
     interviewingAt: row.interviewing_at ?? row.interviewingAt,
     offerAt: row.offer_at ?? row.offerAt,

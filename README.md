@@ -6,7 +6,7 @@ Find you next gig faster.
 
 1) Install dependencies
 ```
-npm install
+yarn
 ```
 
 2) Configure environment variables
@@ -23,5 +23,5 @@ Run the SQL in `supabase/schema.sql` in your Supabase project.
 
 4) Start the dev server
 ```
-npm run dev
+yarn dev
 ```

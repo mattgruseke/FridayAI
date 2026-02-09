@@ -193,7 +193,9 @@ export async function PUT(request: Request) {
       ],
     };
 
-    if (payload.status === "applied" && !existing.applied_at) {
+    if (payload.status === "contacted" && !existing.contacted_at) {
+      updateDoc.contacted_at = now;
+    } else if (payload.status === "applied" && !existing.applied_at) {
       updateDoc.applied_at = now;
     } else if (payload.status === "interviewing" && !existing.interviewing_at) {
       updateDoc.interviewing_at = now;

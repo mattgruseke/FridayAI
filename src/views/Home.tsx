@@ -89,6 +89,7 @@ const Home = () => {
   // Status display mapping
   const statusColumns = [
     { id: "saved", title: "Saved" },
+    { id: "contacted", title: "Contacted" },
     { id: "applied", title: "Applied" },
     { id: "interviewing", title: "Interviewing" },
     { id: "offer", title: "Offer" },
