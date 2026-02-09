@@ -411,8 +411,16 @@ const LeadDetail = () => {
           router.push(`/leads/${createdLead._id}`);
         }
       } else if (userLead) {
+        // Detect if links were added/changed
+        const linksChanged = JSON.stringify(lead?.additionalLinks || []) !== JSON.stringify(initialValues?.lead?.additionalLinks || []);
+        const updatePayload: Record<string, unknown> = { priority, notes };
+        if (linksChanged) {
+          updatePayload.activityNote = 'Links updated';
+          updatePayload.activityAction = 'link_added';
+        }
+
         // Update existing userLead
-        await api.userLeads.update(userLead._id, { priority, notes });
+        await api.userLeads.update(userLead._id, updatePayload);
 
         // If in edit mode, also update the lead itself
         if (isEditingBasic || isEditingContact) {
@@ -604,8 +612,13 @@ const LeadDetail = () => {
 
     if (userLead) {
       try {
-        await api.userLeads.update(userLead._id, { notes: updatedNotes });
+        await api.userLeads.update(userLead._id, {
+          notes: updatedNotes,
+          activityNote: 'Note added',
+          activityAction: 'note_added',
+        });
         showToast('Note added!', 'success');
+        fetchLeadDetails();
       } catch (err) {
         showToast(`Error saving note: ${getErrorMessage(err)}`, 'error');
       }
@@ -674,6 +687,12 @@ const LeadDetail = () => {
         userLead._id,
       ];
       await api.referrals.update(selectedReferralId, { linkedLeads: updatedLinkedLeads });
+
+      // Log activity on the user_lead
+      await api.userLeads.update(userLead._id, {
+        activityNote: `Referral linked: ${selectedRef.name}`,
+        activityAction: 'referral_linked',
+      });
 
       showToast('Referral linked successfully', 'success');
       setShowLinkReferralModal(false);

@@ -62,7 +62,7 @@ export async function GET(request: Request) {
     const history = (data.status_history as Array<Record<string, string>>) || [];
     const activityData = history.map((item) => ({
       createdAt: item.timestamp,
-      action: "status_change",
+      action: item.action || "status_change",
       description: item.note || `Status changed to ${item.status}`,
     }));
 
@@ -220,8 +220,24 @@ export async function PUT(request: Request) {
     return jsonResponse(mapUserLead(data));
   }
 
-  const updateData = stripUndefined(userLeadUpdateToDb(payload));
-  updateData.updated_at = new Date().toISOString();
+  const updateData: Record<string, unknown> = stripUndefined(userLeadUpdateToDb(payload));
+  const now = new Date().toISOString();
+  updateData.updated_at = now;
+
+  // If activityNote is provided, append to status_history and update last_activity_at
+  if (payload.activityNote) {
+    const history = (existing.status_history as Array<Record<string, string>>) || [];
+    updateData.status_history = [
+      ...history,
+      {
+        status: existing.current_status,
+        timestamp: now,
+        note: payload.activityNote,
+        action: payload.activityAction || "update",
+      },
+    ];
+    updateData.last_activity_at = now;
+  }
 
   const { data, error: updateError } = await supabase
     .from("user_leads")
