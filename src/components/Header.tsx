@@ -11,6 +11,7 @@ const Header = () => {
   const { user, signOut, isAdmin } = useAuth();
   const router = useRouter();
   const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window === 'undefined') return false;
     const saved = localStorage.getItem("darkMode");
     return saved === "true";
   });

@@ -17,6 +17,24 @@
     border-color: #ff7711;
 }
 
+.referral-search {
+    display: block;
+    width: 100%;
+    max-width: 400px;
+    margin-top: 10px;
+    padding: 4px 8px;
+    font-size: 9pt;
+    font-family: Verdana, Geneva, sans-serif;
+    border: 1px solid #e6e6df;
+    background: #ffffff;
+    box-sizing: border-box;
+}
+
+.referral-search:focus {
+    outline: none;
+    border-color: #ff6600;
+}
+
 .referrals-table-container {
     margin-top: 12px;
     overflow-x: auto;
@@ -123,4 +141,14 @@ body.dark-mode .copy-icon-btn {
 
 body.dark-mode .copy-icon-btn:hover {
     color: #e0e0e0;
+}
+
+body.dark-mode .referral-search {
+    background: #2a2a2a;
+    border-color: #404040;
+    color: #e0e0e0;
+}
+
+body.dark-mode .referral-search:focus {
+    border-color: #ff6600;
 }

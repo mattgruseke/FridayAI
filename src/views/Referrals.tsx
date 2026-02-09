@@ -13,6 +13,17 @@ const Referrals = () => {
   const [referrals, setReferrals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+
+  const filteredReferrals = referrals.filter(r => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      r.name?.toLowerCase().includes(q) ||
+      r.company?.toLowerCase().includes(q) ||
+      r.email?.toLowerCase().includes(q)
+    );
+  });
 
   useEffect(() => {
     fetchReferrals();
@@ -71,6 +82,14 @@ const Referrals = () => {
           </Link>
         </div>
 
+        <input
+          type="text"
+          className="referral-search"
+          placeholder="Search by name, company, or email..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+
         <div className="referrals-table-container">
           <table className="referrals-table">
             <thead>
@@ -84,8 +103,8 @@ const Referrals = () => {
               </tr>
             </thead>
             <tbody>
-              {referrals.length > 0 ? (
-                referrals.map((referral) => (
+              {filteredReferrals.length > 0 ? (
+                filteredReferrals.map((referral) => (
                   <tr
                     key={referral._id}
                     onClick={() => router.push(`/referrals/${referral._id}`)}
@@ -188,7 +207,9 @@ const Referrals = () => {
                     colSpan={6}
                     style={{ textAlign: "center", padding: "2rem" }}
                   >
-                    No referrals found. Click "Add Referral" to get started!
+                    {search
+                      ? `No referrals matching "${search}"`
+                      : 'No referrals found. Click "Add Referral" to get started!'}
                   </td>
                 </tr>
               )}

@@ -13,10 +13,30 @@ import type { PublishLeadMode } from '../components/PublishLeadModal';
 import { getErrorMessage } from '../lib/errors';
 
 type PipelineLeadItem = {
-  userLead?: { _id?: string; priority?: "high" | "medium" | "low" };
+  userLead?: { _id?: string; priority?: "high" | "medium" | "low"; lastActivityAt?: string };
   leadDetails?: { _id?: string; title?: string; company?: string; location?: string; compensation?: { raw?: string } };
   referral?: { name?: string; email?: string };
 };
+
+function getActivityAge(dateStr: string | undefined): { label: string; className: string } | null {
+  if (!dateStr) return null;
+  const ms = Date.now() - new Date(dateStr).getTime();
+  const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+  const weeks = Math.floor(days / 7);
+
+  let label: string;
+  if (days === 0) label = 'Today';
+  else if (days === 1) label = '1 day ago';
+  else if (days < 7) label = `${days} days ago`;
+  else if (weeks === 1) label = '1 week ago';
+  else label = `${weeks} weeks ago`;
+
+  let className = 'activity-fresh';       // green: < 1 week
+  if (days >= 14) className = 'activity-stale';  // red: > 2 weeks
+  else if (days >= 7) className = 'activity-aging'; // yellow: > 1 week
+
+  return { label, className };
+}
 
 type PipelineStage = {
   _id: string;
@@ -192,19 +212,22 @@ const Pipeline = () => {
     setPublishMode(null);
   };
 
-  // Helper to get leads for a specific status (sorted by priority)
+  // Helper to get leads for a specific status (sorted by priority, then most recent activity)
   const getLeadsByStatus = (status: string) => {
     const stage = pipeline.find(s => s._id === status);
     const leads = stage?.leads || [];
 
-    // Sort by priority
     const priorityValue = { high: 3, medium: 2, low: 1 };
     return [...leads].sort((a, b) => {
       const aKey = a.userLead?.priority;
       const bKey = b.userLead?.priority;
       const aPriority = aKey && aKey in priorityValue ? priorityValue[aKey] : 0;
       const bPriority = bKey && bKey in priorityValue ? priorityValue[bKey] : 0;
-      return bPriority - aPriority;
+      if (bPriority !== aPriority) return bPriority - aPriority;
+      // Same priority: most recent activity first
+      const aTime = a.userLead?.lastActivityAt ? new Date(a.userLead.lastActivityAt).getTime() : 0;
+      const bTime = b.userLead?.lastActivityAt ? new Date(b.userLead.lastActivityAt).getTime() : 0;
+      return bTime - aTime;
     });
   };
 
@@ -250,16 +273,23 @@ const Pipeline = () => {
 
       <div className="pipeline-filters">
         <div className="filter-checkboxes">
-          {statusColumns.map(column => (
-            <label key={column.id} className="filter-checkbox">
-              <input
-                type="checkbox"
-                checked={visibleStatuses.includes(column.id)}
-                onChange={() => toggleStatus(column.id)}
-              />
-              {column.title}
-            </label>
-          ))}
+          {statusColumns.map(column => {
+            const isVisible = visibleStatuses.includes(column.id);
+            const hiddenCount = !isVisible ? getLeadsByStatus(column.id).length : 0;
+            return (
+              <label key={column.id} className="filter-checkbox">
+                <input
+                  type="checkbox"
+                  checked={isVisible}
+                  onChange={() => toggleStatus(column.id)}
+                />
+                {column.title}
+                {!isVisible && hiddenCount > 0 && (
+                  <span className="hidden-count">({hiddenCount} hidden)</span>
+                )}
+              </label>
+            );
+          })}
         </div>
         <button
           className={`btn-save-view${hasUnsavedChanges ? ' unsaved' : ''}`}
@@ -342,6 +372,17 @@ const Pipeline = () => {
                       </div>
                     </div>
                   )}
+
+                  {/* Last activity */}
+                  {(() => {
+                    const activity = getActivityAge(userLead.lastActivityAt);
+                    if (!activity) return null;
+                    return (
+                      <div className={`last-activity ${activity.className}`}>
+                        Last activity: {activity.label}
+                      </div>
+                    );
+                  })()}
 
                   {/* Status change buttons */}
                   <div className="card-actions" onClick={(e) => e.stopPropagation()}>
