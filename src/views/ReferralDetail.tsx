@@ -144,6 +144,15 @@ const ReferralDetail = () => {
 
       if (isNewReferral) {
         const newReferral = await api.referrals.create(referralData);
+
+        // Log activity on the linked user_lead when coming from LeadDetail
+        if (linkLeadFromState) {
+          await api.userLeads.update(linkLeadFromState, {
+            activityNote: `Referral added: ${name.trim()}`,
+            activityAction: 'referral_linked',
+          });
+        }
+
         showToast("Referral saved successfully", "success");
         router.replace(`/referrals/${newReferral._id}`);
       } else {
