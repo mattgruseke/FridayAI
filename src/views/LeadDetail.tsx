@@ -46,6 +46,38 @@ type Referral = {
   linkedLeads?: string[];
 };
 
+type NoteEntry = {
+  id: string;
+  text: string;
+  createdAt: string;
+};
+
+const parseNotes = (raw: string): NoteEntry[] => {
+  if (!raw || !raw.trim()) return [];
+  // Try new JSON format first
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed;
+  } catch { /* not JSON, fall through to legacy parsing */ }
+  // Legacy string format: "[date] text" separated by double newlines
+  return raw.split('\n\n').filter(s => s.trim()).map(entry => {
+    const match = entry.match(/^\[(.+?)\]\s*([\s\S]*)/);
+    if (match) {
+      const dateStr = match[1];
+      const parsed = new Date(dateStr);
+      return {
+        id: crypto.randomUUID(),
+        text: match[2],
+        createdAt: isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString(),
+      };
+    }
+    return { id: crypto.randomUUID(), text: entry, createdAt: new Date().toISOString() };
+  });
+};
+
+const serializeNotes = (entries: NoteEntry[]): string =>
+  entries.length > 0 ? JSON.stringify(entries) : '';
+
 const LeadDetail = () => {
   const params = useParams() || {};
   const router = useRouter();
@@ -65,8 +97,10 @@ const LeadDetail = () => {
   // Form state
   const [priority, setPriority] = useState('medium');
   const [status, setStatus] = useState<string | null>(null);
-  const [notes, setNotes] = useState('');
+  const [noteEntries, setNoteEntries] = useState<NoteEntry[]>([]);
   const [newNote, setNewNote] = useState('');
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteText, setEditingNoteText] = useState('');
 
   // Edit mode state
   const [isEditingBasic, setIsEditingBasic] = useState(false);
@@ -284,13 +318,13 @@ const LeadDetail = () => {
         setUserLead(userLeadData);
         setPriority(userLeadData.priority || 'medium');
         setStatus(userLeadData.currentStatus ?? null); // ✅ This now gets the correct status!
-        setNotes(userLeadData.notes || '');
+        setNoteEntries(parseNotes(userLeadData.notes || ''));
 
         // Capture initial values for change detection
         setInitialValues({
           lead: { ...leadData },
           priority: userLeadData.priority || 'medium',
-          notes: userLeadData.notes || ''
+          notes: userLeadData.notes || '' // stored as raw string for comparison
         });
 
         // Fetch activity using the ACTUAL userLead ID
@@ -318,7 +352,7 @@ const LeadDetail = () => {
         // Keep default values
         setPriority('medium');
         setStatus(null);
-        setNotes('');
+        setNoteEntries([]);
         setActivity([]);
 
         // Capture initial values for new lead
@@ -355,7 +389,7 @@ const LeadDetail = () => {
       lead.sourceLink !== initialValues.lead.sourceLink;
 
     // Check if notes have changed (priority auto-saves now)
-    const notesChanged = notes !== initialValues.notes;
+    const notesChanged = serializeNotes(noteEntries) !== initialValues.notes;
 
     return leadChanged || notesChanged;
   };
@@ -401,7 +435,7 @@ const LeadDetail = () => {
           await api.userLeads.save({
             leadId: createdLead._id,
             priority,
-            notes,
+            notes: serializeNotes(noteEntries),
             currentStatus: 'saved'
           });
         }
@@ -413,7 +447,8 @@ const LeadDetail = () => {
       } else if (userLead) {
         // Detect if links were added/changed
         const linksChanged = JSON.stringify(lead?.additionalLinks || []) !== JSON.stringify(initialValues?.lead?.additionalLinks || []);
-        const updatePayload: Record<string, unknown> = { priority, notes };
+        const serializedNotes = serializeNotes(noteEntries);
+        const updatePayload: Record<string, unknown> = { priority, notes: serializedNotes };
         if (linksChanged) {
           updatePayload.activityNote = 'Links updated';
           updatePayload.activityAction = 'link_added';
@@ -451,7 +486,7 @@ const LeadDetail = () => {
         setInitialValues({
           lead: { ...(lead || {}) },
           priority,
-          notes
+          notes: serializedNotes
         });
 
         // Show toast confirmation  
@@ -464,7 +499,7 @@ const LeadDetail = () => {
           await api.userLeads.save({
             leadId: lead._id,
             priority,
-            notes
+            notes: serializeNotes(noteEntries)
           });
         }
         showToast('Lead saved to pipeline!', 'success');
@@ -606,14 +641,19 @@ const LeadDetail = () => {
   const handleAddNote = async () => {
     if (!newNote.trim()) return;
 
-    const updatedNotes = notes ? `${notes}\n\n[${new Date().toLocaleDateString()}] ${newNote}` : `[${new Date().toLocaleDateString()}] ${newNote}`;
-    setNotes(updatedNotes);
+    const entry: NoteEntry = {
+      id: crypto.randomUUID(),
+      text: newNote.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    const updated = [...noteEntries, entry];
+    setNoteEntries(updated);
     setNewNote('');
 
     if (userLead) {
       try {
         await api.userLeads.update(userLead._id, {
-          notes: updatedNotes,
+          notes: serializeNotes(updated),
           activityNote: 'Note added',
           activityAction: 'note_added',
         });
@@ -623,6 +663,39 @@ const LeadDetail = () => {
         showToast(`Error saving note: ${getErrorMessage(err)}`, 'error');
       }
     }
+  };
+
+  const handleEditNote = (noteId: string) => {
+    const note = noteEntries.find(n => n.id === noteId);
+    if (note) {
+      setEditingNoteId(noteId);
+      setEditingNoteText(note.text);
+    }
+  };
+
+  const handleSaveNoteEdit = async () => {
+    if (!editingNoteId) return;
+
+    const updated = noteEntries.map(n =>
+      n.id === editingNoteId ? { ...n, text: editingNoteText } : n
+    );
+    setNoteEntries(updated);
+    setEditingNoteId(null);
+    setEditingNoteText('');
+
+    if (userLead) {
+      try {
+        await api.userLeads.update(userLead._id, { notes: serializeNotes(updated) });
+        showToast('Note updated!', 'success');
+      } catch (err) {
+        showToast(`Error saving note: ${getErrorMessage(err)}`, 'error');
+      }
+    }
+  };
+
+  const handleCancelNoteEdit = () => {
+    setEditingNoteId(null);
+    setEditingNoteText('');
   };
 
   const handleReadOnlyClick = (section: string) => {
@@ -1011,7 +1084,7 @@ const LeadDetail = () => {
                               await api.userLeads.save({
                                 leadId: lead._id,
                                 priority,
-                                notes
+                                notes: serializeNotes(noteEntries)
                               });
                               await fetchLeadDetails();
                             } catch (err) {
@@ -1352,29 +1425,62 @@ const LeadDetail = () => {
                     </td>
                   </tr>
                 )}
-                <tr>
-                  <td>Notes</td>
-                  <td>
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      rows={10}
-                      placeholder="Add your notes about this opportunity..."
-                    />
-                  </td>
-                </tr>
               </tbody>
             </table>
-            <div className="add-note">
-              <textarea
-                placeholder="Add notes here..."
-                value={newNote}
-                onChange={(e) => setNewNote(e.target.value)}
-                rows={5}
-              />
-              <button className="btn btn-primary" onClick={handleAddNote}>
-                Add Note
-              </button>
+            <div className="notes-thread">
+              <div className="section-title">Notes</div>
+              {noteEntries.length > 0 ? (
+                noteEntries.map((entry) => (
+                  <div key={entry.id} className="note-entry">
+                    <div className="note-header">
+                      <span className="note-date">
+                        {new Date(entry.createdAt).toLocaleString()}
+                        {editingNoteId !== entry.id && (
+                          <button
+                            className="edit-icon-btn"
+                            onClick={() => handleEditNote(entry.id)}
+                            title="Edit note"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                          </button>
+                        )}
+                      </span>
+                    </div>
+                    {editingNoteId === entry.id ? (
+                      <>
+                        <textarea
+                          className="note-edit-textarea"
+                          value={editingNoteText}
+                          onChange={(e) => setEditingNoteText(e.target.value)}
+                          rows={3}
+                        />
+                        <div className="note-edit-actions">
+                          <button className="btn btn-primary" onClick={handleSaveNoteEdit}>Save</button>
+                          <button className="btn" onClick={handleCancelNoteEdit}>Cancel</button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="note-text">{entry.text}</div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="note-empty">No notes yet.</div>
+              )}
+              <div className="add-note">
+                <textarea
+                  placeholder="Add a note..."
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                  rows={3}
+                />
+                <button className="btn btn-primary" onClick={handleAddNote}>
+                  Add Note
+                </button>
+              </div>
             </div>
           </div>
 

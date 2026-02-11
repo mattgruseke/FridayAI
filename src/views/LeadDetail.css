@@ -337,6 +337,72 @@
      color: #000000;
  }
 
+ /* Notes thread */
+ .notes-thread {
+     margin-top: 12px;
+     padding-top: 8px;
+     border-top: 1px solid #e6e6df;
+ }
+
+ .note-entry {
+     background: #f6f6ef;
+     border: 1px solid #e6e6df;
+     padding: 8px;
+     margin-bottom: 6px;
+ }
+
+ .note-header {
+     display: flex;
+     align-items: center;
+     margin-bottom: 4px;
+ }
+
+ .note-date {
+     font-size: 8pt;
+     color: #828282;
+     display: inline-flex;
+     align-items: center;
+ }
+
+ .note-date .edit-icon-btn {
+     margin-left: 6px;
+     padding: 2px 4px;
+ }
+
+ .note-text {
+     font-size: 9pt;
+     white-space: pre-wrap;
+     word-break: break-word;
+ }
+
+ .note-edit-textarea {
+     width: 100%;
+     padding: 4px;
+     font-family: Verdana, Geneva, sans-serif;
+     font-size: 9pt;
+     border: 1px solid #e6e6df;
+     min-height: 50px;
+     resize: vertical;
+     margin-bottom: 4px;
+ }
+
+ .note-edit-actions {
+     display: flex;
+     gap: 4px;
+ }
+
+ .note-edit-actions .btn {
+     font-size: 8pt;
+     padding: 2px 8px;
+ }
+
+ .note-empty {
+     font-size: 9pt;
+     color: #828282;
+     font-style: italic;
+     padding: 8px 0;
+ }
+
  .add-note {
      margin-top: 8px;
      padding-top: 8px;
@@ -537,6 +603,33 @@ body.dark-mode .note-input {
 }
 
 body.dark-mode .note-input::placeholder {
+    color: #666;
+}
+
+body.dark-mode .notes-thread {
+    border-color: #404040;
+}
+
+body.dark-mode .note-entry {
+    background: #1a1a1a;
+    border-color: #404040;
+}
+
+body.dark-mode .note-date {
+    color: #999;
+}
+
+body.dark-mode .note-text {
+    color: #e0e0e0;
+}
+
+body.dark-mode .note-edit-textarea {
+    background: #1a1a1a;
+    border-color: #404040;
+    color: #e0e0e0;
+}
+
+body.dark-mode .note-empty {
     color: #666;
 }
 
