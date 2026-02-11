@@ -11,6 +11,7 @@ import { useToast } from '../hooks/useToast';
 import PublishLeadModal from '../components/PublishLeadModal';
 import type { PublishLeadMode } from '../components/PublishLeadModal';
 import { getErrorMessage } from '../lib/errors';
+import NoteEditor from '../components/NoteEditor';
 
 type Lead = {
   _id?: string;
@@ -885,6 +886,35 @@ const LeadDetail = () => {
         </div>
       )}
 
+      <div className="actions">
+        <button
+          ref={isNewLead ? addLeadBtnRef : null}
+          className="btn btn-primary"
+          onClick={handleSave}
+        >
+          {isNewLead ? 'Add Lead' : userLead ? 'Save Changes' : 'Save Lead to Pipeline'}
+        </button>
+
+        {userLead && (
+          <button className="btn-trash" onClick={handleDelete} title="Remove from Pipeline">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
+          </button>
+        )}
+      </div>
+      {isNewLead && (
+        <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', marginBottom: '8px', fontSize: '10pt' }}>
+          <input
+            type="checkbox"
+            checked={publishToPublic}
+            onChange={(e) => setPublishToPublic(e.target.checked)}
+          />
+          Publish this lead to the public database
+        </label>
+      )}
+
       <div className="content-grid">
         <div className="main-col">
           <div className="section">
@@ -1429,8 +1459,18 @@ const LeadDetail = () => {
             </table>
             <div className="notes-thread">
               <div className="section-title">Notes</div>
+              <div className="add-note">
+                <NoteEditor
+                  content={newNote}
+                  onChange={setNewNote}
+                  placeholder="Add a note..."
+                />
+                <button className="btn btn-primary" onClick={handleAddNote}>
+                  Add Note
+                </button>
+              </div>
               {noteEntries.length > 0 ? (
-                noteEntries.map((entry) => (
+                [...noteEntries].reverse().map((entry) => (
                   <div key={entry.id} className="note-entry">
                     <div className="note-header">
                       <span className="note-date">
@@ -1451,11 +1491,9 @@ const LeadDetail = () => {
                     </div>
                     {editingNoteId === entry.id ? (
                       <>
-                        <textarea
-                          className="note-edit-textarea"
-                          value={editingNoteText}
-                          onChange={(e) => setEditingNoteText(e.target.value)}
-                          rows={3}
+                        <NoteEditor
+                          content={editingNoteText}
+                          onChange={setEditingNoteText}
                         />
                         <div className="note-edit-actions">
                           <button className="btn btn-primary" onClick={handleSaveNoteEdit}>Save</button>
@@ -1463,51 +1501,20 @@ const LeadDetail = () => {
                         </div>
                       </>
                     ) : (
-                      <div className="note-text">{entry.text}</div>
+                      <NoteEditor
+                        content={entry.text}
+                        onChange={() => {}}
+                        editable={false}
+                      />
                     )}
                   </div>
                 ))
               ) : (
                 <div className="note-empty">No notes yet.</div>
               )}
-              <div className="add-note">
-                <textarea
-                  placeholder="Add a note..."
-                  value={newNote}
-                  onChange={(e) => setNewNote(e.target.value)}
-                  rows={3}
-                />
-                <button className="btn btn-primary" onClick={handleAddNote}>
-                  Add Note
-                </button>
-              </div>
             </div>
           </div>
 
-          <div className="actions">
-            <button
-              ref={isNewLead ? addLeadBtnRef : null}
-              className="btn btn-primary"
-              onClick={handleSave}
-            >
-              {isNewLead ? 'Add Lead' : userLead ? 'Save Changes' : 'Save Lead to Pipeline'}
-            </button>
-          
-            <button className="btn btn-danger" onClick={handleDelete}>
-              {userLead ? 'Remove from Pipeline' : 'Back'}
-            </button>
-            
-          </div>
-            {isNewLead && (
-              <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px', fontSize: '10pt' }}>
-                <input
-                  type="checkbox"
-                  checked={publishToPublic}
-                  onChange={(e) => setPublishToPublic(e.target.checked)}
-                />
-                Publish this lead to the public database
-              </label>
-            )}
         </div>
 
         <div className="side-col">
