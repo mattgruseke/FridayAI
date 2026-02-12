@@ -7,7 +7,7 @@
  * 1. "rejected" - Single lead publishing (stripped of personal info)
  * 2. "offer_accepted" - Publish all user's saved leads
  */
-export type PublishLeadMode = "rejected" | "offer_accepted" | null;
+export type PublishLeadMode = "rejected" | "archived" | "offer_accepted" | null;
 
 type PublishLeadModalProps = {
   isOpen: boolean;
@@ -30,7 +30,7 @@ const PublishLeadModal = ({
 }: PublishLeadModalProps) => {
   if (!isOpen) return null;
 
-  const isRejected = mode === 'rejected';
+  const isRejected = mode === 'rejected' || mode === 'archived';
   const isOfferAccepted = mode === 'offer_accepted';
 
   return (
@@ -59,7 +59,8 @@ const PublishLeadModal = ({
                   padding: '8px',
                   background: '#f6f6ef',
                   border: '1px solid #e6e6df',
-                  fontSize: '9pt'
+                  fontSize: '9pt',
+                  color: '#000000'
                 }}>
                   <strong>{leadCompany}</strong> - {leadTitle}
                 </div>

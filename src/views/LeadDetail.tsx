@@ -135,6 +135,52 @@ const LeadDetail = () => {
     setLead((prev) => ({ ...(prev || {}), ...updates }));
   };
 
+  // Snapshot of lead before editing, for cancel/revert
+  const [leadSnapshot, setLeadSnapshot] = useState<Lead | null>(null);
+
+  const handleStartEdit = (section: 'basic' | 'contact') => {
+    setLeadSnapshot({ ...(lead || {}) });
+    if (section === 'basic') setIsEditingBasic(true);
+    else setIsEditingContact(true);
+  };
+
+  const handleCancelEdit = (section: 'basic' | 'contact') => {
+    if (leadSnapshot) setLead(leadSnapshot);
+    setLeadSnapshot(null);
+    if (section === 'basic') setIsEditingBasic(false);
+    else setIsEditingContact(false);
+  };
+
+  const handleSaveSection = async (section: 'basic' | 'contact') => {
+    if (!userLead || !lead?._id) return;
+    try {
+      const updatedLeadData = {
+        title: lead.title,
+        company: lead.company,
+        location: lead.location,
+        team: lead.team,
+        compensation: { raw: lead.compensation?.raw || '' },
+        industry: lead.industry,
+        datePosted: lead.datePosted,
+        contactName: lead.contactName,
+        contactEmail: lead.contactEmail,
+        additionalEmails: lead.additionalEmails?.filter(e => e.trim()) || [],
+        additionalLinks: lead.additionalLinks?.filter(l => l.url?.trim()) || [],
+        contactLinkedIn: lead.contactLinkedIn,
+        sourceApplicationLink: lead.sourceApplicationLink,
+        sourceLink: lead.sourceLink
+      };
+      await api.leads.update(lead._id, updatedLeadData);
+      setLeadSnapshot(null);
+      if (section === 'basic') setIsEditingBasic(false);
+      else setIsEditingContact(false);
+      setInitialValues({ lead: { ...lead }, priority, notes: serializeNotes(noteEntries) });
+      showToast('Changes saved', 'success');
+    } catch (err) {
+      showToast(`Error saving: ${getErrorMessage(err)}`, 'error');
+    }
+  };
+
   // --- Job board parsers by domain ---
   type ParsedJob = { title: string; company: string; location: string; compensation: string; datePosted: string };
 
@@ -618,7 +664,7 @@ const LeadDetail = () => {
     }
 
     // Check if this status change should trigger a publish modal
-    if (newStatus === 'rejected' || newStatus === 'offer_accepted') {
+    if (newStatus === 'rejected' || newStatus === 'archived' || newStatus === 'offer_accepted') {
       setPendingStatus(newStatus);
       setPublishMode(newStatus);
       setShowPublishModal(true);
@@ -656,7 +702,7 @@ const LeadDetail = () => {
       setStatus(pendingStatus);
 
       // Then publish based on mode
-      if (publishMode === 'rejected') {
+      if (publishMode === 'rejected' || publishMode === 'archived') {
         // Publish single lead
         if (lead?._id) {
           await api.publish.publishSingle(lead._id);
@@ -919,7 +965,7 @@ const LeadDetail = () => {
           <div className="page-title">{isNewLead ? 'Add New Lead' : lead.title}</div>
           {isNewLead && (
             <button className="btn btn-import" onClick={() => setShowImportModal(true)}>
-              Import Lead
+              Import Lead from URL
             </button>
           )}
         </div>
@@ -1026,21 +1072,23 @@ const LeadDetail = () => {
               {!isNewLead && !userLead && (
                 <span className="edit-banner">Please save this lead first to enable editing</span>
               )}
-              {!isNewLead && userLead && (
+              {!isNewLead && userLead && !isEditingBasic && (
                 <button
                   className="edit-icon-btn"
-                  onClick={() => setIsEditingBasic(!isEditingBasic)}
-                  title={isEditingBasic ? "Cancel editing" : "Edit basic information"}
+                  onClick={() => handleStartEdit('basic')}
+                  title="Edit basic information"
                 >
-                  {isEditingBasic ? (
-                    <span style={{ fontSize: '9pt' }}>Cancel</span>
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                    </svg>
-                  )}
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                  </svg>
                 </button>
+              )}
+              {isEditingBasic && (
+                <span className="section-edit-actions">
+                  <button className="btn btn-primary btn-sm" onClick={() => handleSaveSection('basic')}>Save</button>
+                  <button className="btn btn-sm" onClick={() => handleCancelEdit('basic')}>Cancel</button>
+                </span>
               )}
             </div>
             <table className="form-table">
@@ -1160,7 +1208,7 @@ const LeadDetail = () => {
                         />
                       ) : (
                         <a href={lead.sourceApplicationLink} target="_blank" rel="noopener noreferrer">
-                          Apply Here →
+                          Application Link →
                         </a>
                       )}
                     </td>
@@ -1241,21 +1289,23 @@ const LeadDetail = () => {
               {!isNewLead && !userLead && (
                 <span className="edit-banner">Please save this lead first to enable editing</span>
               )}
-              {!isNewLead && userLead && (
+              {!isNewLead && userLead && !isEditingContact && (
                 <button
                   className="edit-icon-btn"
-                  onClick={() => setIsEditingContact(!isEditingContact)}
-                  title={isEditingContact ? "Cancel editing" : "Edit contact information"}
+                  onClick={() => handleStartEdit('contact')}
+                  title="Edit contact information"
                 >
-                  {isEditingContact ? (
-                    <span style={{ fontSize: '9pt' }}>Cancel</span>
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                    </svg>
-                  )}
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                  </svg>
                 </button>
+              )}
+              {isEditingContact && (
+                <span className="section-edit-actions">
+                  <button className="btn btn-primary btn-sm" onClick={() => handleSaveSection('contact')}>Save</button>
+                  <button className="btn btn-sm" onClick={() => handleCancelEdit('contact')}>Cancel</button>
+                </span>
               )}
             </div>
             <table className="form-table">
