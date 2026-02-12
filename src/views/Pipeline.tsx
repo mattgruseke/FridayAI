@@ -113,6 +113,29 @@ const Pipeline = () => {
   const [pendingLeadDetails, setPendingLeadDetails] = useState<PipelineLeadItem['leadDetails'] | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
 
+  // Archive confirmation modal state
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [pendingArchive, setPendingArchive] = useState<{ userLeadId: string; leadDetails: PipelineLeadItem['leadDetails'] | null } | null>(null);
+
+  const handleArchiveClick = (userLeadId: string | undefined, leadDetails: PipelineLeadItem['leadDetails'] | null, e: React.MouseEvent) => {
+    if (!userLeadId) return;
+    e.stopPropagation();
+    setPendingArchive({ userLeadId, leadDetails });
+    setShowArchiveModal(true);
+  };
+
+  const handleArchiveConfirm = async () => {
+    if (!pendingArchive) return;
+    setShowArchiveModal(false);
+    await handleStatusChange(pendingArchive.userLeadId, 'archived', pendingArchive.leadDetails);
+    setPendingArchive(null);
+  };
+
+  const handleArchiveCancel = () => {
+    setShowArchiveModal(false);
+    setPendingArchive(null);
+  };
+
   // Re-fetch pipeline on mount and when location changes
   useEffect(() => {
     fetchPipeline();
@@ -146,7 +169,7 @@ const Pipeline = () => {
     leadDetails: PipelineLeadItem['leadDetails'] | null = null
   ) => {
     // Check if this status change should trigger a publish modal
-    if (newStatus === 'rejected' || newStatus === 'offer_accepted') {
+    if (newStatus === 'rejected' || newStatus === 'archived' || newStatus === 'offer_accepted') {
       setPendingUserLeadId(userLeadId);
       setPendingLeadDetails(leadDetails);
       setPublishMode(newStatus);
@@ -174,7 +197,7 @@ const Pipeline = () => {
       await api.userLeads.updateStatus(pendingUserLeadId, publishMode);
 
       // Then publish based on mode
-      if (publishMode === 'rejected' && pendingLeadDetails?._id) {
+      if ((publishMode === 'rejected' || publishMode === 'archived') && pendingLeadDetails?._id) {
         await api.publish.publishSingle(pendingLeadDetails._id);
         showToast('Lead published to public database!', 'success');
       } else if (publishMode === 'offer_accepted') {
@@ -401,6 +424,13 @@ const Pipeline = () => {
                         >
                           Rejected
                         </button>
+                        <button
+                          className="btn-sm btn-secondary"
+                          onClick={(e) => handleArchiveClick(userLead._id, leadDetails, e)}
+                          title="Archive"
+                        >
+                          Archive
+                        </button>
                       </>
                     )}
                     {column.id === 'contacted' && (
@@ -424,6 +454,13 @@ const Pipeline = () => {
                           title="Mark as Rejected"
                         >
                           Rejected
+                        </button>
+                        <button
+                          className="btn-sm btn-secondary"
+                          onClick={(e) => handleArchiveClick(userLead._id, leadDetails, e)}
+                          title="Archive"
+                        >
+                          Archive
                         </button>
                       </>
                     )}
@@ -449,6 +486,13 @@ const Pipeline = () => {
                         >
                           Rejected
                         </button>
+                        <button
+                          className="btn-sm btn-secondary"
+                          onClick={(e) => handleArchiveClick(userLead._id, leadDetails, e)}
+                          title="Archive"
+                        >
+                          Archive
+                        </button>
                       </>
                     )}
                     {column.id === 'interviewing' && (
@@ -473,6 +517,13 @@ const Pipeline = () => {
                         >
                           Rejected
                         </button>
+                        <button
+                          className="btn-sm btn-secondary"
+                          onClick={(e) => handleArchiveClick(userLead._id, leadDetails, e)}
+                          title="Archive"
+                        >
+                          Archive
+                        </button>
                       </>
                     )}
                     {column.id === 'offer' && (
@@ -496,6 +547,13 @@ const Pipeline = () => {
                           title="Mark as Rejected"
                         >
                           Rejected
+                        </button>
+                        <button
+                          className="btn-sm btn-secondary"
+                          onClick={(e) => handleArchiveClick(userLead._id, leadDetails, e)}
+                          title="Archive"
+                        >
+                          Archive
                         </button>
                       </>
                     )}
@@ -528,6 +586,34 @@ const Pipeline = () => {
         leadCompany={pendingLeadDetails?.company}
         isLoading={isPublishing}
       />
+
+      {/* Archive Confirmation Modal */}
+      {showArchiveModal && (
+        <div className="modal-overlay" onClick={handleArchiveCancel}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Archive Lead?</h3>
+              <button className="modal-close" onClick={handleArchiveCancel}>×</button>
+            </div>
+            <div className="modal-body">
+              <p className="modal-instruction">
+                Are you sure you want to archive{' '}
+                {pendingArchive?.leadDetails?.company && pendingArchive?.leadDetails?.title
+                  ? <><strong>{pendingArchive.leadDetails.company}</strong> - {pendingArchive.leadDetails.title}</>
+                  : 'this lead'
+                }?
+              </p>
+              <p className="modal-instruction" style={{ marginTop: '8px', fontSize: '8pt', color: '#666' }}>
+                Archived leads are removed from your active pipeline but can be restored later.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button className="btn" onClick={handleArchiveCancel}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleArchiveConfirm}>Yes, Archive</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

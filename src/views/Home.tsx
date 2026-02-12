@@ -304,8 +304,16 @@ const Home = () => {
               <>
                 {recentActivity.today.length > 0 && (
                   <>
-                    <div className="activity-group-label">Today</div>
-                    {recentActivity.today.map((item, i) => (
+                    <div
+                      className={`activity-group-label${recentActivity.today.length > 10 ? ' activity-group-collapsible' : ''}`}
+                      onClick={recentActivity.today.length > 10 ? () => setExpandedGroups(prev => ({ ...prev, today: !prev.today })) : undefined}
+                    >
+                      <span>Today{recentActivity.today.length > 10 ? ` (${recentActivity.today.length})` : ''}</span>
+                      {recentActivity.today.length > 10 && (
+                        <span className="activity-group-toggle">{expandedGroups.today ? "−" : "+"}</span>
+                      )}
+                    </div>
+                    {(expandedGroups.today ? recentActivity.today : recentActivity.today.slice(0, 10)).map((item, i) => (
                       <div key={`today-${i}`} className="list-item" onClick={() => router.push(`/leads/${item.leadId}`)}>
                         <div className="item-content">
                           <div className="item-title">
@@ -315,6 +323,15 @@ const Home = () => {
                         </div>
                       </div>
                     ))}
+                    {!expandedGroups.today && recentActivity.today.length > 10 && (
+                      <div
+                        className="activity-group-collapsible"
+                        style={{ fontSize: '8pt', color: '#828282', padding: '4px 8px', cursor: 'pointer' }}
+                        onClick={() => setExpandedGroups(prev => ({ ...prev, today: true }))}
+                      >
+                        +{recentActivity.today.length - 10} more
+                      </div>
+                    )}
                   </>
                 )}
                 {recentActivity.thisWeek.length > 0 && (
