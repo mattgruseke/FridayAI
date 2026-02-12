@@ -135,101 +135,197 @@ const LeadDetail = () => {
     setLead((prev) => ({ ...(prev || {}), ...updates }));
   };
 
+  // --- Job board parsers by domain ---
+  type ParsedJob = { title: string; company: string; location: string; compensation: string; datePosted: string };
+
+  const parseAshby = (html: string, doc: Document): ParsedJob | null => {
+    // Ashby embeds JSON-LD JobPosting structured data
+    const jsonLdScripts = doc.querySelectorAll('script[type="application/ld+json"]');
+    for (const script of jsonLdScripts) {
+      try {
+        const data = JSON.parse(script.textContent || '');
+        const jobPosting = data['@type'] === 'JobPosting' ? data
+          : Array.isArray(data) ? data.find((d: Record<string, unknown>) => d['@type'] === 'JobPosting')
+          : null;
+        if (!jobPosting) continue;
+
+        const title = jobPosting.title || '';
+        const company = jobPosting.hiringOrganization?.name || '';
+
+        let location = '';
+        const jobLoc = jobPosting.jobLocation;
+        if (jobLoc) {
+          const addr = Array.isArray(jobLoc) ? jobLoc[0]?.address : jobLoc.address;
+          const parts = [addr?.addressLocality, addr?.addressRegion, addr?.addressCountry].filter(Boolean);
+          location = parts.join(', ');
+        }
+        if (jobPosting.jobLocationType === 'TELECOMMUTE') {
+          location = location ? `${location} - Remote` : 'Remote';
+        }
+
+        let compensation = '';
+        const salary = jobPosting.baseSalary;
+        if (salary?.value) {
+          const min = salary.value.minValue;
+          const max = salary.value.maxValue;
+          const currency = salary.currency || 'USD';
+          if (min && max) {
+            const fmt = (n: number) => currency === 'USD' ? `$${(n / 1000).toFixed(0)}K` : `${n.toLocaleString()} ${currency}`;
+            compensation = `${fmt(min)} - ${fmt(max)}`;
+          } else if (min || max) {
+            const val = min || max;
+            compensation = currency === 'USD' ? `$${(val / 1000).toFixed(0)}K` : `${val.toLocaleString()} ${currency}`;
+          }
+        }
+        if (!compensation) {
+          const ashbyMatch = html.match(/"compensationTierSummary"\s*:\s*"([^"]+)"/);
+          if (ashbyMatch) compensation = ashbyMatch[1];
+        }
+
+        return { title, company, location, compensation, datePosted: jobPosting.datePosted || '' };
+      } catch { /* continue */ }
+    }
+    return null;
+  };
+
+  const parseGreenhouse = (html: string): ParsedJob | null => {
+    // Greenhouse is a Remix SPA — job data lives in window.__remixContext
+    const remixMatch = html.match(/window\.__remixContext\s*=\s*(\{.+?\});?\s*<\/script>/s);
+    if (!remixMatch) return null;
+
+    try {
+      const ctx = JSON.parse(remixMatch[1]);
+      const loaderData = ctx?.state?.loaderData;
+      if (!loaderData) return null;
+
+      // Find the route key that contains jobPost
+      const routeKey = Object.keys(loaderData).find(k => loaderData[k]?.jobPost);
+      const jobPost = routeKey ? loaderData[routeKey].jobPost : null;
+      if (!jobPost) return null;
+
+      const title = jobPost.title || '';
+      const company = jobPost.company_name || '';
+      const location = jobPost.job_post_location || '';
+
+      let compensation = '';
+      const payRanges = jobPost.pay_ranges;
+      if (Array.isArray(payRanges) && payRanges.length > 0) {
+        const range = payRanges[0];
+        if (range.min_cents != null && range.max_cents != null) {
+          const min = range.min_cents / 100;
+          const max = range.max_cents / 100;
+          const currency = range.currency_type || 'USD';
+          const fmt = (n: number) => currency === 'USD' ? `$${(n / 1000).toFixed(0)}K` : `${n.toLocaleString()} ${currency}`;
+          compensation = `${fmt(min)} - ${fmt(max)}`;
+        }
+      }
+
+      return { title, company, location, compensation, datePosted: jobPost.published_at || '' };
+    } catch {
+      return null;
+    }
+  };
+
+  const parseGenericDOM = (html: string, url: string, doc: Document): ParsedJob => {
+    // JSON-LD fallback for any site
+    const jsonLdScripts = doc.querySelectorAll('script[type="application/ld+json"]');
+    for (const script of jsonLdScripts) {
+      try {
+        const data = JSON.parse(script.textContent || '');
+        const jobPosting = data['@type'] === 'JobPosting' ? data
+          : Array.isArray(data) ? data.find((d: Record<string, unknown>) => d['@type'] === 'JobPosting')
+          : null;
+        if (jobPosting) {
+          const result = parseAshby(html, doc);
+          if (result) return result;
+        }
+      } catch { /* continue */ }
+    }
+
+    // DOM-based fallback
+    let title = doc.querySelector('h1')?.textContent?.trim() ||
+                doc.querySelector('h2')?.textContent?.trim() ||
+                doc.querySelector('[class*="title"]')?.textContent?.trim() || '';
+
+    let company = doc.querySelector('[class*="company"]')?.textContent?.trim() ||
+                  doc.querySelector('[class*="Company"]')?.textContent?.trim() ||
+                  doc.querySelector('[class*="employer"]')?.textContent?.trim() || '';
+    if (!company) {
+      const urlMatch = url.match(/\/\/([^.\/]+)\./);
+      if (urlMatch && urlMatch[1]) {
+        company = urlMatch[1].charAt(0).toUpperCase() + urlMatch[1].slice(1);
+      }
+    }
+
+    let location = doc.querySelector('[class*="location"]')?.textContent?.trim() ||
+                   doc.querySelector('[class*="Location"]')?.textContent?.trim() ||
+                   doc.querySelector('[class*="office"]')?.textContent?.trim() || '';
+    if (!location) {
+      const bodyText = doc.body?.textContent || '';
+      if (/\b(remote|work from home|wfh)\b/i.test(bodyText)) location = 'Remote';
+    }
+    if (!location || location.length > 100) {
+      const urlLocationMatch = url.match(/\/(usa|us|remote|anywhere|global)[\-_]?(remote|anywhere)?/i);
+      if (urlLocationMatch) {
+        const parts = urlLocationMatch[0].split(/[\-_\/]/).filter(p => p && p !== 'co');
+        location = parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+      }
+    }
+    if (location && location.length > 100) location = '';
+
+    let compensation = '';
+    const compElements = doc.querySelectorAll('*');
+    for (let el of compElements) {
+      const text = el.textContent;
+      if (text && (text.includes('$') || text.includes('salary') || text.includes('compensation'))) {
+        const match = text.match(/\$[\d,]+(k|K)?\s*-?\s*\$?[\d,]+(k|K)?/);
+        if (match) { compensation = match[0]; break; }
+      }
+    }
+
+    let datePosted = '';
+    const dateElements = doc.querySelectorAll('[class*="date"], [class*="posted"], time');
+    if (dateElements.length > 0) {
+      const dateText = dateElements[0].textContent?.trim() || dateElements[0].getAttribute('datetime');
+      if (dateText) {
+        const date = new Date(dateText);
+        if (!isNaN(date.getTime())) datePosted = date.toISOString().split('T')[0];
+      }
+    }
+
+    return { title, company, location, compensation, datePosted };
+  };
+
+  // Domain → parser mapping
+  const boardParsers: Record<string, (html: string, url: string, doc: Document) => ParsedJob | null> = {
+    'jobs.ashbyhq.com': (html, _url, doc) => parseAshby(html, doc),
+    'job-boards.greenhouse.io': (html) => parseGreenhouse(html),
+  };
+
   const parseJobUrl = async (url: string) => {
     try {
-      // Use backend proxy to fetch URL and avoid CORS issues
       const response = await fetch('/api/parse-job-url', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url })
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch job URL');
-      }
+      if (!response.ok) throw new Error('Failed to fetch job URL');
 
       const { html } = await response.json();
-
-      // Create a DOM parser
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
 
-      // Extract job title - try multiple selectors
-      let title = doc.querySelector('h1')?.textContent?.trim() ||
-                  doc.querySelector('h2')?.textContent?.trim() ||
-                  doc.querySelector('[class*="title"]')?.textContent?.trim() ||
-                  doc.querySelector('[class*="job-title"]')?.textContent?.trim() || '';
-
-      // Extract company name - try multiple methods
-      let company = doc.querySelector('[class*="company"]')?.textContent?.trim() ||
-                    doc.querySelector('[class*="Company"]')?.textContent?.trim() ||
-                    doc.querySelector('[class*="employer"]')?.textContent?.trim() || '';
-
-      // If company not found in DOM, try to extract from URL
-      if (!company) {
-        const urlMatch = url.match(/\/\/([^.\/]+)\./);
-        if (urlMatch && urlMatch[1]) {
-          company = urlMatch[1].charAt(0).toUpperCase() + urlMatch[1].slice(1);
-        }
+      // Match domain to a specific parser
+      const hostname = new URL(url).hostname;
+      const boardParser = boardParsers[hostname];
+      if (boardParser) {
+        const result = boardParser(html, url, doc);
+        if (result) return result;
       }
 
-      // Extract location - try multiple selectors and smart filtering
-      let location = doc.querySelector('[class*="location"]')?.textContent?.trim() ||
-                     doc.querySelector('[class*="Location"]')?.textContent?.trim() ||
-                     doc.querySelector('[class*="office"]')?.textContent?.trim() || '';
-
-      // If no location found, search for "Remote" in the page text
-      if (!location) {
-        const bodyText = doc.body?.textContent || '';
-        if (/\b(remote|work from home|wfh)\b/i.test(bodyText)) {
-          location = 'Remote';
-        }
-      }
-
-      // Also check URL path for location hints like "usa-remote"
-      if (!location || location.length > 100) {
-        const urlLocationMatch = url.match(/\/(usa|us|remote|anywhere|global)[\-_]?(remote|anywhere)?/i);
-        if (urlLocationMatch) {
-          const parts = urlLocationMatch[0].split(/[\-_\/]/).filter(p => p && p !== 'co');
-          location = parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
-        }
-      }
-
-      // Filter out locations that are too long (likely not a real location)
-      if (location && location.length > 100) {
-        location = '';
-      }
-
-      // Try to find compensation - look for salary, compensation keywords
-      let compensation = '';
-      const compElements = doc.querySelectorAll('*');
-      for (let el of compElements) {
-        const text = el.textContent;
-        if (text && (text.includes('$') || text.includes('salary') || text.includes('compensation'))) {
-          const match = text.match(/\$[\d,]+(k|K)?\s*-?\s*\$?[\d,]+(k|K)?/);
-          if (match) {
-            compensation = match[0];
-            break;
-          }
-        }
-      }
-
-      // Try to find date posted
-      let datePosted = '';
-      const dateElements = doc.querySelectorAll('[class*="date"], [class*="posted"], time');
-      if (dateElements.length > 0) {
-        const dateText = dateElements[0].textContent?.trim() || dateElements[0].getAttribute('datetime');
-        if (dateText) {
-          const date = new Date(dateText);
-          if (!isNaN(date.getTime())) {
-            datePosted = date.toISOString().split('T')[0];
-          }
-        }
-      }
-
-      return { title, company, location, compensation, datePosted };
+      // Generic fallback (JSON-LD then DOM)
+      return parseGenericDOM(html, url, doc);
     } catch (error) {
       console.error('Error parsing job URL:', error);
       showToast('Error parsing the job URL. Please check the URL and try again.', 'error');
