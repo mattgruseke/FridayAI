@@ -100,6 +100,7 @@ const LeadDetail = () => {
   const [status, setStatus] = useState<string | null>(null);
   const [noteEntries, setNoteEntries] = useState<NoteEntry[]>([]);
   const [newNote, setNewNote] = useState('');
+  const [isAddingNote, setIsAddingNote] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingNoteText, setEditingNoteText] = useState('');
 
@@ -650,6 +651,7 @@ const LeadDetail = () => {
     const updated = [...noteEntries, entry];
     setNoteEntries(updated);
     setNewNote('');
+    setIsAddingNote(false);
 
     if (userLead) {
       try {
@@ -664,6 +666,11 @@ const LeadDetail = () => {
         showToast(`Error saving note: ${getErrorMessage(err)}`, 'error');
       }
     }
+  };
+
+  const handleCancelAddNote = () => {
+    setNewNote('');
+    setIsAddingNote(false);
   };
 
   const handleEditNote = (noteId: string) => {
@@ -1459,16 +1466,23 @@ const LeadDetail = () => {
             </table>
             <div className="notes-thread">
               <div className="section-title">Notes</div>
-              <div className="add-note">
-                <NoteEditor
-                  content={newNote}
-                  onChange={setNewNote}
-                  placeholder="Add a note..."
-                />
-                <button className="btn btn-primary" onClick={handleAddNote}>
+              {isAddingNote ? (
+                <div className="add-note">
+                  <NoteEditor
+                    content={newNote}
+                    onChange={setNewNote}
+                    placeholder="Write your note..."
+                  />
+                  <div className="note-edit-actions">
+                    <button className="btn btn-primary" onClick={handleAddNote}>Save</button>
+                    <button className="btn" onClick={handleCancelAddNote}>Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <button className="btn btn-primary" onClick={() => setIsAddingNote(true)} style={{ marginBottom: 8 }}>
                   Add Note
                 </button>
-              </div>
+              )}
               {noteEntries.length > 0 ? (
                 [...noteEntries].reverse().map((entry) => (
                   <div key={entry.id} className="note-entry">

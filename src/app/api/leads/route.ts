@@ -52,7 +52,7 @@ export async function GET(request: Request) {
   let query = supabase
     .from("leads")
     .select("*", { count: "exact" })
-    .order(normalizedSort, { ascending });
+    .order(normalizedSort, { ascending, nullsFirst: false });
 
   const accessFilters = user
     ? `is_global.eq.true,created_by.eq.system,created_by.eq.${user.id}`

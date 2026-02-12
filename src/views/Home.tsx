@@ -6,8 +6,15 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import api from "../api/client";
 
+type StatusHistoryEntry = {
+  status?: string;
+  timestamp?: string;
+  note?: string;
+  action?: string;
+};
+
 type PipelineLeadItem = {
-  userLead?: { _id?: string; priority?: "high" | "medium" | "low" };
+  userLead?: { _id?: string; priority?: "high" | "medium" | "low"; statusHistory?: StatusHistoryEntry[]; lastActivityAt?: string; currentStatus?: string };
   leadDetails?: {
     _id?: string;
     title?: string;
@@ -19,7 +26,24 @@ type PipelineLeadItem = {
 
 type PipelineStage = {
   _id: string;
+  count?: number;
   leads?: PipelineLeadItem[];
+};
+
+type AttentionItem = {
+  leadId: string;
+  company: string;
+  title: string;
+  status: string;
+  daysIdle: number;
+};
+
+type ActivityItem = {
+  leadId: string;
+  company: string;
+  title: string;
+  description: string;
+  timestamp: string;
 };
 
 const Home = () => {
@@ -29,6 +53,7 @@ const Home = () => {
   const [pipeline, setPipeline] = useState<PipelineStage[]>([]);
   const [recentLeads, setRecentLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     // Only fetch data if user is authenticated
@@ -43,48 +68,146 @@ const Home = () => {
     try {
       setLoading(true);
 
-      // Fetch pipeline data
-      const pipelineData = (await api.userLeads.getPipeline()) as PipelineStage[];
-      setPipeline(pipelineData || []);
-
-      // Fetch recent leads (for "New Leads for You" section)
-      // Sort by _id descending to get newest leads first (ObjectId contains timestamp)
-      try {
-        const leadsData = (await api.leads.getAll({
+      // Fetch pipeline and recent leads in parallel
+      const [pipelineResult, leadsResult] = await Promise.allSettled([
+        api.userLeads.getPipeline() as Promise<PipelineStage[]>,
+        api.leads.getAll({
           page: 1,
-          limit: 4,
-          sort: "-_id",
-        })) as { leads?: any[] };
-        setRecentLeads(leadsData?.leads || []);
-      } catch (err) {
-        console.error("Error fetching recent leads:", err);
+          limit: 10,
+          sort: "-created_at",
+        }) as Promise<{ leads?: any[] }>,
+      ]);
+
+      if (pipelineResult.status === "fulfilled") {
+        setPipeline(pipelineResult.value || []);
+      } else {
+        console.error("Error fetching pipeline:", pipelineResult.reason);
       }
-    } catch (err) {
-      console.error("Error fetching pipeline:", err);
+
+      if (leadsResult.status === "fulfilled") {
+        console.log(leadsResult)
+        setRecentLeads(leadsResult.value?.leads || []);
+      } else {
+        console.error("Error fetching recent leads:", leadsResult.reason);
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // Helper to get leads for a specific status (limit to 8 for home page)
-  const getLeadsByStatus = (status: string, limit = 8) => {
-    const stage = pipeline.find((s) => s._id === status) as PipelineStage | undefined;
-    const leads = stage?.leads || [];
+  // Pipeline stage counts
+  const getStageCount = (status: string) =>
+    pipeline.find((s) => s._id === status)?.leads?.length || 0;
 
-    // Sort by priority first, then limit
-    const priorityValue = { high: 3, medium: 2, low: 1 };
-    const sortedLeads = [...leads].sort((a, b) => {
-      const aKey = a.userLead?.priority;
-      const bKey = b.userLead?.priority;
-      const aPriority =
-        aKey && aKey in priorityValue ? priorityValue[aKey] : 0;
-      const bPriority =
-        bKey && bKey in priorityValue ? priorityValue[bKey] : 0;
-      return bPriority - aPriority;
-    });
-
-    return sortedLeads.slice(0, limit);
+  // Thresholds: how many days idle before a lead in this stage needs attention
+  const stageThresholds: Record<string, number> = {
+    saved: 3,
+    contacted: 7,
+    applied: 14,
+    interviewing: 2,
+    offer: 1,
   };
+
+  // Find leads needing attention: idle for too long given their stage
+  const getAttentionItems = (): AttentionItem[] => {
+    const now = Date.now();
+    const DAY = 1000 * 60 * 60 * 24;
+    const items: AttentionItem[] = [];
+
+    for (const stage of pipeline) {
+      const threshold = stageThresholds[stage._id];
+      if (!threshold) continue;
+      for (const item of stage.leads || []) {
+        const lead = item.leadDetails;
+        const lastActivity = item.userLead?.lastActivityAt;
+        if (!lead?._id || !lastActivity) continue;
+
+        const daysIdle = Math.floor((now - new Date(lastActivity).getTime()) / DAY);
+        if (daysIdle >= threshold) {
+          items.push({
+            leadId: lead._id,
+            company: lead.company || "",
+            title: lead.title || "",
+            status: stage._id,
+            daysIdle,
+          });
+        }
+      }
+    }
+
+    // Newest first (least idle on top)
+    items.sort((a, b) => a.daysIdle - b.daysIdle);
+    return items;
+  };
+
+  const attentionItems = getAttentionItems();
+
+  // Aggregate attention by stage for callout summaries and expandable lists
+  const attentionByStage: Record<string, AttentionItem[]> = {};
+  for (const item of attentionItems) {
+    if (!attentionByStage[item.status]) attentionByStage[item.status] = [];
+    attentionByStage[item.status].push(item);
+  }
+
+  const stageActionLabels: Record<string, string> = {
+    saved: "need outreach",
+    contacted: "awaiting response",
+    applied: "with no update",
+    interviewing: "need follow-up",
+    offer: "pending decision",
+  };
+
+  // Extract activity from pipeline data
+  const getRecentActivity = (): { today: ActivityItem[]; thisWeek: ActivityItem[]; lastWeek: ActivityItem[] } => {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(startOfToday);
+    startOfWeek.setDate(startOfToday.getDate() - startOfToday.getDay());
+    const startOfLastWeek = new Date(startOfWeek);
+    startOfLastWeek.setDate(startOfWeek.getDate() - 7);
+
+    const allActivity: ActivityItem[] = [];
+
+    for (const stage of pipeline) {
+      for (const item of stage.leads || []) {
+        const lead = item.leadDetails;
+        const history = item.userLead?.statusHistory || [];
+        if (!lead?._id) continue;
+
+        for (const entry of history) {
+          if (!entry.timestamp) continue;
+          const entryDate = new Date(entry.timestamp);
+          if (entryDate < startOfLastWeek) continue;
+
+          allActivity.push({
+            leadId: lead._id,
+            company: lead.company || "",
+            title: lead.title || "",
+            description: entry.note || `Status changed to ${entry.status}`,
+            timestamp: entry.timestamp,
+          });
+        }
+      }
+    }
+
+    allActivity.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    const today: ActivityItem[] = [];
+    const thisWeek: ActivityItem[] = [];
+    const lastWeek: ActivityItem[] = [];
+
+    for (const item of allActivity) {
+      const d = new Date(item.timestamp);
+      if (d >= startOfToday) today.push(item);
+      else if (d >= startOfWeek) thisWeek.push(item);
+      else lastWeek.push(item);
+    }
+
+    return { today, thisWeek, lastWeek };
+  };
+
+  const recentActivity = getRecentActivity();
+  const hasActivity = recentActivity.today.length > 0 || recentActivity.thisWeek.length > 0 || recentActivity.lastWeek.length > 0;
 
   // Status display mapping
   const statusColumns = [
@@ -117,75 +240,140 @@ const Home = () => {
             <span>Pipeline</span>
             <Link href="/pipeline">view pipeline</Link>
           </div>
-          <div className="pipeline">
-            {statusColumns.map((column) => {
-              const leads = getLeadsByStatus(column.id);
-              // const totalCount = pipeline.find(s => s._id === column.id)?.count || 0;
 
+          {/* Stage counts */}
+          <div className="pipeline-counts">
+            {statusColumns.map((column) => {
+              const count = getStageCount(column.id);
               return (
-                <div key={column.id} className="pipeline-col">
-                  <div className="pipeline-col-header">
-                    <span>{column.title}</span>
-                    {/* <span className="count">{totalCount}</span> */}
-                  </div>
-                  {leads.length > 0 ? (
-                    leads.map(({ userLead, leadDetails }) => (
-                      <div
-                        key={userLead._id}
-                        className="job-item"
-                        onClick={() => router.push(`/leads/${leadDetails._id}`)}
-                      >
-                        <div className="job-company">{leadDetails.company}</div>
-                        <div className="job-title">
-                          <Link href={`/leads/${leadDetails._id}`}>
-                            {leadDetails.title}
-                          </Link>
-                        </div>
-                        <div className="job-meta">
-                          {leadDetails.location} |{" "}
-                          <span className="job-comp">
-                            {leadDetails.compensation?.raw || "N/A"}
-                          </span>
-                          {userLead.priority && (
-                            <span
-                              className={`priority-badge priority-${userLead.priority}`}
-                            >
-                              {userLead.priority}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div
-                      className="job-item"
-                      style={{ color: "#828282", fontStyle: "italic" }}
-                    >
-                      No {column.title.toLowerCase()} leads
-                    </div>
-                  )}
-                </div>
+                <Link key={column.id} href="/pipeline" className="pipeline-count-item">
+                  <span className="pipeline-count-number">{count}</span>
+                  <span className="pipeline-count-label">{column.title}</span>
+                </Link>
               );
             })}
           </div>
+
+          {/* Needs attention callouts */}
+          {Object.keys(attentionByStage).length > 0 && (
+            <div className="attention-section">
+              <div className="attention-header">Needs Attention</div>
+              {statusColumns.map((column) => {
+                const items = attentionByStage[column.id];
+                if (!items || items.length === 0) return null;
+                const count = items.length;
+                const isExpanded = expandedGroups[`attention-${column.id}`];
+                return (
+                  <div key={column.id}>
+                    <div
+                      className="attention-callout attention-callout-toggle"
+                      onClick={() => setExpandedGroups(prev => ({ ...prev, [`attention-${column.id}`]: !prev[`attention-${column.id}`] }))}
+                    >
+                      <span className="attention-count">{count}</span>
+                      <span className="attention-callout-text">{column.title.toLowerCase()} lead{count !== 1 ? "s" : ""} {stageActionLabels[column.id]} (idle {stageThresholds[column.id]}+ days)</span>
+                      <span className="activity-group-toggle">{isExpanded ? "−" : "+"}</span>
+                    </div>
+                    {isExpanded && items.map((item) => (
+                      <div
+                        key={item.leadId}
+                        className="list-item attention-lead-item"
+                        onClick={() => router.push(`/leads/${item.leadId}`)}
+                      >
+                        <div className="item-content">
+                          <div className="item-title">
+                            <Link href={`/leads/${item.leadId}`}>{item.company} - {item.title}</Link>
+                          </div>
+                          <div className="item-meta">idle {item.daysIdle} day{item.daysIdle !== 1 ? "s" : ""}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="two-col">
           <div className="list-section">
             <div className="section-header">
-              <span>Recent Messages</span>
-              <a href="#">view messages</a>
+              <span>Recent Activity</span>
+              <Link href="/pipeline">view pipeline</Link>
             </div>
-            <div className="list-item">
-              <div className="item-content">
-                <div className="item-title">
-                  <span style={{ color: "#828282", fontStyle: "italic" }}>
-                    No messages yet
-                  </span>
+            {hasActivity ? (
+              <>
+                {recentActivity.today.length > 0 && (
+                  <>
+                    <div className="activity-group-label">Today</div>
+                    {recentActivity.today.map((item, i) => (
+                      <div key={`today-${i}`} className="list-item" onClick={() => router.push(`/leads/${item.leadId}`)}>
+                        <div className="item-content">
+                          <div className="item-title">
+                            <Link href={`/leads/${item.leadId}`}>{item.company} - {item.title}</Link>
+                          </div>
+                          <div className="item-meta">{item.description}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+                {recentActivity.thisWeek.length > 0 && (
+                  <>
+                    <div
+                      className="activity-group-label activity-group-collapsible"
+                      onClick={() => setExpandedGroups(prev => ({ ...prev, thisWeek: !prev.thisWeek }))}
+                    >
+                      <span>This Week ({recentActivity.thisWeek.length})</span>
+                      <span className="activity-group-toggle">{expandedGroups.thisWeek ? "−" : "+"}</span>
+                    </div>
+                    {expandedGroups.thisWeek && recentActivity.thisWeek.map((item, i) => (
+                      <div key={`week-${i}`} className="list-item" onClick={() => router.push(`/leads/${item.leadId}`)}>
+                        <div className="item-content">
+                          <div className="item-title">
+                            <Link href={`/leads/${item.leadId}`}>{item.company} - {item.title}</Link>
+                          </div>
+                          <div className="item-meta">{item.description}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+                {recentActivity.lastWeek.length > 0 && (
+                  <>
+                    <div
+                      className="activity-group-label activity-group-collapsible"
+                      onClick={() => setExpandedGroups(prev => ({ ...prev, lastWeek: !prev.lastWeek }))}
+                    >
+                      <span>Last Week ({recentActivity.lastWeek.length})</span>
+                      <span className="activity-group-toggle">{expandedGroups.lastWeek ? "−" : "+"}</span>
+                    </div>
+                    {expandedGroups.lastWeek && recentActivity.lastWeek.map((item, i) => (
+                      <div key={`last-${i}`} className="list-item" onClick={() => router.push(`/leads/${item.leadId}`)}>
+                        <div className="item-content">
+                          <div className="item-title">
+                            <Link href={`/leads/${item.leadId}`}>{item.company} - {item.title}</Link>
+                          </div>
+                          <div className="item-meta">{item.description}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </>
+            ) : (
+              <div className="list-item">
+                <div className="item-content">
+                  <div className="item-title">
+                    <span style={{ color: "#828282", fontStyle: "italic" }}>
+                      No recent activity
+                    </span>
+                  </div>
+                  <div className="item-meta">
+                    Activity from your pipeline will show here
+                  </div>
                 </div>
-                <div className="item-meta">Messages feature coming soon</div>
               </div>
-            </div>
+            )}
           </div>
 
           <div className="list-section">
