@@ -192,7 +192,7 @@ const LeadDetail = () => {
         const data = JSON.parse(script.textContent || '');
         const jobPosting = data['@type'] === 'JobPosting' ? data
           : Array.isArray(data) ? data.find((d: Record<string, unknown>) => d['@type'] === 'JobPosting')
-          : null;
+            : null;
         if (!jobPosting) continue;
 
         const title = jobPosting.title || '';
@@ -280,7 +280,7 @@ const LeadDetail = () => {
         const data = JSON.parse(script.textContent || '');
         const jobPosting = data['@type'] === 'JobPosting' ? data
           : Array.isArray(data) ? data.find((d: Record<string, unknown>) => d['@type'] === 'JobPosting')
-          : null;
+            : null;
         if (jobPosting) {
           const result = parseAshby(html, doc);
           if (result) return result;
@@ -290,12 +290,12 @@ const LeadDetail = () => {
 
     // DOM-based fallback
     let title = doc.querySelector('h1')?.textContent?.trim() ||
-                doc.querySelector('h2')?.textContent?.trim() ||
-                doc.querySelector('[class*="title"]')?.textContent?.trim() || '';
+      doc.querySelector('h2')?.textContent?.trim() ||
+      doc.querySelector('[class*="title"]')?.textContent?.trim() || '';
 
     let company = doc.querySelector('[class*="company"]')?.textContent?.trim() ||
-                  doc.querySelector('[class*="Company"]')?.textContent?.trim() ||
-                  doc.querySelector('[class*="employer"]')?.textContent?.trim() || '';
+      doc.querySelector('[class*="Company"]')?.textContent?.trim() ||
+      doc.querySelector('[class*="employer"]')?.textContent?.trim() || '';
     if (!company) {
       const urlMatch = url.match(/\/\/([^.\/]+)\./);
       if (urlMatch && urlMatch[1]) {
@@ -304,8 +304,8 @@ const LeadDetail = () => {
     }
 
     let location = doc.querySelector('[class*="location"]')?.textContent?.trim() ||
-                   doc.querySelector('[class*="Location"]')?.textContent?.trim() ||
-                   doc.querySelector('[class*="office"]')?.textContent?.trim() || '';
+      doc.querySelector('[class*="Location"]')?.textContent?.trim() ||
+      doc.querySelector('[class*="office"]')?.textContent?.trim() || '';
     if (!location) {
       const bodyText = doc.body?.textContent || '';
       if (/\b(remote|work from home|wfh)\b/i.test(bodyText)) location = 'Remote';
@@ -446,9 +446,9 @@ const LeadDetail = () => {
     }
   }, [leadId, isNewLead]);
 
-  const fetchLeadDetails = async () => {
+  const fetchLeadDetails = async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
 
       // Fetch lead details
       const leadData = (await api.leads.getById(leadId)) as Lead;
@@ -636,7 +636,7 @@ const LeadDetail = () => {
         // Show toast confirmation  
         showToast('Changes saved!', 'success');
 
-        fetchLeadDetails(); // Refresh to get latest data
+        fetchLeadDetails({ silent: true }); // Refresh to get latest data
       } else {
         // Create new userLead for existing lead
         if (lead?._id) {
@@ -681,7 +681,7 @@ const LeadDetail = () => {
       await api.userLeads.updateStatus(userLead._id, newStatus);
 
       // Refresh activity to show the status change in timeline
-      await fetchLeadDetails();
+      await fetchLeadDetails({ silent: true });
     } catch (err) {
       showToast(`Error updating status: ${getErrorMessage(err)}`, 'error');
       // Revert on error
@@ -715,7 +715,7 @@ const LeadDetail = () => {
       }
 
       // Refresh and close modal
-      await fetchLeadDetails();
+      await fetchLeadDetails({ silent: true });
       setShowPublishModal(false);
       setPendingStatus(null);
       setPublishMode(null);
@@ -733,7 +733,7 @@ const LeadDetail = () => {
         await api.userLeads.updateStatus(userLead._id, pendingStatus);
       }
       setStatus(pendingStatus);
-      await fetchLeadDetails();
+      await fetchLeadDetails({ silent: true });
       showToast('Status updated', 'success');
     } catch (err) {
       showToast(`Error updating status: ${getErrorMessage(err)}`, 'error');
@@ -763,9 +763,9 @@ const LeadDetail = () => {
       setInitialValues((prev) =>
         prev
           ? {
-              ...prev,
-              priority: newPriority
-            }
+            ...prev,
+            priority: newPriority
+          }
           : prev
       );
 
@@ -773,7 +773,7 @@ const LeadDetail = () => {
       showToast('Priority updated!', 'success');
 
       // Refresh to get latest data
-      await fetchLeadDetails();
+      await fetchLeadDetails({ silent: true });
     } catch (err) {
       showToast(`Error updating priority: ${getErrorMessage(err)}`, 'error');
       // Revert on error
@@ -782,8 +782,10 @@ const LeadDetail = () => {
     }
   };
 
+  const savingNoteRef = useRef(false);
   const handleAddNote = async () => {
-    if (!newNote.trim()) return;
+    if (!newNote.trim() || savingNoteRef.current) return;
+    savingNoteRef.current = true;
 
     const entry: NoteEntry = {
       id: crypto.randomUUID(),
@@ -802,12 +804,16 @@ const LeadDetail = () => {
           activityNote: 'Note added',
           activityAction: 'note_added',
         });
+        // Refresh just the activity timeline
+        const activityData = (await api.userLeads.getActivity(userLead._id)) as any[];
+        setActivity(activityData || []);
         showToast('Note added!', 'success');
-        fetchLeadDetails();
+
       } catch (err) {
         showToast(`Error saving note: ${getErrorMessage(err)}`, 'error');
       }
     }
+    savingNoteRef.current = false;
   };
 
   const handleCancelAddNote = () => {
@@ -922,7 +928,7 @@ const LeadDetail = () => {
       setSelectedReferralId('');
 
       // Refresh to show the linked referral
-      fetchLeadDetails();
+      fetchLeadDetails({ silent: true });
     } catch (err) {
       console.error('Error linking referral:', err);
       showToast(`Error linking referral: ${getErrorMessage(err)}`, 'error');
@@ -1663,7 +1669,7 @@ const LeadDetail = () => {
                     ) : (
                       <NoteEditor
                         content={entry.text}
-                        onChange={() => {}}
+                        onChange={() => { }}
                         editable={false}
                       />
                     )}

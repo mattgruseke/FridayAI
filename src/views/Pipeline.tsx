@@ -118,9 +118,9 @@ const Pipeline = () => {
     fetchPipeline();
   }, [pathname, searchParams]); // Re-run when route changes
 
-  const fetchPipeline = async () => {
+  const fetchPipeline = async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const data = (await api.userLeads.getPipeline()) as PipelineStage[];
       setPipeline(data || []);
 
@@ -157,7 +157,7 @@ const Pipeline = () => {
     try {
       await api.userLeads.updateStatus(userLeadId, newStatus);
       // Refresh pipeline
-      fetchPipeline();
+      fetchPipeline({ silent: true });
     } catch (err) {
       showToast(`Error updating status: ${getErrorMessage(err)}`, 'error');
     }
@@ -183,7 +183,7 @@ const Pipeline = () => {
       }
 
       // Refresh and close modal
-      fetchPipeline();
+      fetchPipeline({ silent: true });
       setShowPublishModal(false);
       setPendingUserLeadId(null);
       setPendingLeadDetails(null);
@@ -201,7 +201,7 @@ const Pipeline = () => {
       if (pendingUserLeadId && publishMode) {
         await api.userLeads.updateStatus(pendingUserLeadId, publishMode);
       }
-      fetchPipeline();
+      fetchPipeline({ silent: true });
       showToast('Status updated', 'success');
     } catch (err) {
       showToast(`Error updating status: ${getErrorMessage(err)}`, 'error');
@@ -254,7 +254,7 @@ const Pipeline = () => {
       <div className="main">
         <div className="page-title">Error loading pipeline</div>
         <p>{error}</p>
-        <button onClick={fetchPipeline}>Retry</button>
+        <button onClick={() => fetchPipeline()}>Retry</button>
       </div>
     );
   }
