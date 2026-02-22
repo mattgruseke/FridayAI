@@ -8,7 +8,7 @@ export const metadata = {
   description: "Find your next gig faster.",
   metadataBase: new URL("https://gigfrog.io"),
   openGraph: {
-    title: "GigFrog",
+    title: "Find your next gig faster | GigFrog",
     description: "Find your next gig faster.",
     url: "https://gigfrog.io",
     siteName: "GigFrog",
