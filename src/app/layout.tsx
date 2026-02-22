@@ -6,6 +6,27 @@ import { createClient } from "@/lib/supabase/server";
 export const metadata = {
   title: "GigFrog",
   description: "Find your next gig faster.",
+  metadataBase: new URL("https://gigfrog.io"),
+  openGraph: {
+    title: "GigFrog",
+    description: "Find your next gig faster.",
+    url: "https://gigfrog.io",
+    siteName: "GigFrog",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "GigFrog",
+    description: "Find your next gig faster.",
+    images: ["/og-image.png"],
+  },
 };
 
 type RootLayoutProps = {
