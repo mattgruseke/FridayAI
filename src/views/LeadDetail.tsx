@@ -1526,6 +1526,8 @@ const LeadDetail = () => {
                             router.push(
                               `/referrals/new?linkLeadId=${encodeURIComponent(
                                 userLead._id
+                              )}&leadPageId=${encodeURIComponent(
+                                lead?._id || ''
                               )}&leadTitle=${encodeURIComponent(
                                 lead?.title || ''
                               )}&leadCompany=${encodeURIComponent(

@@ -4,12 +4,12 @@ import type { ReactNode } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = {
-  title: "Your job search, all in one place. | GigFrog",
-  description: "Your job search, all in one place. | GigFrog",
+  title: "GigFrog",
+  description: "Skip the wait. Take the leap with GigFrog",
   metadataBase: new URL("https://gigfrog.io"),
   openGraph: {
-    title: "Your job search, all in one place. | GigFrog",
-    description: "Your job search, all in one place. | GigFrog",
+    title: "Skip the wait. Take the leap with GigFrog",
+    description: "Skip the wait. Take the leap with GigFrog",
     url: "https://gigfrog.io",
     siteName: "GigFrog",
     images: [
@@ -23,8 +23,8 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Your job search, all in one place. | GigFrog",
-    description: "Your job search, all in one place. | GigFrog.",
+    title: "Skip the wait. Take the leap with GigFrog",
+    description: "Skip the wait. Take the leap with GigFrog.",
     images: ["/og-image.png"],
   },
 };

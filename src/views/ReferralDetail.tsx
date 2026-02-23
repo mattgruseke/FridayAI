@@ -1,10 +1,40 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import api from "../api/client";
 import { useToast } from "../hooks/useToast";
 import { getErrorMessage } from "../lib/errors";
+import NoteEditor from "../components/NoteEditor";
+
+type NoteEntry = {
+  id: string;
+  text: string;
+  createdAt: string;
+};
+
+const parseNotes = (raw: string): NoteEntry[] => {
+  if (!raw || !raw.trim()) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed;
+  } catch { /* fall through to legacy */ }
+  return raw.split('\n\n').filter(s => s.trim()).map(entry => {
+    const match = entry.match(/^\[(.+?)\]\s*([\s\S]*)/);
+    if (match) {
+      const parsed = new Date(match[1]);
+      return {
+        id: crypto.randomUUID(),
+        text: match[2],
+        createdAt: isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString(),
+      };
+    }
+    return { id: crypto.randomUUID(), text: entry, createdAt: new Date().toISOString() };
+  });
+};
+
+const serializeNotes = (entries: NoteEntry[]): string =>
+  entries.length > 0 ? JSON.stringify(entries) : '';
 
 type Referral = {
   _id: string;
@@ -37,6 +67,7 @@ const ReferralDetail = () => {
 
   // Get linkLeadId from navigation state (when coming from LeadDetail)
   const linkLeadFromState = searchParams?.get("linkLeadId");
+  const leadPageId = searchParams?.get("leadPageId");
   const leadTitleFromState = searchParams?.get("leadTitle");
   const leadCompanyFromState = searchParams?.get("leadCompany");
   const { showToast, ToastComponent } = useToast();
@@ -52,8 +83,10 @@ const ReferralDetail = () => {
   const [company, setCompany] = useState("");
   const [email, setEmail] = useState("");
   const [linkedin, setLinkedin] = useState("");
-  const [notes, setNotes] = useState("");
+  const [noteEntries, setNoteEntries] = useState<NoteEntry[]>([]);
   const [newNote, setNewNote] = useState("");
+  const [isAddingNote, setIsAddingNote] = useState(false);
+  const savingNoteRef = useRef(false);
 
   // Modal state for linking leads
   const [showLinkLeadModal, setShowLinkLeadModal] = useState(false);
@@ -88,7 +121,7 @@ const ReferralDetail = () => {
       setCompany(referralData.company || "");
       setEmail(referralData.email || "");
       setLinkedin(referralData.linkedin || "");
-      setNotes(referralData.notes || "");
+      setNoteEntries(parseNotes(referralData.notes || ""));
 
       // Fetch linked leads details
       if (referralData.linkedLeads && referralData.linkedLeads.length > 0) {
@@ -138,7 +171,7 @@ const ReferralDetail = () => {
         company: company.trim(),
         email: email.trim(),
         linkedin: linkedin.trim(),
-        notes: notes.trim(),
+        notes: serializeNotes(noteEntries),
         linkedLeads: linkedLeadsArray,
       };
 
@@ -154,7 +187,11 @@ const ReferralDetail = () => {
         }
 
         showToast("Referral saved successfully", "success");
-        router.replace(`/referrals/${newReferral._id}`);
+        if (leadPageId) {
+          router.replace(`/leads/${leadPageId}`);
+        } else {
+          router.replace(`/referrals/${newReferral._id}`);
+        }
       } else {
         await api.referrals.update(referralId, referralData);
         showToast("Referral updated successfully", "success");
@@ -167,24 +204,31 @@ const ReferralDetail = () => {
   };
 
   const handleAddNote = async () => {
-    if (!newNote.trim()) {
-      showToast("Please enter a note", "error");
-      return;
-    }
+    if (!newNote.trim() || savingNoteRef.current) return;
+    savingNoteRef.current = true;
+
+    const entry: NoteEntry = {
+      id: crypto.randomUUID(),
+      text: newNote.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    const updated = [...noteEntries, entry];
+    setNoteEntries(updated);
+    setNewNote("");
+    setIsAddingNote(false);
 
     try {
-      const updatedNotes = notes
-        ? `${notes}\n\n${new Date().toLocaleString()}: ${newNote}`
-        : `${new Date().toLocaleString()}: ${newNote}`;
-      await api.referrals.update(referralId, { notes: updatedNotes });
-      setNotes(updatedNotes);
-      setNewNote("");
-      showToast("Note added successfully", "success");
-      fetchReferralData();
+      await api.referrals.update(referralId, { notes: serializeNotes(updated) });
+      showToast("Note added!", "success");
     } catch (err) {
-      console.error("Error adding note:", err);
       showToast(`Error adding note: ${getErrorMessage(err)}`, "error");
     }
+    savingNoteRef.current = false;
+  };
+
+  const handleCancelAddNote = () => {
+    setNewNote("");
+    setIsAddingNote(false);
   };
 
   const handleLinkLead = async () => {
@@ -359,17 +403,6 @@ const ReferralDetail = () => {
                 />
               </div>
 
-              <div className="form-group">
-                <label htmlFor="notes">Notes</label>
-                <textarea
-                  id="notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Add any notes about this referral..."
-                  rows={6}
-                />
-              </div>
-
               <div className="form-actions">
                 <button
                   onClick={handleSaveReferral}
@@ -380,21 +413,35 @@ const ReferralDetail = () => {
               </div>
             </div>
 
-            {/* Add Note Section */}
+            {/* Notes Section */}
             {!isNewReferral && (
               <div className="section">
-                <div className="section-title">Add Note</div>
-                <div className="form-group">
-                  <textarea
-                    value={newNote}
-                    onChange={(e) => setNewNote(e.target.value)}
-                    placeholder="Add a new note..."
-                    rows={3}
-                  />
-                </div>
-                <button onClick={handleAddNote} className="btn">
-                  Add Note
-                </button>
+                <div className="section-title">Notes</div>
+                {isAddingNote ? (
+                  <div className="add-note">
+                    <NoteEditor
+                      content={newNote}
+                      onChange={setNewNote}
+                      placeholder="Write your note..."
+                    />
+                    <div className="note-edit-actions">
+                      <button className="btn btn-primary" onClick={handleAddNote}>Save</button>
+                      <button className="btn" onClick={handleCancelAddNote}>Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button className="btn btn-primary" onClick={() => setIsAddingNote(true)} style={{ marginBottom: 8 }}>
+                    Add Note
+                  </button>
+                )}
+                {[...noteEntries].reverse().map((entry) => (
+                  <div key={entry.id} className="note-entry">
+                    <div className="note-date">
+                      {new Date(entry.createdAt).toLocaleString()}
+                    </div>
+                    <NoteEditor content={entry.text} onChange={() => {}} editable={false} />
+                  </div>
+                ))}
               </div>
             )}
 

@@ -85,6 +85,9 @@ const Pipeline = () => {
     offers: 0
   });
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Filter state
   const [visibleStatuses, setVisibleStatuses] = useState<string[]>(loadVisibleStatuses);
   const [savedStatuses, setSavedStatuses] = useState<string[]>(loadVisibleStatuses);
@@ -294,6 +297,16 @@ const Pipeline = () => {
       </div> */}
       <Link href="/leads/new" className="btn-add-lead-pipeline">Add Lead</Link>
 
+      <div className="search-bar">
+        <input
+          type="text"
+          className="search-input"
+          placeholder="Search..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+
       <div className="pipeline-filters">
         <div className="filter-checkboxes">
           {statusColumns.map(column => {
@@ -325,7 +338,14 @@ const Pipeline = () => {
 
       <div className="pipeline-table">
         {statusColumns.filter(col => visibleStatuses.includes(col.id)).map(column => {
-          const leads = getLeadsByStatus(column.id);
+          const q = searchQuery.trim().toLowerCase();
+          const leads = getLeadsByStatus(column.id).filter(({ leadDetails }) => {
+            if (!q) return true;
+            return (
+              leadDetails?.company?.toLowerCase().includes(q) ||
+              leadDetails?.title?.toLowerCase().includes(q)
+            );
+          });
           const count = leads.length;
 
           return (
