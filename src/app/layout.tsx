@@ -5,11 +5,11 @@ import { createClient } from "@/lib/supabase/server";
 
 export const metadata = {
   title: "GigFrog",
-  description: "Skip the wait. Take the leap with GigFrog",
+  description: "Skip the wait. Jump into your next role with GigFrog.",
   metadataBase: new URL("https://gigfrog.io"),
   openGraph: {
-    title: "Skip the wait. Take the leap with GigFrog",
-    description: "Skip the wait. Take the leap with GigFrog",
+    title: "Skip the wait. Jump into your next role with GigFrog.",
+    description: "Skip the wait. Jump into your next role with GigFrog.",
     url: "https://gigfrog.io",
     siteName: "GigFrog",
     images: [
@@ -23,8 +23,8 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Skip the wait. Take the leap with GigFrog",
-    description: "Skip the wait. Take the leap with GigFrog.",
+    title: "Skip the wait. Jump into your next role with GigFrog.",
+    description: "Skip the wait. Jump into your next role with GigFrog.",
     images: ["/og-image.png"],
   },
 };
