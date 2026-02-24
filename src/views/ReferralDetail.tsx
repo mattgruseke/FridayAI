@@ -423,6 +423,7 @@ const ReferralDetail = () => {
                       content={newNote}
                       onChange={setNewNote}
                       placeholder="Write your note..."
+                      onCmdEnter={handleAddNote}
                     />
                     <div className="note-edit-actions">
                       <button className="btn btn-primary" onClick={handleAddNote}>Save</button>

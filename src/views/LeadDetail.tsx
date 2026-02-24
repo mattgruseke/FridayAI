@@ -1626,6 +1626,7 @@ const LeadDetail = () => {
                     content={newNote}
                     onChange={setNewNote}
                     placeholder="Write your note..."
+                    onCmdEnter={handleAddNote}
                   />
                   <div className="note-edit-actions">
                     <button className="btn btn-primary" onClick={handleAddNote}>Save</button>
@@ -1662,6 +1663,7 @@ const LeadDetail = () => {
                         <NoteEditor
                           content={editingNoteText}
                           onChange={setEditingNoteText}
+                          onCmdEnter={handleSaveNoteEdit}
                         />
                         <div className="note-edit-actions">
                           <button className="btn btn-primary" onClick={handleSaveNoteEdit}>Save</button>

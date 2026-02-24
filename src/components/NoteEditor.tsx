@@ -4,13 +4,15 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Markdown } from 'tiptap-markdown';
-import { useEffect } from 'react';
+import { Extension } from '@tiptap/core';
+import { useEffect, useRef } from 'react';
 
 type NoteEditorProps = {
   content: string;
   onChange: (markdown: string) => void;
   placeholder?: string;
   editable?: boolean;
+  onCmdEnter?: () => void;
 };
 
 const MenuBar = ({ editor }: { editor: ReturnType<typeof useEditor> }) => {
@@ -60,7 +62,13 @@ const MenuBar = ({ editor }: { editor: ReturnType<typeof useEditor> }) => {
   );
 };
 
-const NoteEditor = ({ content, onChange, placeholder = 'Add a note...', editable = true }: NoteEditorProps) => {
+const NoteEditor = ({ content, onChange, placeholder = 'Add a note...', editable = true, onCmdEnter }: NoteEditorProps) => {
+  // Keep a ref so the keyboard extension always calls the latest handler
+  const onCmdEnterRef = useRef(onCmdEnter);
+  useEffect(() => {
+    onCmdEnterRef.current = onCmdEnter;
+  }, [onCmdEnter]);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -71,6 +79,17 @@ const NoteEditor = ({ content, onChange, placeholder = 'Add a note...', editable
       }),
       Placeholder.configure({ placeholder }),
       Markdown,
+      Extension.create({
+        name: 'cmdEnter',
+        addKeyboardShortcuts() {
+          return {
+            'Mod-Enter': () => {
+              onCmdEnterRef.current?.();
+              return true;
+            },
+          };
+        },
+      }),
     ],
     content,
     editable,
