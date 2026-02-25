@@ -18,7 +18,7 @@
     width: 80px;
     height: 80px;
     border-radius: 50%;
-    background: #ff6600;
+    background: var(--accent);
     color: #ffffff;
     font-size: 28px;
     font-weight: bold;
@@ -37,7 +37,7 @@
 .profile-admin-badge {
     display: inline-block;
     background: #000000;
-    color: #ff6600;
+    color: var(--accent);
     font-size: 12px;
     padding: 4px 12px;
     border-radius: 4px;

@@ -1,6 +1,6 @@
 /* Header */
 .header {
-  background: #ff6600;
+  background: var(--accent);
   padding: 2px;
 }
 
@@ -9,7 +9,7 @@
 }
 
 .header-inner {
-  background: #ff6600;
+  background: var(--accent);
   padding: 4px;
   display: flex;
   align-items: center;
@@ -48,7 +48,7 @@
 
 .admin-badge {
   background: #000000;
-  color: #ff6600;
+  color: var(--accent);
   font-size: 8pt;
   padding: 1px 4px;
   border-radius: 3px;
@@ -81,7 +81,7 @@
   height: 32px;
   border-radius: 50%;
   background: #000000;
-  color: #ff6600;
+  color: var(--accent);
   border: none;
   font-size: 11px;
   font-weight: bold;
@@ -104,7 +104,7 @@
   height: 10px;
   background: #00ff00;
   border-radius: 50%;
-  border: 2px solid #ff6600;
+  border: 2px solid var(--accent);
 }
 
 /* Sidebar Dropdown */
@@ -367,4 +367,111 @@ body.dark-mode .mobile-logout:hover {
 
 body.dark-mode .hamburger span {
   background: #ffffff;
+}
+
+/* ── iOS-style dark mode toggle ─────────────────────────────────────────── */
+.theme-toggle {
+  width: 42px;
+  height: 24px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.theme-toggle--on {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.theme-toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f59e0b; /* sun: warm amber */
+}
+
+.theme-toggle--on .theme-toggle__thumb {
+  transform: translateX(18px);
+  color: #6366f1; /* moon: indigo */
+}
+
+/* ── Color theme picker ──────────────────────────────────────────────────── */
+.color-picker-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.color-picker-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  opacity: 0.85;
+  border-radius: 4px;
+  transition: opacity 0.15s;
+}
+
+.color-picker-btn:hover {
+  opacity: 1;
+}
+
+.color-picker-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  padding: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 124px;
+  z-index: 1000;
+}
+
+.color-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.color-swatch:hover {
+  transform: scale(1.15);
+}
+
+.color-swatch--active {
+  border-color: #000000;
+  transform: scale(1.1);
+}
+
+body.dark-mode .color-picker-dropdown {
+  background: #1a1a1a;
+  border-color: #444444;
+}
+
+body.dark-mode .color-swatch--active {
+  border-color: #ffffff;
 }

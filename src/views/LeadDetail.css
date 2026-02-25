@@ -17,12 +17,12 @@
  }
 
  .header {
-     background: #ff6600;
+     background: var(--accent);
      padding: 2px;
  }
 
  .header-inner {
-     background: #ff6600;
+     background: var(--accent);
      padding: 4px;
      display: flex;
      align-items: center;
@@ -79,9 +79,9 @@
  .btn-import {
      font-size: 9pt;
      padding: 4px 12px;
-     background: #ff6600 !important;
+     background: var(--accent) !important;
      color: #ffffff;
-     border: 1px solid #ff6600;
+     border: 1px solid var(--accent);
      cursor: pointer;
      font-family: Verdana, Geneva, sans-serif;
  }
@@ -147,7 +147,7 @@
 
  .edit-banner {
      font-size: 8pt;
-     color: #ff6600;
+     color: var(--accent);
      font-weight: normal;
      text-transform: none;
      font-style: italic;
@@ -169,7 +169,7 @@
  }
 
  .edit-icon-btn:hover {
-     color: #ff6600;
+     color: var(--accent);
  }
 
  .edit-icon-btn:active {
@@ -267,9 +267,9 @@
  }
 
  .btn-primary {
-     background: #ff6600 !important;
+     background: var(--accent) !important;
      color: #ffffff !important;
-     border-color: #ff6600 !important;
+     border-color: var(--accent) !important;
  }
 
  .btn-primary:hover {
@@ -312,7 +312,7 @@
  .btn-add-email {
      background: none;
      border: none;
-     color: #ff6600;
+     color: var(--accent);
      font-size: 9pt;
      font-family: Verdana, Geneva, sans-serif;
      cursor: pointer;
@@ -499,9 +499,9 @@
  }
 
  .toolbar-btn.is-active {
-     background: #ff6600;
+     background: var(--accent);
      color: #fff;
-     border-color: #ff6600;
+     border-color: var(--accent);
  }
 
  .note-editor .tiptap {
@@ -546,7 +546,7 @@
      padding: 12px;
      font-size: 8pt;
      color: #828282;
-     border-top: 2px solid #ff6600;
+     border-top: 2px solid var(--accent);
      margin-top: 12px;
  }
 
@@ -597,9 +597,9 @@ body.dark-mode .action-row .btn-danger {
 }
 
 body.dark-mode .action-row .btn-primary {
-    background: #ff6600;
+    background: var(--accent);
     color: #ffffff;
-    border-color: #ff6600;
+    border-color: var(--accent);
 }
 
 body.dark-mode .action-row .btn:hover {
@@ -635,7 +635,7 @@ body.dark-mode .detail-field textarea {
 }
 
 body.dark-mode .detail-field a {
-    color: #ff6600;
+    color: var(--accent);
 }
 
 body.dark-mode select {
@@ -670,7 +670,7 @@ body.dark-mode .form-table textarea {
 }
 
 body.dark-mode .form-table a {
-    color: #ff6600;
+    color: var(--accent);
 }
 
 body.dark-mode .status-badge {
@@ -897,7 +897,7 @@ body.dark-mode .back-link:hover {
 
 .modal-input:focus {
     outline: none;
-    border-color: #ff6600;
+    border-color: var(--accent);
 }
 
 .modal-footer {
@@ -949,7 +949,7 @@ body.dark-mode .modal-input {
 }
 
 body.dark-mode .modal-input:focus {
-    border-color: #ff6600;
+    border-color: var(--accent);
 }
 
 body.dark-mode .modal-footer {
@@ -957,9 +957,9 @@ body.dark-mode .modal-footer {
 }
 
 body.dark-mode .btn-import {
-    background: #ff6600;
+    background: var(--accent);
     color: #ffffff;
-    border-color: #ff6600;
+    border-color: var(--accent);
 }
 
 body.dark-mode .btn-import:hover {
@@ -972,7 +972,7 @@ body.dark-mode .page-title-row {
 }
 
 body.dark-mode .btn-add-email {
-    color: #ff6600;
+    color: var(--accent);
 }
 
 body.dark-mode .btn-remove-email {

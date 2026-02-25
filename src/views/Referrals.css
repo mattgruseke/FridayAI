@@ -1,11 +1,11 @@
 /* Referrals page styles */
 
 .btn-add-referral {
-    background: #ff6600;
+    background: var(--accent);
     color: #ffffff !important;
     padding: 4px 8px;
     font-size: 9pt;
-    border: 1px solid #ff6600;
+    border: 1px solid var(--accent);
     text-decoration: none;
     cursor: pointer;
     display: inline-block;
@@ -32,7 +32,7 @@
 
 .referral-search:focus {
     outline: none;
-    border-color: #ff6600;
+    border-color: var(--accent);
 }
 
 .referrals-table-container {
@@ -89,7 +89,7 @@
 
 .linked-leads-count {
     display: inline-block;
-    background: #ff6600;
+    background: var(--accent);
     color: #ffffff;
     padding: 2px 6px;
     border-radius: 3px;
@@ -150,5 +150,5 @@ body.dark-mode .referral-search {
 }
 
 body.dark-mode .referral-search:focus {
-    border-color: #ff6600;
+    border-color: var(--accent);
 }

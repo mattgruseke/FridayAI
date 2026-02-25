@@ -1,4 +1,18 @@
 @import "../components/Header.css";
+
+/* ── Accent color theme ─────────────────────────────────────────────────── */
+:root {
+  --accent: #ff6600; /* default: orange */
+}
+
+body.theme-blue       { --accent: #2563eb; }
+body.theme-indigo     { --accent: #4f46e5; }
+body.theme-purple     { --accent: #7c3aed; }
+body.theme-red        { --accent: #dc2626; }
+body.theme-yellow     { --accent: #d97706; }
+body.theme-green      { --accent: #16a34a; }
+body.theme-dark-green { --accent: #166534; }
+/* orange is the default — no class needed */
 @import "../components/Footer.css";
 @import "../views/Auth.css";
 @import "../views/Home.css";
@@ -49,7 +63,7 @@
 }
 
 .toast-info {
-  background: #ff6600;
+  background: var(--accent);
   color: #ffffff;
   border: 1px solid #cc5200;
 }
@@ -68,7 +82,7 @@ body.dark-mode .toast-error {
 }
 
 body.dark-mode .toast-info {
-  background: #ff6600;
+  background: var(--accent);
   color: #ffffff;
   border: 1px solid #ff8833;
 }

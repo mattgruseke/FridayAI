@@ -50,12 +50,12 @@
 
 .filter-checkbox input[type="checkbox"] {
     cursor: pointer;
-    accent-color: #ff6600;
+    accent-color: var(--accent);
 }
 
 .hidden-count {
     font-size: 8pt;
-    color: #ff6600;
+    color: var(--accent);
     font-weight: bold;
 }
 
@@ -76,9 +76,9 @@
 }
 
 .btn-save-view.unsaved {
-    background: #ff6600;
+    background: var(--accent);
     color: #ffffff;
-    border-color: #ff6600;
+    border-color: var(--accent);
 }
 
 .btn-save-view.unsaved:hover {
@@ -110,7 +110,7 @@
 }
 
 .col-header .count {
-    background: #ff6600;
+    background: var(--accent);
     color: #ffffff;
     padding: 1px 4px;
     border-radius: 2px;
@@ -210,7 +210,7 @@
 }
 
 .copy-email-btn:hover {
-    color: #ff6600;
+    color: var(--accent);
 }
 
 .copy-email-btn.copied {
@@ -222,7 +222,7 @@
     padding: 12px;
     font-size: 8pt;
     color: #828282;
-    border-top: 2px solid #ff6600;
+    border-top: 2px solid var(--accent);
     margin-top: 12px;
 }
 
@@ -269,12 +269,12 @@
 }
 
 .btn-add-lead-pipeline {
-    background: #ff6600;
+    background: var(--accent);
     color: #ffffff !important;
     padding: 4px 8px;
     font-size: 10pt;
     text-decoration: none;
-    border: 1px solid #ff6600;
+    border: 1px solid var(--accent);
     cursor: pointer;
     font-family: Verdana, Geneva, sans-serif;
 }
@@ -283,7 +283,7 @@
     font-size: 8pt;
     padding: 3px 8px;
     border: 1px solid #e6e6df;
-    background: #ff6600;
+    background: var(--accent);
     color: #ffffff;
     cursor: pointer;
     font-family: Verdana, Geneva, sans-serif;
@@ -384,7 +384,7 @@ body.dark-mode .stats {
 }
 
 body.dark-mode .btn-add-lead-pipeline {
-    background: #ff6600;
+    background: var(--accent);
     color: #ffffff;
 }
 
@@ -403,7 +403,7 @@ body.dark-mode .col-header {
 }
 
 body.dark-mode .count {
-    background: #ff6600;
+    background: var(--accent);
     color: #ffffff;
 }
 
@@ -414,7 +414,7 @@ body.dark-mode .job-card {
 
 body.dark-mode .job-card:hover {
     background: #333;
-    border-color: #ff6600;
+    border-color: var(--accent);
 }
 
 body.dark-mode .job-company {
@@ -454,7 +454,7 @@ body.dark-mode .copy-email-btn {
 }
 
 body.dark-mode .copy-email-btn:hover {
-    color: #ff6600;
+    color: var(--accent);
 }
 
 body.dark-mode .activity-fresh {
@@ -519,7 +519,7 @@ body.dark-mode .btn-save-view {
 }
 
 body.dark-mode .btn-save-view.unsaved {
-    background: #ff6600;
+    background: var(--accent);
     color: #ffffff;
-    border-color: #ff6600;
+    border-color: var(--accent);
 }

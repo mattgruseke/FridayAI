@@ -114,9 +114,9 @@ body.dark-mode .linked-lead-notice {
 }
 
 .btn-primary {
-    background: #ff6600;
+    background: var(--accent);
     color: #ffffff;
-    border-color: #ff6600;
+    border-color: var(--accent);
 }
 
 .btn-primary:hover {
