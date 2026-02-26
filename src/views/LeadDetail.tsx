@@ -1213,9 +1213,32 @@ const LeadDetail = () => {
                           placeholder="https://..."
                         />
                       ) : (
-                        <a href={lead.sourceApplicationLink} target="_blank" rel="noopener noreferrer">
-                          Application Link →
-                        </a>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <a href={lead.sourceApplicationLink} target="_blank" rel="noopener noreferrer">
+                            Application Link
+                          </a>
+                          <button
+                            className="copy-icon-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigator.clipboard.writeText(lead.sourceApplicationLink || '');
+                              const button = e.currentTarget;
+                              const originalHTML = button.innerHTML;
+                              button.innerHTML = '<span style="font-size: 8pt; color: #00a000; white-space: nowrap;">Copied!</span>';
+                              button.style.padding = '4px 6px';
+                              setTimeout(() => {
+                                button.innerHTML = originalHTML;
+                                button.style.padding = '4px';
+                              }, 1500);
+                            }}
+                            title="Copy URL"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
