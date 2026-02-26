@@ -27,8 +27,7 @@ type Lead = {
   contactLinkedIn?: string;
   sourceApplicationLink?: string;
   sourceLink?: string;
-  additionalEmails?: string[];
-  additionalLinks?: { title?: string; url?: string }[];
+  isGlobal?: boolean;
 };
 
 type UserLead = {
@@ -37,6 +36,14 @@ type UserLead = {
   priority?: string;
   notes?: string;
   currentStatus?: string;
+  location?: string;
+  compensation?: { raw?: string };
+  sourceApplicationLink?: string;
+  userContactName?: string;
+  userContactEmail?: string;
+  userContactLinkedIn?: string;
+  additionalEmails?: string[];
+  additionalLinks?: { title?: string; url?: string }[];
 };
 
 type Referral = {
@@ -106,7 +113,9 @@ const LeadDetail = () => {
 
   // Edit mode state
   const [isEditingBasic, setIsEditingBasic] = useState(false);
+  const [isEditingTracking, setIsEditingTracking] = useState(false);
   const [isEditingContact, setIsEditingContact] = useState(false);
+  const [isEditingYourContacts, setIsEditingYourContacts] = useState(false);
 
   // Import modal state
   const [showImportModal, setShowImportModal] = useState(false);
@@ -135,45 +144,83 @@ const LeadDetail = () => {
     setLead((prev) => ({ ...(prev || {}), ...updates }));
   };
 
-  // Snapshot of lead before editing, for cancel/revert
+  const updateUserLead = (updates: Partial<UserLead>) => {
+    setUserLead((prev) => prev ? { ...prev, ...updates } : prev);
+  };
+
+  // Snapshots for cancel/revert
   const [leadSnapshot, setLeadSnapshot] = useState<Lead | null>(null);
+  const [userLeadSnapshot, setUserLeadSnapshot] = useState<UserLead | null>(null);
 
-  const handleStartEdit = (section: 'basic' | 'contact') => {
-    setLeadSnapshot({ ...(lead || {}) });
-    if (section === 'basic') setIsEditingBasic(true);
-    else setIsEditingContact(true);
+  const handleStartEdit = (section: 'basic' | 'tracking' | 'contact' | 'yourContacts') => {
+    if (section === 'basic' || section === 'contact') {
+      setLeadSnapshot({ ...(lead || {}) });
+      if (section === 'basic') setIsEditingBasic(true);
+      else setIsEditingContact(true);
+    } else {
+      setUserLeadSnapshot(userLead ? { ...userLead } : null);
+      if (section === 'tracking') setIsEditingTracking(true);
+      else setIsEditingYourContacts(true);
+    }
   };
 
-  const handleCancelEdit = (section: 'basic' | 'contact') => {
-    if (leadSnapshot) setLead(leadSnapshot);
-    setLeadSnapshot(null);
-    if (section === 'basic') setIsEditingBasic(false);
-    else setIsEditingContact(false);
-  };
-
-  const handleSaveSection = async (section: 'basic' | 'contact') => {
-    if (!userLead || !lead?._id) return;
-    try {
-      const updatedLeadData = {
-        title: lead.title,
-        company: lead.company,
-        location: lead.location,
-        team: lead.team,
-        compensation: { raw: lead.compensation?.raw || '' },
-        industry: lead.industry,
-        datePosted: lead.datePosted,
-        contactName: lead.contactName,
-        contactEmail: lead.contactEmail,
-        additionalEmails: lead.additionalEmails?.filter(e => e.trim()) || [],
-        additionalLinks: lead.additionalLinks?.filter(l => l.url?.trim()) || [],
-        contactLinkedIn: lead.contactLinkedIn,
-        sourceApplicationLink: lead.sourceApplicationLink,
-        sourceLink: lead.sourceLink
-      };
-      await api.leads.update(lead._id, updatedLeadData);
+  const handleCancelEdit = (section: 'basic' | 'tracking' | 'contact' | 'yourContacts') => {
+    if (section === 'basic' || section === 'contact') {
+      if (leadSnapshot) setLead(leadSnapshot);
       setLeadSnapshot(null);
       if (section === 'basic') setIsEditingBasic(false);
       else setIsEditingContact(false);
+    } else {
+      if (userLeadSnapshot) setUserLead(userLeadSnapshot);
+      setUserLeadSnapshot(null);
+      if (section === 'tracking') setIsEditingTracking(false);
+      else setIsEditingYourContacts(false);
+    }
+  };
+
+  const handleSaveSection = async (section: 'basic' | 'tracking' | 'contact' | 'yourContacts') => {
+    if (!userLead) return;
+    try {
+      if (section === 'basic') {
+        if (!lead?._id) return;
+        await api.leads.update(lead._id, {
+          title: lead.title,
+          company: lead.company,
+          team: lead.team,
+          industry: lead.industry,
+          datePosted: lead.datePosted,
+          sourceLink: lead.sourceLink,
+        });
+        setLeadSnapshot(null);
+        setIsEditingBasic(false);
+      } else if (section === 'tracking') {
+        await api.userLeads.update(userLead._id, {
+          location: userLead.location,
+          compensation: userLead.compensation,
+          sourceApplicationLink: userLead.sourceApplicationLink,
+        });
+        setUserLeadSnapshot(null);
+        setIsEditingTracking(false);
+      } else if (section === 'contact') {
+        if (!lead?._id) return;
+        await api.leads.update(lead._id, {
+          contactName: lead.contactName,
+          contactEmail: lead.contactEmail,
+          contactLinkedIn: lead.contactLinkedIn,
+        });
+        setLeadSnapshot(null);
+        setIsEditingContact(false);
+      } else if (section === 'yourContacts') {
+        await api.userLeads.update(userLead._id, {
+          userContactName: userLead.userContactName,
+          userContactEmail: userLead.userContactEmail,
+          userContactLinkedIn: userLead.userContactLinkedIn,
+          additionalEmails: userLead.additionalEmails?.filter((e: string) => e.trim()) || [],
+          additionalLinks: userLead.additionalLinks?.filter((l: { url?: string }) => l.url?.trim()) || [],
+        });
+        setUserLeadSnapshot(null);
+        setIsEditingYourContacts(false);
+      }
       setInitialValues({ lead: { ...lead }, priority, notes: serializeNotes(noteEntries) });
       showToast('Changes saved', 'success');
     } catch (err) {
@@ -388,12 +435,12 @@ const LeadDetail = () => {
     const jobData = await parseJobUrl(importUrl);
     if (jobData) {
       updateLead({
-        title: jobData.title || lead?.title,
-        company: jobData.company || lead?.company,
-        location: jobData.location || lead?.location,
-        compensation: { raw: jobData.compensation || lead?.compensation?.raw || '' },
+        title: (jobData.title || lead?.title || '').trim(),
+        company: (jobData.company || lead?.company || '').trim(),
+        location: (jobData.location || lead?.location || '').trim(),
+        compensation: { raw: (jobData.compensation || lead?.compensation?.raw || '').trim() },
         datePosted: jobData.datePosted || lead?.datePosted,
-        sourceApplicationLink: importUrl
+        sourceApplicationLink: importUrl.trim()
       });
       setShowImportModal(false);
       setImportUrl('');
@@ -418,8 +465,6 @@ const LeadDetail = () => {
         datePosted: '',
         contactName: '',
         contactEmail: '',
-        additionalEmails: [],
-        additionalLinks: [],
         contactLinkedIn: '',
         sourceApplicationLink: '',
         sourceLink: ''
@@ -564,8 +609,6 @@ const LeadDetail = () => {
           datePosted: lead.datePosted || new Date(),
           contactName: lead.contactName,
           contactEmail: lead.contactEmail,
-          additionalEmails: lead.additionalEmails?.filter(e => e.trim()) || [],
-          additionalLinks: lead.additionalLinks?.filter(l => l.url?.trim()) || [],
           contactLinkedIn: lead.contactLinkedIn,
           sourceApplicationLink: lead.sourceApplicationLink,
           sourceLink: lead.sourceLink,
@@ -589,42 +632,8 @@ const LeadDetail = () => {
           router.push(`/leads/${createdLead._id}`);
         }
       } else if (userLead) {
-        // Detect if links were added/changed
-        const linksChanged = JSON.stringify(lead?.additionalLinks || []) !== JSON.stringify(initialValues?.lead?.additionalLinks || []);
         const serializedNotes = serializeNotes(noteEntries);
-        const updatePayload: Record<string, unknown> = { priority, notes: serializedNotes };
-        if (linksChanged) {
-          updatePayload.activityNote = 'Links updated';
-          updatePayload.activityAction = 'link_added';
-        }
-
-        // Update existing userLead
-        await api.userLeads.update(userLead._id, updatePayload);
-
-        // If in edit mode, also update the lead itself
-        if (isEditingBasic || isEditingContact) {
-          const updatedLeadData = {
-            title: lead.title,
-            company: lead.company,
-            location: lead.location,
-            team: lead.team,
-            compensation: { raw: lead.compensation?.raw || '' },
-            industry: lead.industry,
-            datePosted: lead.datePosted,
-            contactName: lead.contactName,
-            contactEmail: lead.contactEmail,
-            additionalEmails: lead.additionalEmails?.filter(e => e.trim()) || [],
-            additionalLinks: lead.additionalLinks?.filter(l => l.url?.trim()) || [],
-            contactLinkedIn: lead.contactLinkedIn,
-            sourceApplicationLink: lead.sourceApplicationLink,
-            sourceLink: lead.sourceLink
-          };
-          if (lead?._id) {
-            await api.leads.update(lead._id, updatedLeadData);
-          }
-          setIsEditingBasic(false);
-          setIsEditingContact(false);
-        }
+        await api.userLeads.update(userLead._id, { priority, notes: serializedNotes });
 
         // Update initial values to reflect saved state
         setInitialValues({
@@ -633,9 +642,7 @@ const LeadDetail = () => {
           notes: serializedNotes
         });
 
-        // Show toast confirmation  
         showToast('Changes saved!', 'success');
-
         fetchLeadDetails({ silent: true }); // Refresh to get latest data
       } else {
         // Create new userLead for existing lead
@@ -757,7 +764,11 @@ const LeadDetail = () => {
       setPriority(newPriority);
 
       // Make API call
-      await api.userLeads.update(userLead._id, { priority: newPriority });
+      await api.userLeads.update(userLead._id, {
+        priority: newPriority,
+        activityNote: `Priority changed to ${newPriority}`,
+        activityAction: 'priority_change',
+      });
 
       // Update initial values to reflect the saved priority
       setInitialValues((prev) =>
@@ -854,12 +865,8 @@ const LeadDetail = () => {
     setEditingNoteText('');
   };
 
-  const handleReadOnlyClick = (section: string) => {
-    if (isNewLead) return; // New leads are always editable
-    const isEditing = section === 'basic' ? isEditingBasic : isEditingContact;
-    if (!isEditing && userLead) {
-      showToast('Click the edit button to make changes', 'info');
-    }
+  const handleReadOnlyClick = (_section: string) => {
+    // No-op: pencil icon is self-explanatory
   };
 
   const handleDelete = async () => {
@@ -1073,307 +1080,398 @@ const LeadDetail = () => {
       <div className="content-grid">
         <div className="main-col">
           <div className="section">
-            <div className="section-title">
-              Basic Information
-              {!isNewLead && !userLead && (
-                <span className="edit-banner">Please save this lead first to enable editing</span>
-              )}
-              {!isNewLead && userLead && !isEditingBasic && (
-                <button
-                  className="edit-icon-btn"
-                  onClick={() => handleStartEdit('basic')}
-                  title="Edit basic information"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                  </svg>
-                </button>
-              )}
-              {isEditingBasic && (
-                <span className="section-edit-actions">
-                  <button className="btn btn-primary btn-sm" onClick={() => handleSaveSection('basic')}>Save</button>
-                  <button className="btn btn-sm" onClick={() => handleCancelEdit('basic')}>Cancel</button>
-                </span>
-              )}
-            </div>
-            <table className="form-table">
-              <tbody>
+            {isNewLead ? (
+              /* ── Add New form: all leads fields, no tracking ── */
+              <>
+                <div className="section-title">Job Information</div>
+                <table className="form-table">
+                  <tbody>
+                    <tr>
+                      <td>Company</td>
+                      <td><input type="text" value={lead.company || ''} onChange={(e) => updateLead({ company: e.target.value })} placeholder="e.g. Acme Corp" /></td>
+                    </tr>
+                    <tr>
+                      <td>Position</td>
+                      <td><input type="text" value={lead.title || ''} onChange={(e) => updateLead({ title: e.target.value })} placeholder="e.g. Senior Software Engineer" /></td>
+                    </tr>
+                    <tr>
+                      <td>Team</td>
+                      <td><input type="text" value={lead.team || ''} onChange={(e) => updateLead({ team: e.target.value })} placeholder="e.g. Engineering" /></td>
+                    </tr>
+                    <tr>
+                      <td>Industry</td>
+                      <td><input type="text" value={lead.industry || ''} onChange={(e) => updateLead({ industry: e.target.value })} placeholder="e.g. Technology, Finance" /></td>
+                    </tr>
+                    <tr>
+                      <td>Location</td>
+                      <td><input type="text" value={lead.location || ''} onChange={(e) => updateLead({ location: e.target.value })} placeholder="e.g. San Francisco, CA or Remote" /></td>
+                    </tr>
+                    <tr>
+                      <td>Compensation</td>
+                      <td><input type="text" value={lead.compensation?.raw || ''} onChange={(e) => updateLead({ compensation: { raw: e.target.value } })} placeholder="e.g. $120k - $180k" /></td>
+                    </tr>
+                    <tr>
+                      <td>Date Posted</td>
+                      <td><input type="date" value={lead.datePosted || ''} onChange={(e) => updateLead({ datePosted: e.target.value })} /></td>
+                    </tr>
+                    <tr>
+                      <td>Application URL</td>
+                      <td><input type="text" value={lead.sourceApplicationLink || ''} onChange={(e) => updateLead({ sourceApplicationLink: e.target.value })} placeholder="https://..." /></td>
+                    </tr>
+                    <tr>
+                      <td>Source URL</td>
+                      <td><input type="text" value={lead.sourceLink || ''} onChange={(e) => updateLead({ sourceLink: e.target.value })} placeholder="https://..." /></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </>
+            ) : (
+              /* ── Post-save: Job Posting + Your Tracking ── */
+              <>
+                {/* Job Posting sub-section */}
+                <div className="section-title">
+                  Job Posting
+                  {!userLead && (
+                    <span className="edit-banner">Save this lead to enable editing</span>
+                  )}
+                  {userLead && !isEditingBasic && !lead.isGlobal && (
+                    <button className="edit-icon-btn" onClick={() => handleStartEdit('basic')} title="Edit job posting">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                      </svg>
+                    </button>
+                  )}
+                  {isEditingBasic && (
+                    <span className="section-edit-actions">
+                      <button className="btn btn-primary btn-sm" onClick={() => handleSaveSection('basic')}>Save</button>
+                      <button className="btn btn-sm" onClick={() => handleCancelEdit('basic')}>Cancel</button>
+                    </span>
+                  )}
+                </div>
+                {!isEditingBasic ? (
+                  <table className="detail-table">
+                    <tbody>
+                      {lead.company && <tr><td>Company</td><td>{lead.company}</td></tr>}
+                      {lead.title && <tr><td>Position</td><td>{lead.title}</td></tr>}
+                      {lead.team && <tr><td>Team</td><td>{lead.team}</td></tr>}
+                      {lead.industry && <tr><td>Industry</td><td>{lead.industry}</td></tr>}
+                      {lead.datePosted && <tr><td>Date Posted</td><td>{new Date(lead.datePosted).toLocaleDateString()}</td></tr>}
+                      {lead.sourceLink && (
+                        <tr><td>Source URL</td><td><a href={lead.sourceLink} target="_blank" rel="noopener noreferrer">View Source →</a></td></tr>
+                      )}
+                      {!userLead && (
+                        <tr>
+                          <td></td>
+                          <td>
+                            <button
+                              className="btn btn-primary save-lead-btn"
+                              onClick={async () => {
+                                try {
+                                  await api.userLeads.save({ leadId: lead._id, priority, notes: serializeNotes(noteEntries) });
+                                  await fetchLeadDetails();
+                                } catch (err) {
+                                  showToast(`Error saving lead: ${getErrorMessage(err)}`, 'error');
+                                }
+                              }}
+                            >
+                              Save Lead
+                            </button>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                ) : (
+                  <table className="form-table">
+                    <tbody>
+                      <tr>
+                        <td>Company</td>
+                        <td><input type="text" value={lead.company || ''} onChange={(e) => updateLead({ company: e.target.value })} /></td>
+                      </tr>
+                      <tr>
+                        <td>Position</td>
+                        <td><input type="text" value={lead.title || ''} onChange={(e) => updateLead({ title: e.target.value })} /></td>
+                      </tr>
+                      <tr>
+                        <td>Team</td>
+                        <td><input type="text" value={lead.team || ''} onChange={(e) => updateLead({ team: e.target.value })} /></td>
+                      </tr>
+                      <tr>
+                        <td>Industry</td>
+                        <td><input type="text" value={lead.industry || ''} onChange={(e) => updateLead({ industry: e.target.value })} /></td>
+                      </tr>
+                      <tr>
+                        <td>Date Posted</td>
+                        <td><input type="date" value={lead.datePosted || ''} onChange={(e) => updateLead({ datePosted: e.target.value })} /></td>
+                      </tr>
+                      <tr>
+                        <td>Source URL</td>
+                        <td><input type="text" value={lead.sourceLink || ''} onChange={(e) => updateLead({ sourceLink: e.target.value })} placeholder="https://..." /></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                )}
 
-                <tr>
-                  <td>Company</td>
-                  <td>
-                    <input
-                      type="text"
-                      value={lead.company}
-                      onChange={(e) => updateLead({ company: e.target.value })}
-                      onClick={() => handleReadOnlyClick('basic')}
-                      readOnly={!isNewLead && !isEditingBasic}
-                      placeholder={isNewLead ? "e.g. Acme Corp" : ""}
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td>Position</td>
-                  <td>
-                    <input
-                      type="text"
-                      value={lead.title}
-                      onChange={(e) => updateLead({ title: e.target.value })}
-                      onClick={() => handleReadOnlyClick('basic')}
-                      readOnly={!isNewLead && !isEditingBasic}
-                      placeholder={isNewLead ? "e.g. Senior Software Engineer" : ""}
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td>Location</td>
-                  <td>
-                    <input
-                      type="text"
-                      value={lead.location || ''}
-                      onChange={(e) => updateLead({ location: e.target.value })}
-                      onClick={() => handleReadOnlyClick('basic')}
-                      readOnly={!isNewLead && !isEditingBasic}
-                      placeholder={isNewLead ? "e.g. San Francisco, CA or Remote" : ""}
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td>Team</td>
-                  <td>
-                    <input
-                      type="text"
-                      value={lead.team || ''}
-                      onChange={(e) => updateLead({ team: e.target.value })}
-                      onClick={() => handleReadOnlyClick('basic')}
-                      readOnly={!isNewLead && !isEditingBasic}
-                      placeholder={isNewLead ? "e.g. Engineering" : ""}
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td>Compensation</td>
-                  <td>
-                    <input
-                      type="text"
-                      value={lead.compensation?.raw || ''}
-                      onChange={(e) => updateLead({ compensation: { raw: e.target.value } })}
-                      onClick={() => handleReadOnlyClick('basic')}
-                      className="comp-value"
-                      readOnly={!isNewLead && !isEditingBasic}
-                      placeholder={isNewLead ? "e.g. $120k - $180k" : ""}
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td>Priority</td>
-                  <td>
-                    <select value={priority} onChange={handlePriorityChange}>
-                      <option value="high">High</option>
-                      <option value="medium">Medium</option>
-                      <option value="low">Low</option>
-                    </select>
-                  </td>
-                </tr>
-                <tr>
-                  <td>Industry</td>
-                  <td>
-                    <input
-                      type="text"
-                      value={lead.industry || ''}
-                      onChange={(e) => updateLead({ industry: e.target.value })}
-                      onClick={() => handleReadOnlyClick('basic')}
-                      readOnly={!isNewLead && !isEditingBasic}
-                      placeholder={isNewLead ? "e.g. Technology, Finance" : ""}
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td>Date Posted</td>
-                  <td>
-                    <input
-                      type={(isNewLead || isEditingBasic) ? "date" : "text"}
-                      value={(isNewLead || isEditingBasic) ? (lead.datePosted || '') : (lead.datePosted ? new Date(lead.datePosted).toLocaleDateString() : 'N/A')}
-                      onChange={(e) => updateLead({ datePosted: e.target.value })}
-                      onClick={() => handleReadOnlyClick('basic')}
-                      readOnly={!isNewLead && !isEditingBasic}
-                    />
-                  </td>
-                </tr>
-                {(isNewLead || isEditingBasic || lead.sourceApplicationLink) && (
-                  <tr>
-                    <td>Application URL</td>
-                    <td>
-                      {(isNewLead || isEditingBasic) ? (
-                        <input
-                          type="text"
-                          value={lead.sourceApplicationLink || ''}
-                          onChange={(e) => updateLead({ sourceApplicationLink: e.target.value })}
-                          placeholder="https://..."
-                        />
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <a href={lead.sourceApplicationLink} target="_blank" rel="noopener noreferrer">
-                            Application Link
-                          </a>
-                          <button
-                            className="copy-icon-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigator.clipboard.writeText(lead.sourceApplicationLink || '');
-                              const button = e.currentTarget;
-                              const originalHTML = button.innerHTML;
-                              button.innerHTML = '<span style="font-size: 8pt; color: #00a000; white-space: nowrap;">Copied!</span>';
-                              button.style.padding = '4px 6px';
-                              setTimeout(() => {
-                                button.innerHTML = originalHTML;
-                                button.style.padding = '4px';
-                              }, 1500);
-                            }}
-                            title="Copy URL"
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                            </svg>
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                )}
-                {(isNewLead || isEditingBasic || lead.sourceLink) && (
-                  <tr>
-                    <td>Source URL</td>
-                    <td>
-                      {(isNewLead || isEditingBasic) ? (
-                        <input
-                          type="text"
-                          value={lead.sourceLink || ''}
-                          onChange={(e) => updateLead({ sourceLink: e.target.value })}
-                          placeholder="https://..."
-                        />
-                      ) : (
-                        <a href={lead.sourceLink} target="_blank" rel="noopener noreferrer">
-                          View Source →
-                        </a>
-                      )}
-                    </td>
-                  </tr>
-                )}
-                <tr>
-                  <td>Stage</td>
-                  <td>
-                    <select value={status || ''} onChange={handleStatusChange} disabled={!userLead && !isNewLead}>
-                      {!status && !isNewLead && <option value="">Not saved yet</option>}
-                      <option value="saved">Saved</option>
-                      <option value="contacted">Contacted</option>
-                      <option value="applied">Applied</option>
-                      <option value="interviewing">Interviewing</option>
-                      <option value="offer">Offer</option>
-                      <option value="offer_accepted">Offer Accepted</option>
-                      <option value="rejected">Rejected</option>
-                      <option value="archived">Archived</option>
-                    </select>
-                  </td>
-                </tr>
-                {!isNewLead && (
-                  <tr>
-                    <td></td>
-                    <td>
-                      {userLead ? (
-                        <button className="btn btn-primary saved-lead-btn" disabled>
-                          Lead Saved
-                        </button>
-                      ) : (
-                        <button
-                          className="btn btn-primary save-lead-btn"
-                          onClick={async () => {
-                            try {
-                              await api.userLeads.save({
-                                leadId: lead._id,
-                                priority,
-                                notes: serializeNotes(noteEntries)
-                              });
-                              await fetchLeadDetails();
-                            } catch (err) {
-                              showToast(`Error saving lead: ${getErrorMessage(err)}`, 'error');
-                            }
-                          }}
-                        >
-                          Save Lead
+                {/* Listed Contact sub-section */}
+                {(lead.contactName || lead.contactEmail || lead.contactLinkedIn || (!lead.isGlobal && userLead)) && (
+                  <>
+                    <div className="section-title subsection-title">
+                      Listed Contact
+                      {userLead && !isEditingContact && !lead.isGlobal && (
+                        <button className="edit-icon-btn" onClick={() => handleStartEdit('contact')} title="Edit listed contact">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                          </svg>
                         </button>
                       )}
-                    </td>
-                  </tr>
+                      {isEditingContact && (
+                        <span className="section-edit-actions">
+                          <button className="btn btn-primary btn-sm" onClick={() => handleSaveSection('contact')}>Save</button>
+                          <button className="btn btn-sm" onClick={() => handleCancelEdit('contact')}>Cancel</button>
+                        </span>
+                      )}
+                    </div>
+                    {!isEditingContact ? (
+                      <table className="detail-table">
+                        <tbody>
+                          {lead.contactName && <tr><td>Name</td><td>{lead.contactName}</td></tr>}
+                          {lead.contactEmail && (
+                            <tr>
+                              <td>Email</td>
+                              <td>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <a href={`mailto:${lead.contactEmail}`}>{lead.contactEmail}</a>
+                                  <button className="copy-icon-btn" onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigator.clipboard.writeText(lead.contactEmail || '');
+                                    const button = e.currentTarget;
+                                    const originalHTML = button.innerHTML;
+                                    button.innerHTML = '<span style="font-size: 8pt; color: #00a000; white-space: nowrap;">Copied!</span>';
+                                    button.style.padding = '4px 6px';
+                                    setTimeout(() => { button.innerHTML = originalHTML; button.style.padding = '4px'; }, 1500);
+                                  }} title="Copy email">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                    </svg>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                          {lead.contactLinkedIn && (
+                            <tr><td>LinkedIn</td><td><a href={lead.contactLinkedIn} target="_blank" rel="noopener noreferrer">View Profile →</a></td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <table className="form-table">
+                        <tbody>
+                          <tr>
+                            <td>Contact Name</td>
+                            <td><input type="text" value={lead.contactName || ''} onChange={(e) => updateLead({ contactName: e.target.value })} /></td>
+                          </tr>
+                          <tr>
+                            <td>Email</td>
+                            <td><input type="email" value={lead.contactEmail || ''} onChange={(e) => updateLead({ contactEmail: e.target.value })} /></td>
+                          </tr>
+                          <tr>
+                            <td>LinkedIn</td>
+                            <td><input type="text" value={lead.contactLinkedIn || ''} onChange={(e) => updateLead({ contactLinkedIn: e.target.value })} placeholder="https://linkedin.com/in/..." /></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    )}
+                  </>
                 )}
-              </tbody>
-            </table>
+
+                {/* Your Tracking sub-section — only shown when lead is saved */}
+                {userLead && (
+                  <>
+                    <div className="section-title subsection-title">
+                      Your Tracking
+                      {!isEditingTracking && (
+                        <button className="edit-icon-btn" onClick={() => handleStartEdit('tracking')} title="Edit tracking info">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                          </svg>
+                        </button>
+                      )}
+                      {isEditingTracking && (
+                        <span className="section-edit-actions">
+                          <button className="btn btn-primary btn-sm" onClick={() => handleSaveSection('tracking')}>Save</button>
+                          <button className="btn btn-sm" onClick={() => handleCancelEdit('tracking')}>Cancel</button>
+                        </span>
+                      )}
+                    </div>
+                    <table className="form-table">
+                      <tbody>
+                        <tr>
+                          <td>Stage</td>
+                          <td>
+                            <select value={status || ''} onChange={handleStatusChange}>
+                              <option value="saved">Saved</option>
+                              <option value="contacted">Contacted</option>
+                              <option value="applied">Applied</option>
+                              <option value="interviewing">Interviewing</option>
+                              <option value="offer">Offer</option>
+                              <option value="offer_accepted">Offer Accepted</option>
+                              <option value="rejected">Rejected</option>
+                              <option value="archived">Archived</option>
+                            </select>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>Priority</td>
+                          <td>
+                            <select value={priority} onChange={handlePriorityChange}>
+                              <option value="high">High</option>
+                              <option value="medium">Medium</option>
+                              <option value="low">Low</option>
+                            </select>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>Location</td>
+                          <td>
+                            <input
+                              type="text"
+                              value={userLead.location || ''}
+                              onChange={(e) => updateUserLead({ location: e.target.value })}
+                              onClick={() => handleReadOnlyClick('tracking')}
+                              readOnly={!isEditingTracking}
+                              placeholder={lead.location || 'Your location details'}
+                            />
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>Compensation</td>
+                          <td>
+                            <input
+                              type="text"
+                              value={userLead.compensation?.raw || ''}
+                              onChange={(e) => updateUserLead({ compensation: { raw: e.target.value } })}
+                              onClick={() => handleReadOnlyClick('tracking')}
+                              readOnly={!isEditingTracking}
+                              placeholder={lead.compensation?.raw || 'Your comp details'}
+                            />
+                          </td>
+                        </tr>
+                        {(isEditingTracking || userLead.sourceApplicationLink || lead.sourceApplicationLink) && (
+                          <tr>
+                            <td>Application Link</td>
+                            <td>
+                              {isEditingTracking ? (
+                                <input
+                                  type="text"
+                                  value={userLead.sourceApplicationLink || ''}
+                                  onChange={(e) => updateUserLead({ sourceApplicationLink: e.target.value })}
+                                  placeholder={lead.sourceApplicationLink || 'https://...'}
+                                />
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <a href={userLead.sourceApplicationLink || lead.sourceApplicationLink} target="_blank" rel="noopener noreferrer">
+                                    Application Link
+                                  </a>
+                                  <button
+                                    className="copy-icon-btn"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigator.clipboard.writeText(userLead.sourceApplicationLink || lead.sourceApplicationLink || '');
+                                      const button = e.currentTarget;
+                                      const originalHTML = button.innerHTML;
+                                      button.innerHTML = '<span style="font-size: 8pt; color: #00a000; white-space: nowrap;">Copied!</span>';
+                                      button.style.padding = '4px 6px';
+                                      setTimeout(() => { button.innerHTML = originalHTML; button.style.padding = '4px'; }, 1500);
+                                    }}
+                                    title="Copy URL"
+                                  >
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                    </svg>
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </>
+                )}
+              </>
+            )}
           </div>
 
           <div className="section">
-            <div className="section-title">
-              Contact Information
-              {!isNewLead && !userLead && (
-                <span className="edit-banner">Please save this lead first to enable editing</span>
-              )}
-              {!isNewLead && userLead && !isEditingContact && (
-                <button
-                  className="edit-icon-btn"
-                  onClick={() => handleStartEdit('contact')}
-                  title="Edit contact information"
-                >
+            {isNewLead ? (
+              /* ── Add New form: contact fields ── */
+              <>
+                <div className="section-title">Contact Information</div>
+                <table className="form-table">
+                  <tbody>
+                    <tr>
+                      <td>Contact Name</td>
+                      <td><input type="text" value={lead.contactName || ''} onChange={(e) => updateLead({ contactName: e.target.value })} placeholder="e.g. Jane Doe (recruiter)" /></td>
+                    </tr>
+                    <tr>
+                      <td>Contact Email</td>
+                      <td><input type="email" value={lead.contactEmail || ''} onChange={(e) => updateLead({ contactEmail: e.target.value })} placeholder="email@example.com" /></td>
+                    </tr>
+                    <tr>
+                      <td>LinkedIn</td>
+                      <td><input type="text" value={lead.contactLinkedIn || ''} onChange={(e) => updateLead({ contactLinkedIn: e.target.value })} placeholder="https://linkedin.com/in/..." /></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </>
+            ) : (
+              /* ── Post-save: Your Contacts ── */
+              <>
+                <div className="section-title">
+                  Your Contacts
+              {!isEditingYourContacts && (
+                <button className="edit-icon-btn" onClick={() => handleStartEdit('yourContacts')} title="Edit your contacts">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                   </svg>
                 </button>
               )}
-              {isEditingContact && (
+              {isEditingYourContacts && (
                 <span className="section-edit-actions">
-                  <button className="btn btn-primary btn-sm" onClick={() => handleSaveSection('contact')}>Save</button>
-                  <button className="btn btn-sm" onClick={() => handleCancelEdit('contact')}>Cancel</button>
+                  <button className="btn btn-primary btn-sm" onClick={() => handleSaveSection('yourContacts')}>Save</button>
+                  <button className="btn btn-sm" onClick={() => handleCancelEdit('yourContacts')}>Cancel</button>
                 </span>
               )}
             </div>
             <table className="form-table">
               <tbody>
                 <tr>
-                  <td>Contact Name</td>
+                  <td>My Contact</td>
                   <td>
-                    <input
-                      type="text"
-                      value={lead.contactName || ''}
-                      onChange={(e) => updateLead({ contactName: e.target.value })}
-                      onClick={() => handleReadOnlyClick('contact')}
-                      readOnly={!isNewLead && !isEditingContact}
-                      placeholder={isNewLead ? "e.g. Jane Doe" : ""}
-                    />
+                    <input type="text" value={userLead?.userContactName || ''} onChange={(e) => updateUserLead({ userContactName: e.target.value })} onClick={() => handleReadOnlyClick('yourContacts')} readOnly={!isEditingYourContacts} placeholder={isEditingYourContacts ? "Name of person you spoke with" : ""} />
                   </td>
                 </tr>
                 <tr>
-                  <td>Email</td>
+                  <td>My Email</td>
                   <td>
-                    {!isNewLead && !isEditingContact && lead.contactEmail ? (
+                    {!isEditingYourContacts && userLead?.userContactEmail ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <a href={`mailto:${lead.contactEmail}`}>{lead.contactEmail}</a>
-                        <button
-                          className="copy-icon-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigator.clipboard.writeText(lead.contactEmail);
-                            const button = e.currentTarget;
-                            const originalHTML = button.innerHTML;
-                            button.innerHTML = '<span style="font-size: 8pt; color: #00a000; white-space: nowrap;">Copied!</span>';
-                            button.style.padding = '4px 6px';
-                            setTimeout(() => {
-                              button.innerHTML = originalHTML;
-                              button.style.padding = '4px';
-                            }, 1500);
-                          }}
-                          title="Copy email"
-                        >
+                        <a href={`mailto:${userLead.userContactEmail}`}>{userLead.userContactEmail}</a>
+                        <button className="copy-icon-btn" onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(userLead?.userContactEmail || '');
+                          const button = e.currentTarget;
+                          const originalHTML = button.innerHTML;
+                          button.innerHTML = '<span style="font-size: 8pt; color: #00a000; white-space: nowrap;">Copied!</span>';
+                          button.style.padding = '4px 6px';
+                          setTimeout(() => { button.innerHTML = originalHTML; button.style.padding = '4px'; }, 1500);
+                        }} title="Copy email">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -1381,41 +1479,38 @@ const LeadDetail = () => {
                         </button>
                       </div>
                     ) : (
-                      <input
-                        type="email"
-                        value={lead.contactEmail || ''}
-                        onChange={(e) => updateLead({ contactEmail: e.target.value })}
-                        onClick={() => handleReadOnlyClick('contact')}
-                        readOnly={!isNewLead && !isEditingContact}
-                        placeholder={isNewLead ? "email@example.com" : ""}
-                      />
+                      <input type="email" value={userLead?.userContactEmail || ''} onChange={(e) => updateUserLead({ userContactEmail: e.target.value })} onClick={() => handleReadOnlyClick('yourContacts')} readOnly={!isEditingYourContacts} placeholder={isEditingYourContacts ? "email@example.com" : ""} />
                     )}
                   </td>
                 </tr>
-                {/* Additional Emails */}
-                {(lead.additionalEmails || []).map((email, index) => (
-                  <tr key={`additional-email-${index}`}>
-                    <td>{index === 0 ? 'Additional Email' : ''}</td>
+                {(isEditingYourContacts || userLead?.userContactLinkedIn) && (
+                  <tr>
+                    <td>My LinkedIn</td>
                     <td>
-                      {!isNewLead && !isEditingContact ? (
+                      {isEditingYourContacts ? (
+                        <input type="text" value={userLead?.userContactLinkedIn || ''} onChange={(e) => updateUserLead({ userContactLinkedIn: e.target.value })} placeholder="https://linkedin.com/in/..." />
+                      ) : (
+                        <a href={userLead?.userContactLinkedIn} target="_blank" rel="noopener noreferrer">View Profile →</a>
+                      )}
+                    </td>
+                  </tr>
+                )}
+                {(userLead?.additionalEmails || []).map((email: string, index: number) => (
+                  <tr key={`add-email-${index}`}>
+                    <td>{index === 0 ? 'More Emails' : ''}</td>
+                    <td>
+                      {!isEditingYourContacts ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <a href={`mailto:${email}`}>{email}</a>
-                          <button
-                            className="copy-icon-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigator.clipboard.writeText(email);
-                              const button = e.currentTarget;
-                              const originalHTML = button.innerHTML;
-                              button.innerHTML = '<span style="font-size: 8pt; color: #00a000; white-space: nowrap;">Copied!</span>';
-                              button.style.padding = '4px 6px';
-                              setTimeout(() => {
-                                button.innerHTML = originalHTML;
-                                button.style.padding = '4px';
-                              }, 1500);
-                            }}
-                            title="Copy email"
-                          >
+                          <button className="copy-icon-btn" onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(email);
+                            const button = e.currentTarget;
+                            const originalHTML = button.innerHTML;
+                            button.innerHTML = '<span style="font-size: 8pt; color: #00a000; white-space: nowrap;">Copied!</span>';
+                            button.style.padding = '4px 6px';
+                            setTimeout(() => { button.innerHTML = originalHTML; button.style.padding = '4px'; }, 1500);
+                          }} title="Copy email">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -1424,80 +1519,78 @@ const LeadDetail = () => {
                         </div>
                       ) : (
                         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                          <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => {
-                              const newEmails = [...(lead.additionalEmails || [])];
-                              newEmails[index] = e.target.value;
-                              updateLead({ additionalEmails: newEmails });
-                            }}
-                            placeholder="email@example.com"
-                            style={{ flex: 1 }}
-                          />
-                          <button
-                            type="button"
-                            className="btn-remove-email"
-                            onClick={() => {
-                              const newEmails = (lead.additionalEmails || []).filter((_, i) => i !== index);
-                              updateLead({ additionalEmails: newEmails });
-                            }}
-                            title="Remove email"
-                          >
-                            ×
-                          </button>
+                          <input type="email" value={email} onChange={(e) => {
+                            const newEmails = [...(userLead?.additionalEmails || [])];
+                            newEmails[index] = e.target.value;
+                            updateUserLead({ additionalEmails: newEmails });
+                          }} placeholder="email@example.com" style={{ flex: 1 }} />
+                          <button type="button" className="btn-remove-email" onClick={() => {
+                            const newEmails = (userLead?.additionalEmails || []).filter((_: string, i: number) => i !== index);
+                            updateUserLead({ additionalEmails: newEmails });
+                          }} title="Remove email">×</button>
                         </div>
                       )}
                     </td>
                   </tr>
                 ))}
-                {(isNewLead || userLead) && (
-                  <tr>
-                    <td></td>
+                <tr>
+                  <td></td>
+                  <td>
+                    <button type="button" className="btn-add-email" onClick={() => {
+                      if (!isEditingYourContacts) handleStartEdit('yourContacts');
+                      updateUserLead({ additionalEmails: [...(userLead?.additionalEmails || []), ''] });
+                    }}>+ Add email</button>
+                  </td>
+                </tr>
+                {(userLead?.additionalLinks || []).map((link: { title?: string; url?: string }, index: number) => (
+                  <tr key={`add-link-${index}`}>
+                    <td>{index === 0 ? 'Links' : ''}</td>
                     <td>
-                      <button
-                        type="button"
-                        className="btn-add-email"
-                        onClick={() => {
-                          if (!isNewLead && !isEditingContact) {
-                            setIsEditingContact(true);
-                          }
-                          const newEmails = [...(lead.additionalEmails || []), ''];
-                          updateLead({ additionalEmails: newEmails });
-                        }}
-                      >
-                        + Add another email
-                      </button>
-                    </td>
-                  </tr>
-                )}
-                {(isNewLead || isEditingContact || lead.contactLinkedIn) && (
-                  <tr>
-                    <td>LinkedIn</td>
-                    <td>
-                      {(isNewLead || isEditingContact) ? (
-                        <input
-                          type="text"
-                          value={lead.contactLinkedIn || ''}
-                          onChange={(e) => updateLead({ contactLinkedIn: e.target.value })}
-                          placeholder="https://linkedin.com/in/..."
-                        />
+                      {!isEditingYourContacts ? (
+                        <div>
+                          {link.title && <span style={{ fontSize: '8pt', color: '#828282', display: 'block', marginBottom: '2px' }}>{link.title}</span>}
+                          <a href={link.url} target="_blank" rel="noopener noreferrer">
+                            {link.url && link.url.length > 50 ? link.url.substring(0, 50) + '...' : link.url}
+                          </a>
+                        </div>
                       ) : (
-                        <a href={lead.contactLinkedIn} target="_blank" rel="noopener noreferrer">
-                          View Profile →
-                        </a>
+                        <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <input type="text" value={link.title || ''} onChange={(e) => {
+                              const newLinks = [...(userLead?.additionalLinks || [])];
+                              newLinks[index] = { ...newLinks[index], title: e.target.value };
+                              updateUserLead({ additionalLinks: newLinks });
+                            }} placeholder="Title (optional)" style={{ fontSize: '8pt' }} />
+                            <input type="url" value={link.url || ''} onChange={(e) => {
+                              const newLinks = [...(userLead?.additionalLinks || [])];
+                              newLinks[index] = { ...newLinks[index], url: e.target.value };
+                              updateUserLead({ additionalLinks: newLinks });
+                            }} placeholder="https://..." />
+                          </div>
+                          <button type="button" className="btn-remove-email" onClick={() => {
+                            const newLinks = (userLead?.additionalLinks || []).filter((_: { title?: string; url?: string }, i: number) => i !== index);
+                            updateUserLead({ additionalLinks: newLinks });
+                          }} title="Remove link" style={{ marginTop: '4px' }}>×</button>
+                        </div>
                       )}
                     </td>
                   </tr>
-                )}
+                ))}
+                <tr>
+                  <td>{(userLead?.additionalLinks || []).length === 0 ? 'Links' : ''}</td>
+                  <td>
+                    <button type="button" className="btn-add-email" onClick={() => {
+                      if (!isEditingYourContacts) handleStartEdit('yourContacts');
+                      updateUserLead({ additionalLinks: [...(userLead?.additionalLinks || []), { title: '', url: '' }] });
+                    }}>{(userLead?.additionalLinks || []).length === 0 ? '+ Add link' : '+ Add another link'}</button>
+                  </td>
+                </tr>
                 {referral ? (
                   <>
                     <tr>
                       <td>Referral</td>
                       <td>
-                        <a href={`/referrals/${referral._id}`} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 'bold' }}>
-                          {referral.name}
-                        </a>
+                        <a href={`/referrals/${referral._id}`} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 'bold' }}>{referral.name}</a>
                       </td>
                     </tr>
                     {referral.email && (
@@ -1506,22 +1599,15 @@ const LeadDetail = () => {
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <a href={`mailto:${referral.email}`}>{referral.email}</a>
-                            <button
-                              className="copy-icon-btn"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigator.clipboard.writeText(referral.email);
-                                const button = e.currentTarget;
-                                const originalHTML = button.innerHTML;
-                                button.innerHTML = '<span style="font-size: 8pt; color: #00a000; white-space: nowrap;">Copied!</span>';
-                                button.style.padding = '4px 6px';
-                                setTimeout(() => {
-                                  button.innerHTML = originalHTML;
-                                  button.style.padding = '4px';
-                                }, 1500);
-                              }}
-                              title="Copy email"
-                            >
+                            <button className="copy-icon-btn" onClick={(e) => {
+                              e.stopPropagation();
+                              navigator.clipboard.writeText(referral.email || '');
+                              const button = e.currentTarget;
+                              const originalHTML = button.innerHTML;
+                              button.innerHTML = '<span style="font-size: 8pt; color: #00a000; white-space: nowrap;">Copied!</span>';
+                              button.style.padding = '4px 6px';
+                              setTimeout(() => { button.innerHTML = originalHTML; button.style.padding = '4px'; }, 1500);
+                            }} title="Copy email">
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -1537,129 +1623,31 @@ const LeadDetail = () => {
                     <td>Referral</td>
                     <td>
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        <button
-                          className="btn-sm btn-secondary"
-                          onClick={openLinkReferralModal}
-                        >
-                          Link Referral
-                        </button>
-                        <button
-                          className="btn-sm btn-secondary"
-                          onClick={() =>
-                            router.push(
-                              `/referrals/new?linkLeadId=${encodeURIComponent(
-                                userLead._id
-                              )}&leadPageId=${encodeURIComponent(
-                                lead?._id || ''
-                              )}&leadTitle=${encodeURIComponent(
-                                lead?.title || ''
-                              )}&leadCompany=${encodeURIComponent(
-                                lead?.company || ''
-                              )}`
-                            )
-                          }
-                        >
-                          + Add New Referral
-                        </button>
+                        <button className="btn-sm btn-secondary" onClick={openLinkReferralModal}>Link Referral</button>
+                        <button className="btn-sm btn-secondary" onClick={() =>
+                          router.push(`/referrals/new?linkLeadId=${encodeURIComponent(userLead._id)}&leadPageId=${encodeURIComponent(lead?._id || '')}&leadTitle=${encodeURIComponent(lead?.title || '')}&leadCompany=${encodeURIComponent(lead?.company || '')}`)
+                        }>+ Add New Referral</button>
                       </div>
-                    </td>
-                  </tr>
-                )}
-                {/* Additional Links */}
-                {(lead.additionalLinks || []).map((link, index) => (
-                  <tr key={`additional-link-${index}`}>
-                    <td>{index === 0 ? 'Links' : ''}</td>
-                    <td>
-                      {!isNewLead && !isEditingContact ? (
-                        <div>
-                          {link.title && <span style={{ fontSize: '8pt', color: '#828282', display: 'block', marginBottom: '2px' }}>{link.title}</span>}
-                          <a href={link.url} target="_blank" rel="noopener noreferrer">
-                            {link.url?.length > 50 ? link.url.substring(0, 50) + '...' : link.url}
-                          </a>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
-                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <input
-                              type="text"
-                              value={link.title || ''}
-                              onChange={(e) => {
-                                const newLinks = [...(lead.additionalLinks || [])];
-                                newLinks[index] = { ...newLinks[index], title: e.target.value };
-                                updateLead({ additionalLinks: newLinks });
-                              }}
-                              placeholder="Title (optional)"
-                              style={{ fontSize: '8pt' }}
-                            />
-                            <input
-                              type="url"
-                              value={link.url || ''}
-                              onChange={(e) => {
-                                const newLinks = [...(lead.additionalLinks || [])];
-                                newLinks[index] = { ...newLinks[index], url: e.target.value };
-                                updateLead({ additionalLinks: newLinks });
-                              }}
-                              placeholder="https://..."
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            className="btn-remove-email"
-                            onClick={() => {
-                              const newLinks = (lead.additionalLinks || []).filter((_, i) => i !== index);
-                              updateLead({ additionalLinks: newLinks });
-                            }}
-                            title="Remove link"
-                            style={{ marginTop: '4px' }}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {(isNewLead || userLead) && (
-                  <tr>
-                    <td>{(lead.additionalLinks || []).length === 0 ? 'Links' : ''}</td>
-                    <td>
-                      <button
-                        type="button"
-                        className="btn-add-email"
-                        onClick={() => {
-                          if (!isNewLead && !isEditingContact) {
-                            setIsEditingContact(true);
-                          }
-                          const newLinks = [...(lead.additionalLinks || []), { title: '', url: '' }];
-                          updateLead({ additionalLinks: newLinks });
-                        }}
-                      >
-                        {(lead.additionalLinks || []).length === 0 ? '+ Add link' : '+ Add another link'}
-                      </button>
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
+            </>
+          )}
+
             <div className="notes-thread">
               <div className="section-title">Notes</div>
               {isAddingNote ? (
                 <div className="add-note">
-                  <NoteEditor
-                    content={newNote}
-                    onChange={setNewNote}
-                    placeholder="Write your note..."
-                    onCmdEnter={handleAddNote}
-                  />
+                  <NoteEditor content={newNote} onChange={setNewNote} placeholder="Write your note..." onCmdEnter={handleAddNote} />
                   <div className="note-edit-actions">
                     <button className="btn btn-primary" onClick={handleAddNote}>Save</button>
                     <button className="btn" onClick={handleCancelAddNote}>Cancel</button>
                   </div>
                 </div>
               ) : (
-                <button className="btn btn-primary" onClick={() => setIsAddingNote(true)} style={{ marginBottom: 8 }}>
-                  Add Note
-                </button>
+                <button className="btn btn-primary" onClick={() => setIsAddingNote(true)} style={{ marginBottom: 8 }}>Add Note</button>
               )}
               {noteEntries.length > 0 ? (
                 [...noteEntries].reverse().map((entry) => (
@@ -1668,11 +1656,7 @@ const LeadDetail = () => {
                       <span className="note-date">
                         {new Date(entry.createdAt).toLocaleString()}
                         {editingNoteId !== entry.id && (
-                          <button
-                            className="edit-icon-btn"
-                            onClick={() => handleEditNote(entry.id)}
-                            title="Edit note"
-                          >
+                          <button className="edit-icon-btn" onClick={() => handleEditNote(entry.id)} title="Edit note">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
@@ -1683,22 +1667,14 @@ const LeadDetail = () => {
                     </div>
                     {editingNoteId === entry.id ? (
                       <>
-                        <NoteEditor
-                          content={editingNoteText}
-                          onChange={setEditingNoteText}
-                          onCmdEnter={handleSaveNoteEdit}
-                        />
+                        <NoteEditor content={editingNoteText} onChange={setEditingNoteText} onCmdEnter={handleSaveNoteEdit} />
                         <div className="note-edit-actions">
                           <button className="btn btn-primary" onClick={handleSaveNoteEdit}>Save</button>
                           <button className="btn" onClick={handleCancelNoteEdit}>Cancel</button>
                         </div>
                       </>
                     ) : (
-                      <NoteEditor
-                        content={entry.text}
-                        onChange={() => { }}
-                        editable={false}
-                      />
+                      <NoteEditor content={entry.text} onChange={() => {}} editable={false} />
                     )}
                   </div>
                 ))

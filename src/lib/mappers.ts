@@ -11,8 +11,6 @@ export const mapLead = (row: AnyRecord | null) => {
     compensation: row.compensation,
     contactName: row.contact_name ?? row.contactName,
     contactEmail: row.contact_email ?? row.contactEmail,
-    additionalEmails: row.additional_emails ?? row.additionalEmails,
-    additionalLinks: row.additional_links ?? row.additionalLinks,
     contactLinkedIn: row.contact_linkedin ?? row.contactLinkedIn,
     sourceLink: row.source_link ?? row.sourceLink,
     sourceApplicationLink:
@@ -46,6 +44,14 @@ export const mapUserLead = (row: AnyRecord | null) => {
     offerAt: row.offer_at ?? row.offerAt,
     offerAcceptedAt: row.offer_accepted_at ?? row.offerAcceptedAt,
     lastActivityAt: row.last_activity_at ?? row.lastActivityAt,
+    location: row.location,
+    compensation: row.compensation,
+    sourceApplicationLink: row.source_application_link ?? row.sourceApplicationLink,
+    userContactName: row.user_contact_name ?? row.userContactName,
+    userContactEmail: row.user_contact_email ?? row.userContactEmail,
+    userContactLinkedIn: row.user_contact_linkedin ?? row.userContactLinkedIn,
+    additionalEmails: row.additional_emails ?? row.additionalEmails,
+    additionalLinks: row.additional_links ?? row.additionalLinks,
     createdAt: row.created_at ?? row.createdAt,
     updatedAt: row.updated_at ?? row.updatedAt,
   };

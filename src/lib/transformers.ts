@@ -8,8 +8,6 @@ export const leadToDb = (payload: AnyRecord) => ({
   compensation: payload.compensation,
   contact_name: payload.contactName ?? payload.contact_name,
   contact_email: payload.contactEmail ?? payload.contact_email,
-  additional_emails: payload.additionalEmails ?? payload.additional_emails,
-  additional_links: payload.additionalLinks ?? payload.additional_links,
   contact_linkedin: payload.contactLinkedIn ?? payload.contact_linkedin,
   source_link: payload.sourceLink ?? payload.source_link,
   source_application_link:
@@ -28,6 +26,14 @@ export const userLeadUpdateToDb = (payload: AnyRecord) => ({
   custom_fields: payload.customFields ?? payload.custom_fields,
   saved_at: payload.savedAt ?? payload.saved_at,
   last_activity_at: payload.lastActivityAt ?? payload.last_activity_at,
+  location: payload.location,
+  compensation: payload.compensation,
+  source_application_link: payload.sourceApplicationLink ?? payload.source_application_link,
+  user_contact_name: payload.userContactName ?? payload.user_contact_name,
+  user_contact_email: payload.userContactEmail ?? payload.user_contact_email,
+  user_contact_linkedin: payload.userContactLinkedIn ?? payload.user_contact_linkedin,
+  additional_emails: payload.additionalEmails ?? payload.additional_emails,
+  additional_links: payload.additionalLinks ?? payload.additional_links,
 });
 
 export const referralToDb = (payload: AnyRecord) => ({
