@@ -74,7 +74,7 @@ const Pipeline = () => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { showToast, ToastComponent } = useToast();
+  const { showToast, toastElement } = useToast();
   const [pipeline, setPipeline] = useState<PipelineStage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -594,7 +594,7 @@ const Pipeline = () => {
           );
         })}
       </div>
-      <ToastComponent />
+      {toastElement}
 
       {/* Publish Lead Modal */}
       <PublishLeadModal

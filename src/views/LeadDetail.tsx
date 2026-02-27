@@ -92,7 +92,7 @@ const LeadDetail = () => {
   const leadParam = (params as { leadId?: string | string[] }).leadId;
   const leadId = Array.isArray(leadParam) ? leadParam[0] : leadParam;
   const isNewLead = leadId === 'new';
-  const { showToast, ToastComponent } = useToast();
+  const { showToast, toastElement } = useToast();
   const addLeadBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const [lead, setLead] = useState<Lead | null>(null);
@@ -1452,13 +1452,13 @@ const LeadDetail = () => {
             <table className="form-table">
               <tbody>
                 <tr>
-                  <td>My Contact</td>
+                  <td>Primary Contact</td>
                   <td>
                     <input type="text" value={userLead?.userContactName || ''} onChange={(e) => updateUserLead({ userContactName: e.target.value })} onClick={() => handleReadOnlyClick('yourContacts')} readOnly={!isEditingYourContacts} placeholder={isEditingYourContacts ? "Name of person you spoke with" : ""} />
                   </td>
                 </tr>
                 <tr>
-                  <td>My Email</td>
+                  <td>Primary Email</td>
                   <td>
                     {!isEditingYourContacts && userLead?.userContactEmail ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1485,7 +1485,7 @@ const LeadDetail = () => {
                 </tr>
                 {(isEditingYourContacts || userLead?.userContactLinkedIn) && (
                   <tr>
-                    <td>My LinkedIn</td>
+                    <td>Primary LinkedIn</td>
                     <td>
                       {isEditingYourContacts ? (
                         <input type="text" value={userLead?.userContactLinkedIn || ''} onChange={(e) => updateUserLead({ userContactLinkedIn: e.target.value })} placeholder="https://linkedin.com/in/..." />
@@ -1718,7 +1718,7 @@ const LeadDetail = () => {
         </div>
       </div>
 
-      <ToastComponent />
+      {toastElement}
 
       {/* Publish Lead Modal */}
       <PublishLeadModal

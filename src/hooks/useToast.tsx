@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -16,21 +16,23 @@ export const useToast = () => {
     message: '',
     type: 'success',
   });
+  const lastToastRef = useRef(0);
 
   const showToast = (message: string, type: ToastType = 'success') => {
+    const now = Date.now();
+    if (now - lastToastRef.current < 500) return;
+    lastToastRef.current = now;
     setToast({ show: true, message, type });
     setTimeout(() => {
       setToast({ show: false, message: '', type: 'success' });
     }, 3000);
   };
 
-  const ToastComponent = () => (
-    toast.show ? (
-      <div className={`toast toast-${toast.type}`}>
-        {toast.message}
-      </div>
-    ) : null
-  );
+  const toastElement = toast.show ? (
+    <div className={`toast toast-${toast.type}`}>
+      {toast.message}
+    </div>
+  ) : null;
 
-  return { showToast, ToastComponent };
+  return { showToast, toastElement };
 };

@@ -8,7 +8,7 @@ import { useToast } from "../hooks/useToast";
 import { getErrorMessage } from "../lib/errors";
 
 const Referrals = () => {
-  const { showToast, ToastComponent } = useToast();
+  const { showToast, toastElement } = useToast();
   const router = useRouter();
   const [referrals, setReferrals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,7 +63,7 @@ const Referrals = () => {
             Retry
           </button>
         </div>
-        <ToastComponent />
+        {toastElement}
       </div>
     );
   }
@@ -217,7 +217,7 @@ const Referrals = () => {
           </table>
         </div>
       </div>
-      <ToastComponent />
+      {toastElement}
     </div>
   );
 };

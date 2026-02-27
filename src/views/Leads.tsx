@@ -34,7 +34,7 @@ const Leads = () => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { showToast, ToastComponent } = useToast();
+  const { showToast, toastElement } = useToast();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [savedLeads, setSavedLeads] = useState<Set<string>>(new Set());
   const [userLeadsMap, setUserLeadsMap] = useState<Map<string, UserLead>>(new Map()); // Map of leadId -> userLead data
@@ -696,7 +696,7 @@ const Leads = () => {
           </div>
         </div>
       </div>
-      <ToastComponent />
+      {toastElement}
     </div>
   );
 };

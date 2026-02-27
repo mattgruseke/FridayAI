@@ -70,7 +70,7 @@ const ReferralDetail = () => {
   const leadPageId = searchParams?.get("leadPageId");
   const leadTitleFromState = searchParams?.get("leadTitle");
   const leadCompanyFromState = searchParams?.get("leadCompany");
-  const { showToast, ToastComponent } = useToast();
+  const { showToast, toastElement } = useToast();
 
   const [referral, setReferral] = useState<Referral | null>(null);
   const [activity, setActivity] = useState<any[]>([]);
@@ -324,7 +324,7 @@ const ReferralDetail = () => {
             Back to Referrals
           </button>
         </div>
-        <ToastComponent />
+        {toastElement}
       </div>
     );
   }
@@ -620,7 +620,7 @@ const ReferralDetail = () => {
         </div>
       )}
 
-      <ToastComponent />
+      {toastElement}
     </div>
   );
 };
