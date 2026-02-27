@@ -145,6 +145,10 @@
      align-items: center;
  }
 
+.lead-status-badge {
+    margin-bottom: 8px;
+}
+
  .section-title.subsection-title {
     margin-top: 16px;
     padding-top: 8px;

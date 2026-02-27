@@ -188,6 +188,8 @@ const LeadDetail = () => {
           company: lead.company,
           team: lead.team,
           industry: lead.industry,
+          location: lead.location,
+          compensation: lead.compensation,
           datePosted: lead.datePosted,
           sourceLink: lead.sourceLink,
         });
@@ -1077,6 +1079,15 @@ const LeadDetail = () => {
         </label>
       )}
 
+      {userLead && status && (
+        <div className="lead-status-badge">
+          <strong>Current Stage:</strong>{' '}
+          <span style={{ textTransform: 'capitalize', background: 'var(--accent)', color: '#fff', padding: '2px 10px', borderRadius: '12px', fontWeight: 600, fontSize: '0.85em' }}>
+            {status.replace(/_/g, ' ')}
+          </span>
+        </div>
+      )}
+
       <div className="content-grid">
         <div className="main-col">
           <div className="section">
@@ -1156,6 +1167,8 @@ const LeadDetail = () => {
                       {lead.title && <tr><td>Position</td><td>{lead.title}</td></tr>}
                       {lead.team && <tr><td>Team</td><td>{lead.team}</td></tr>}
                       {lead.industry && <tr><td>Industry</td><td>{lead.industry}</td></tr>}
+                      {lead.location && <tr><td>Location</td><td>{lead.location}</td></tr>}
+                      {lead.compensation?.raw && <tr><td>Compensation</td><td className="comp-value">{lead.compensation.raw}</td></tr>}
                       {lead.datePosted && <tr><td>Date Posted</td><td>{new Date(lead.datePosted).toLocaleDateString()}</td></tr>}
                       {lead.sourceLink && (
                         <tr><td>Source URL</td><td><a href={lead.sourceLink} target="_blank" rel="noopener noreferrer">View Source →</a></td></tr>
@@ -1200,6 +1213,14 @@ const LeadDetail = () => {
                       <tr>
                         <td>Industry</td>
                         <td><input type="text" value={lead.industry || ''} onChange={(e) => updateLead({ industry: e.target.value })} /></td>
+                      </tr>
+                      <tr>
+                        <td>Location</td>
+                        <td><input type="text" value={lead.location || ''} onChange={(e) => updateLead({ location: e.target.value })} /></td>
+                      </tr>
+                      <tr>
+                        <td>Compensation</td>
+                        <td><input type="text" value={lead.compensation?.raw || ''} onChange={(e) => updateLead({ compensation: { raw: e.target.value } })} /></td>
                       </tr>
                       <tr>
                         <td>Date Posted</td>
@@ -1287,125 +1308,125 @@ const LeadDetail = () => {
                   </>
                 )}
 
-                {/* Your Tracking sub-section — only shown when lead is saved */}
-                {userLead && (
-                  <>
-                    <div className="section-title subsection-title">
-                      Your Tracking
-                      {!isEditingTracking && (
-                        <button className="edit-icon-btn" onClick={() => handleStartEdit('tracking')} title="Edit tracking info">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                          </svg>
-                        </button>
-                      )}
-                      {isEditingTracking && (
-                        <span className="section-edit-actions">
-                          <button className="btn btn-primary btn-sm" onClick={() => handleSaveSection('tracking')}>Save</button>
-                          <button className="btn btn-sm" onClick={() => handleCancelEdit('tracking')}>Cancel</button>
-                        </span>
-                      )}
-                    </div>
-                    <table className="form-table">
-                      <tbody>
-                        <tr>
-                          <td>Stage</td>
-                          <td>
-                            <select value={status || ''} onChange={handleStatusChange}>
-                              <option value="saved">Saved</option>
-                              <option value="contacted">Contacted</option>
-                              <option value="applied">Applied</option>
-                              <option value="interviewing">Interviewing</option>
-                              <option value="offer">Offer</option>
-                              <option value="offer_accepted">Offer Accepted</option>
-                              <option value="rejected">Rejected</option>
-                              <option value="archived">Archived</option>
-                            </select>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>Priority</td>
-                          <td>
-                            <select value={priority} onChange={handlePriorityChange}>
-                              <option value="high">High</option>
-                              <option value="medium">Medium</option>
-                              <option value="low">Low</option>
-                            </select>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>Location</td>
-                          <td>
-                            <input
-                              type="text"
-                              value={userLead.location || ''}
-                              onChange={(e) => updateUserLead({ location: e.target.value })}
-                              onClick={() => handleReadOnlyClick('tracking')}
-                              readOnly={!isEditingTracking}
-                              placeholder={lead.location || 'Your location details'}
-                            />
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>Compensation</td>
-                          <td>
-                            <input
-                              type="text"
-                              value={userLead.compensation?.raw || ''}
-                              onChange={(e) => updateUserLead({ compensation: { raw: e.target.value } })}
-                              onClick={() => handleReadOnlyClick('tracking')}
-                              readOnly={!isEditingTracking}
-                              placeholder={lead.compensation?.raw || 'Your comp details'}
-                            />
-                          </td>
-                        </tr>
-                        {(isEditingTracking || userLead.sourceApplicationLink || lead.sourceApplicationLink) && (
-                          <tr>
-                            <td>Application Link</td>
-                            <td>
-                              {isEditingTracking ? (
-                                <input
-                                  type="text"
-                                  value={userLead.sourceApplicationLink || ''}
-                                  onChange={(e) => updateUserLead({ sourceApplicationLink: e.target.value })}
-                                  placeholder={lead.sourceApplicationLink || 'https://...'}
-                                />
-                              ) : (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <a href={userLead.sourceApplicationLink || lead.sourceApplicationLink} target="_blank" rel="noopener noreferrer">
-                                    Application Link
-                                  </a>
-                                  <button
-                                    className="copy-icon-btn"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      navigator.clipboard.writeText(userLead.sourceApplicationLink || lead.sourceApplicationLink || '');
-                                      const button = e.currentTarget;
-                                      const originalHTML = button.innerHTML;
-                                      button.innerHTML = '<span style="font-size: 8pt; color: #00a000; white-space: nowrap;">Copied!</span>';
-                                      button.style.padding = '4px 6px';
-                                      setTimeout(() => { button.innerHTML = originalHTML; button.style.padding = '4px'; }, 1500);
-                                    }}
-                                    title="Copy URL"
-                                  >
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                                    </svg>
-                                  </button>
-                                </div>
-                              )}
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </>
-                )}
               </>
             )}
           </div>
+
+          {!isNewLead && userLead && (
+            <div className="section">
+              <div className="section-title">
+                Tracking
+                {!isEditingTracking && (
+                  <button className="edit-icon-btn" onClick={() => handleStartEdit('tracking')} title="Edit tracking info">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                  </button>
+                )}
+                {isEditingTracking && (
+                  <span className="section-edit-actions">
+                    <button className="btn btn-primary btn-sm" onClick={() => handleSaveSection('tracking')}>Save</button>
+                    <button className="btn btn-sm" onClick={() => handleCancelEdit('tracking')}>Cancel</button>
+                  </span>
+                )}
+              </div>
+              <table className="form-table">
+                <tbody>
+                  <tr>
+                    <td>Stage</td>
+                    <td>
+                      <select value={status || ''} onChange={handleStatusChange}>
+                        <option value="saved">Saved</option>
+                        <option value="contacted">Contacted</option>
+                        <option value="applied">Applied</option>
+                        <option value="interviewing">Interviewing</option>
+                        <option value="offer">Offer</option>
+                        <option value="offer_accepted">Offer Accepted</option>
+                        <option value="rejected">Rejected</option>
+                        <option value="archived">Archived</option>
+                      </select>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Priority</td>
+                    <td>
+                      <select value={priority} onChange={handlePriorityChange}>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                      </select>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Location</td>
+                    <td>
+                      <input
+                        type="text"
+                        value={userLead.location || ''}
+                        onChange={(e) => updateUserLead({ location: e.target.value })}
+                        onClick={() => handleReadOnlyClick('tracking')}
+                        readOnly={!isEditingTracking}
+                        placeholder={lead.location || 'Your location details'}
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Actual Compensation</td>
+                    <td>
+                      <input
+                        type="text"
+                        value={userLead.compensation?.raw || ''}
+                        onChange={(e) => updateUserLead({ compensation: { raw: e.target.value } })}
+                        onClick={() => handleReadOnlyClick('tracking')}
+                        readOnly={!isEditingTracking}
+                        placeholder={lead.compensation?.raw || 'Your comp details'}
+                      />
+                    </td>
+                  </tr>
+                  {(isEditingTracking || userLead.sourceApplicationLink || lead.sourceApplicationLink) && (
+                    <tr>
+                      <td>Application Link</td>
+                      <td>
+                        {isEditingTracking ? (
+                          <input
+                            type="text"
+                            value={userLead.sourceApplicationLink || ''}
+                            onChange={(e) => updateUserLead({ sourceApplicationLink: e.target.value })}
+                            placeholder={lead.sourceApplicationLink || 'https://...'}
+                          />
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <a href={userLead.sourceApplicationLink || lead.sourceApplicationLink} target="_blank" rel="noopener noreferrer">
+                              Application Link
+                            </a>
+                            <button
+                              className="copy-icon-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(userLead.sourceApplicationLink || lead.sourceApplicationLink || '');
+                                const button = e.currentTarget;
+                                const originalHTML = button.innerHTML;
+                                button.innerHTML = '<span style="font-size: 8pt; color: #00a000; white-space: nowrap;">Copied!</span>';
+                                button.style.padding = '4px 6px';
+                                setTimeout(() => { button.innerHTML = originalHTML; button.style.padding = '4px'; }, 1500);
+                              }}
+                              title="Copy URL"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           <div className="section">
             {isNewLead ? (
@@ -1433,7 +1454,7 @@ const LeadDetail = () => {
               /* ── Post-save: Your Contacts ── */
               <>
                 <div className="section-title">
-                  Your Contacts
+                   Contacts
               {!isEditingYourContacts && (
                 <button className="edit-icon-btn" onClick={() => handleStartEdit('yourContacts')} title="Edit your contacts">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1689,12 +1710,6 @@ const LeadDetail = () => {
         <div className="side-col">
           <div className="section">
             <div className="section-title">Activity & Timeline</div>
-
-            {userLead && status && (
-              <div className="lead-status-badge">
-                <strong>Current Status:</strong> {status}
-              </div>
-            )}
 
             {activity.length > 0 ? (
               activity.map((item, index) => (
