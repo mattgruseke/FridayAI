@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   if (mode === "single" && leadId) {
     const { data: userLead } = await supabase
       .from("user_leads")
-      .select("id")
+      .select("id, compensation")
       .eq("lead_id", leadId)
       .eq("user_id", user!.id)
       .maybeSingle();
@@ -37,18 +37,18 @@ export async function POST(request: Request) {
 
     if (!lead.is_global) {
       const now = new Date().toISOString();
-      const publicLeadData = {
+      const publicLeadData: Record<string, unknown> = {
         is_global: true,
         created_by: "community",
         shared_by: user!.id,
         shared_at: now,
         updated_at: now,
-        contact_name: null,
-        contact_email: null,
-        additional_emails: [],
-        contact_linkedin: null,
-        additional_links: null,
       };
+
+      // If job posting has no compensation, fall back to user's tracked compensation
+      if (!lead.compensation?.raw && userLead.compensation?.raw) {
+        publicLeadData.compensation = userLead.compensation;
+      }
 
       await supabase.from("leads").update(publicLeadData).eq("id", leadId);
     }
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
   if (mode === "all") {
     const { data: userLeads } = await supabase
       .from("user_leads")
-      .select("lead_id")
+      .select("lead_id, compensation")
       .eq("user_id", user!.id);
 
     if (!userLeads || userLeads.length === 0) {
@@ -68,9 +68,14 @@ export async function POST(request: Request) {
 
     const leadIds = userLeads.map((item) => item.lead_id);
 
+    // Build a map of lead_id -> user compensation for quick lookup
+    const userLeadCompMap = new Map(
+      userLeads.map((ul) => [ul.lead_id, ul.compensation])
+    );
+
     const { data: leads } = await supabase
       .from("leads")
-      .select("id, is_global")
+      .select("id, is_global, compensation")
       .in("id", leadIds)
       .neq("is_global", true);
 
@@ -81,21 +86,21 @@ export async function POST(request: Request) {
     const now = new Date().toISOString();
 
     for (const lead of leads) {
-      await supabase
-        .from("leads")
-        .update({
-          is_global: true,
-          created_by: "community",
-          shared_by: user!.id,
-          shared_at: now,
-          updated_at: now,
-          contact_name: null,
-          contact_email: null,
-          additional_emails: [],
-          contact_linkedin: null,
-          additional_links: null,
-        })
-        .eq("id", lead.id);
+      const updatePayload: Record<string, unknown> = {
+        is_global: true,
+        created_by: "community",
+        shared_by: user!.id,
+        shared_at: now,
+        updated_at: now,
+      };
+
+      // If job posting has no compensation, fall back to user's tracked compensation
+      const userComp = userLeadCompMap.get(lead.id);
+      if (!lead.compensation?.raw && userComp?.raw) {
+        updatePayload.compensation = userComp;
+      }
+
+      await supabase.from("leads").update(updatePayload).eq("id", lead.id);
     }
 
     return jsonResponse({

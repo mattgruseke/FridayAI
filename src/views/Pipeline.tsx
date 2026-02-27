@@ -13,7 +13,7 @@ import type { PublishLeadMode } from '../components/PublishLeadModal';
 import { getErrorMessage } from '../lib/errors';
 
 type PipelineLeadItem = {
-  userLead?: { _id?: string; priority?: "high" | "medium" | "low"; lastActivityAt?: string };
+  userLead?: { _id?: string; priority?: "high" | "medium" | "low"; lastActivityAt?: string; compensation?: { raw?: string } };
   leadDetails?: { _id?: string; title?: string; company?: string; location?: string; compensation?: { raw?: string } };
   referral?: { name?: string; email?: string };
 };
@@ -371,7 +371,7 @@ const Pipeline = () => {
                   <div className="job-meta">
                     {leadDetails.location} |
                     <span className="job-comp">
-                      {leadDetails.compensation?.raw || 'N/A'}
+                      {leadDetails.compensation?.raw || userLead.compensation?.raw || 'N/A'}
                     </span>
                     {userLead.priority && (
                       <span className={`priority-badge priority-${userLead.priority}`}>
