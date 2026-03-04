@@ -543,6 +543,17 @@
      border-color: var(--accent);
  }
 
+.toolbar-divider {
+    width: 1px;
+    background: #e6e6df;
+    margin: 2px 4px;
+    align-self: stretch;
+}
+
+body.dark-mode .toolbar-divider {
+    background: #404040;
+}
+
  .note-editor .tiptap {
      padding: 6px 8px;
      min-height: 40px;

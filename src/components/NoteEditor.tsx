@@ -3,6 +3,7 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import Underline from '@tiptap/extension-underline';
 import { Markdown } from 'tiptap-markdown';
 import { Extension } from '@tiptap/core';
 import { useEffect, useRef } from 'react';
@@ -26,8 +27,44 @@ const MenuBar = ({ editor }: { editor: ReturnType<typeof useEditor> }) => {
         className={`toolbar-btn ${editor.isActive('bold') ? 'is-active' : ''}`}
         title="Bold"
       >
-        B
+        <strong>B</strong>
       </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleItalic().run()}
+        className={`toolbar-btn ${editor.isActive('italic') ? 'is-active' : ''}`}
+        title="Italic"
+      >
+        <em>I</em>
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleUnderline().run()}
+        className={`toolbar-btn ${editor.isActive('underline') ? 'is-active' : ''}`}
+        title="Underline"
+      >
+        <span style={{ textDecoration: 'underline' }}>U</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleStrike().run()}
+        className={`toolbar-btn ${editor.isActive('strike') ? 'is-active' : ''}`}
+        title="Strikethrough"
+      >
+        <span style={{ textDecoration: 'line-through' }}>S</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleCode().run()}
+        className={`toolbar-btn ${editor.isActive('code') ? 'is-active' : ''}`}
+        title="Inline Code"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polyline points="16 18 22 12 16 6" />
+          <polyline points="8 6 2 12 8 18" />
+        </svg>
+      </button>
+      <div className="toolbar-divider" />
       <button
         type="button"
         onClick={() => editor.chain().focus().toggleBulletList().run()}
@@ -78,6 +115,7 @@ const NoteEditor = ({ content, onChange, placeholder = 'Add a note...', editable
         horizontalRule: false,
       }),
       Placeholder.configure({ placeholder }),
+      Underline,
       Markdown,
       Extension.create({
         name: 'cmdEnter',
