@@ -10,6 +10,9 @@ type UserProfile = {
   id: string;
   role?: string;
   invite_code_used?: string;
+  onboarding_completed?: boolean;
+  onboarding_skipped?: boolean;
+  preferred_roles?: string[];
   [key: string]: unknown;
 } | null;
 
@@ -19,6 +22,10 @@ type AuthContextValue = {
   loading: boolean;
   isAdmin: boolean;
   isAuthenticated: boolean;
+  onboardingCompleted: boolean;
+  onboardingSkipped: boolean;
+  preferredRoles: string[];
+  refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -47,10 +54,37 @@ export const AuthProvider = ({
   const [userProfile, setUserProfile] = useState<UserProfile>(initialProfile);
   const [loading, setLoading] = useState(false);
 
+  const fetchOrCreateProfile = async (userId: string) => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("user_profiles")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (data) {
+      setUserProfile(data);
+      return;
+    }
+
+    // First login — create the profile row
+    const { data: created } = await supabase
+      .from("user_profiles")
+      .insert({ id: userId })
+      .select("*")
+      .single();
+
+    setUserProfile(created);
+  };
+
+  const refreshProfile = async () => {
+    if (!user) return;
+    await fetchOrCreateProfile(user.id);
+  };
+
   useEffect(() => {
     const supabase = createClient();
 
-    // Listen for auth state changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
@@ -58,14 +92,7 @@ export const AuthProvider = ({
       setUser(currentUser);
 
       if (currentUser) {
-        // Fetch user profile
-        const { data } = await supabase
-          .from("user_profiles")
-          .select("*")
-          .eq("id", currentUser.id)
-          .single();
-
-        setUserProfile(data);
+        await fetchOrCreateProfile(currentUser.id);
       } else {
         setUserProfile(null);
       }
@@ -84,6 +111,10 @@ export const AuthProvider = ({
     loading,
     isAdmin: userProfile?.role === "admin",
     isAuthenticated: !!user,
+    onboardingCompleted: userProfile?.onboarding_completed === true,
+    onboardingSkipped: userProfile?.onboarding_skipped === true,
+    preferredRoles: (userProfile?.preferred_roles as string[]) ?? [],
+    refreshProfile,
     signOut: signOutAction,
   };
 

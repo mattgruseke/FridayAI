@@ -110,6 +110,7 @@ const Header = () => {
           <nav className="nav desktop-nav">
             <Link href="/pipeline">pipeline</Link>
             <Link href="/leads">leads</Link>
+            <Link href="/lists">lists</Link>
             <Link href="/referrals">referrals</Link>
           </nav>
 
@@ -243,6 +244,9 @@ const Header = () => {
               </Link>
               <Link href="/leads" onClick={() => setMobileMenuOpen(false)}>
                 Leads
+              </Link>
+              <Link href="/lists" onClick={() => setMobileMenuOpen(false)}>
+                Lists
               </Link>
               <Link href="/referrals" onClick={() => setMobileMenuOpen(false)}>
                 Referrals

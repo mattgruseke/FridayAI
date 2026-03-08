@@ -36,6 +36,12 @@ export const userLeadUpdateToDb = (payload: AnyRecord) => ({
   additional_links: payload.additionalLinks ?? payload.additional_links,
 });
 
+export const userListToDb = (payload: AnyRecord) => ({
+  name: payload.name,
+  description: payload.description,
+  lead_ids: payload.leadIds ?? payload.lead_ids ?? [],
+});
+
 export const referralToDb = (payload: AnyRecord) => ({
   name: payload.name,
   company: payload.company,

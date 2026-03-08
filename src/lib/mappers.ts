@@ -57,6 +57,19 @@ export const mapUserLead = (row: AnyRecord | null) => {
   };
 };
 
+export const mapUserList = (row: AnyRecord | null) => {
+  if (!row) return row;
+  return {
+    _id: row.id ?? row._id,
+    userId: row.user_id ?? row.userId,
+    name: row.name,
+    description: row.description,
+    leadIds: row.lead_ids ?? row.leadIds ?? [],
+    createdAt: row.created_at ?? row.createdAt,
+    updatedAt: row.updated_at ?? row.updatedAt,
+  };
+};
+
 export const mapReferral = (row: AnyRecord | null) => {
   if (!row) return row;
   return {

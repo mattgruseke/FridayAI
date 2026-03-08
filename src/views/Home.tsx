@@ -49,7 +49,7 @@ type ActivityItem = {
 const Home = () => {
   const pathname = usePathname();
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, preferredRoles } = useAuth();
   const [pipeline, setPipeline] = useState<PipelineStage[]>([]);
   const [recentLeads, setRecentLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,7 +73,7 @@ const Home = () => {
         api.userLeads.getPipeline() as Promise<PipelineStage[]>,
         api.leads.getAll({
           page: 1,
-          limit: 10,
+          limit: 200,
           sort: "-created_at",
         }) as Promise<{ leads?: any[] }>,
       ]);
@@ -208,6 +208,16 @@ const Home = () => {
 
   const recentActivity = getRecentActivity();
   const hasActivity = recentActivity.today.length > 0 || recentActivity.thisWeek.length > 0 || recentActivity.lastWeek.length > 0;
+
+  const displayLeads = preferredRoles.length > 0
+    ? recentLeads
+        .filter((lead) =>
+          preferredRoles.some((role) =>
+            lead.title?.toLowerCase().includes(role.toLowerCase())
+          )
+        )
+        .slice(0, 10)
+    : recentLeads.slice(0, 10);
 
   // Status display mapping
   const statusColumns = [
@@ -398,8 +408,8 @@ const Home = () => {
               <span>New Leads for You</span>
               <Link href="/leads">view all leads</Link>
             </div>
-            {recentLeads.length > 0 ? (
-              recentLeads.map((lead, index) => (
+            {displayLeads.length > 0 ? (
+              displayLeads.map((lead, index) => (
                 <div key={lead._id} className="list-item">
                   <div className="item-number">{index + 1}.</div>
                   <div className="item-content">

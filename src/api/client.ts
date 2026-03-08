@@ -207,12 +207,64 @@ export const referralsAPI = {
     }),
 };
 
+// User Lists API
+export const userListsAPI = {
+  getAll: () => fetchAPI("/user-lists"),
+
+  getById: (id: string) => fetchAPI(`/user-lists?id=${id}`),
+
+  create: (data: unknown) =>
+    fetchAPI("/user-lists", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: unknown) =>
+    fetchAPI(`/user-lists?id=${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    fetchAPI(`/user-lists?id=${id}`, {
+      method: "DELETE",
+    }),
+};
+
+// Onboarding API
+export const onboardingAPI = {
+  complete: (preferredRoles: string[]) =>
+    fetchAPI("/onboarding", {
+      method: "POST",
+      body: JSON.stringify({ preferredRoles }),
+    }),
+
+  skip: () =>
+    fetchAPI("/onboarding", {
+      method: "POST",
+      body: JSON.stringify({ skip: true }),
+    }),
+
+  saveRoles: (preferredRoles: string[]) =>
+    fetchAPI("/onboarding", {
+      method: "PUT",
+      body: JSON.stringify({ preferredRoles }),
+    }),
+
+  refresh: (listId: string) =>
+    fetchAPI(`/onboarding?listId=${listId}`, {
+      method: "PUT",
+    }),
+};
+
 // Export combined API object
 export const api = {
   leads: leadsAPI,
   userLeads: userLeadsAPI,
   referrals: referralsAPI,
   publish: publishLeadsAPI,
+  userLists: userListsAPI,
+  onboarding: onboardingAPI,
 };
 
 export default api;

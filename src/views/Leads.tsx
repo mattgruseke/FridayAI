@@ -9,6 +9,7 @@ import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import api from '../api/client';
 import { useToast } from '../hooks/useToast';
 import { getErrorMessage } from '../lib/errors';
+import AddToListModal from '../components/AddToListModal';
 
 type Lead = {
   _id: string;
@@ -35,6 +36,8 @@ const Leads = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { showToast, toastElement } = useToast();
+  const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
+  const [addToListTarget, setAddToListTarget] = useState<string[] | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [savedLeads, setSavedLeads] = useState<Set<string>>(new Set());
   const [userLeadsMap, setUserLeadsMap] = useState<Map<string, UserLead>>(new Map()); // Map of leadId -> userLead data
@@ -349,6 +352,13 @@ const Leads = () => {
 
         <div className="actions">
           <button className="btn" onClick={fetchLeads}>Refresh leads</button>
+          <button
+            className="btn"
+            onClick={() => setAddToListTarget(filteredAndSortedLeads.map((l) => l._id))}
+            disabled={filteredAndSortedLeads.length === 0}
+          >
+            Save Filtered to List
+          </button>
           <Link href="/leads/new" className="btn-add-lead">Add Lead</Link>
         </div>
 
@@ -543,6 +553,23 @@ const Leads = () => {
             <table className="leads-table">
               <thead>
                 <tr>
+                  <th onClick={(e) => e.stopPropagation()} style={{ width: 32 }}>
+                    <input
+                      type="checkbox"
+                      checked={paginatedLeads.length > 0 && paginatedLeads.every((l) => selectedLeads.has(l._id))}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedLeads((prev) => new Set([...prev, ...paginatedLeads.map((l) => l._id)]));
+                        } else {
+                          setSelectedLeads((prev) => {
+                            const next = new Set(prev);
+                            paginatedLeads.forEach((l) => next.delete(l._id));
+                            return next;
+                          });
+                        }
+                      }}
+                    />
+                  </th>
                   {hasPriorities && <th>Priority</th>}
                   <th>Position</th>
                   <th>Company</th>
@@ -564,6 +591,20 @@ const Leads = () => {
                       onClick={() => router.push(`/leads/${lead._id}`)}
                       style={{ cursor: 'pointer' }}
                     >
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedLeads.has(lead._id)}
+                          onChange={(e) => {
+                            setSelectedLeads((prev) => {
+                              const next = new Set(prev);
+                              if (e.target.checked) next.add(lead._id);
+                              else next.delete(lead._id);
+                              return next;
+                            });
+                          }}
+                        />
+                      </td>
                       {hasPriorities && (
                         <td>
                           {userLead?.priority ? (
@@ -696,6 +737,36 @@ const Leads = () => {
           </div>
         </div>
       </div>
+      {selectedLeads.size > 0 && (
+        <div className="leads-action-bar">
+          <span className="leads-action-bar-count">{selectedLeads.size} selected</span>
+          <button
+            className="leads-action-bar-btn"
+            onClick={() => setAddToListTarget([...selectedLeads])}
+          >
+            Add to List
+          </button>
+          <button
+            className="leads-action-bar-clear"
+            onClick={() => setSelectedLeads(new Set())}
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
+      {addToListTarget && (
+        <AddToListModal
+          leadIds={addToListTarget}
+          onDismiss={() => setAddToListTarget(null)}
+          onSuccess={(msg) => {
+            showToast(msg, 'success');
+            setAddToListTarget(null);
+            setSelectedLeads(new Set());
+          }}
+        />
+      )}
+
       {toastElement}
     </div>
   );
