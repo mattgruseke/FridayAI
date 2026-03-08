@@ -50,7 +50,10 @@ export async function POST(request: Request) {
         publicLeadData.compensation = userLead.compensation;
       }
 
-      await supabase.from("leads").update(publicLeadData).eq("id", leadId);
+      const { error: updateError } = await supabase.from("leads").update(publicLeadData).eq("id", leadId);
+      if (updateError) {
+        return jsonResponse({ error: updateError.message }, 500);
+      }
     }
 
     return jsonResponse({ message: "Lead published successfully", leadId });
