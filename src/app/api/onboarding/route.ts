@@ -48,11 +48,12 @@ export async function POST(request: Request) {
     return jsonResponse({ message: profileError.message }, 500);
   }
 
-  // Query leads matching any of the preferred roles (case-insensitive title match)
+  // Query leads matching any of the preferred roles (case-insensitive title match), cap at 20
   const { data: matchingLeads, error: leadsError } = await supabase
     .from("leads")
     .select("id")
-    .or(preferredRoles.map((role: string) => `title.ilike.%${role}%`).join(","));
+    .or(preferredRoles.map((role: string) => `title.ilike.%${role}%`).join(","))
+    .limit(20);
 
   if (leadsError) {
     return jsonResponse({ message: leadsError.message }, 500);

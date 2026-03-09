@@ -21,11 +21,18 @@ const Lists = () => {
   const [lists, setLists] = useState<UserList[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
+  const filteredLists = lists.filter((l) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return l.name.toLowerCase().includes(q) || l.description?.toLowerCase().includes(q);
+  });
 
   const fetchLists = async () => {
     try {
       setLoading(true);
-      const data = await api.userLists.getAll() as UserList[];
+      const data = (await api.userLists.getAll()) as UserList[];
       setLists(data || []);
     } catch (err) {
       showToast(`Error loading lists: ${getErrorMessage(err)}`, "error");
@@ -56,8 +63,7 @@ const Lists = () => {
     return (
       <div className="container">
         <div className="main">
-          <div className="page-title">Lists</div>
-          <p style={{ color: "#999" }}>Loading…</p>
+          <div className="page-title">Loading lists...</div>
         </div>
       </div>
     );
@@ -68,59 +74,83 @@ const Lists = () => {
       <div className="main">
         <div className="page-title">Lists</div>
 
-        {lists.length === 0 ? (
-          <div className="lists-empty">
-            <p>You don't have any lists yet.</p>
-            <p>
-              Go to <Link href="/leads">Leads</Link> and use "Save Filtered to List" or select rows to add leads to a list.
-            </p>
-          </div>
-        ) : (
-          <div className="lists-grid">
-            {lists.map((list) => (
-              <div
-                key={list._id}
-                className="list-card"
-                onClick={() => router.push(`/lists/${list._id}`)}
-              >
-                <div className="list-card-body">
-                  <div className="list-card-name">{list.name}</div>
-                  {list.description && (
-                    <div className="list-card-description">{list.description}</div>
-                  )}
-                  <div className="list-card-meta">
-                    {list.leadIds.length} lead{list.leadIds.length !== 1 ? "s" : ""}
-                    {list.createdAt && (
-                      <> · Created {new Date(list.createdAt).toLocaleDateString()}</>
-                    )}
-                  </div>
-                </div>
-                <div className="list-card-actions">
-                  <Link
-                    href={`/lists/${list._id}`}
-                    className="btn"
-                    onClick={(e) => e.stopPropagation()}
+        <div className="actions">
+          <button className="btn" onClick={fetchLists}>Refresh</button>
+        </div>
+
+        <input
+          type="text"
+          className="referral-search"
+          placeholder="Search lists..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+
+        <div className="referrals-table-container">
+          <table className="referrals-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Leads</th>
+                <th>Created</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredLists.length > 0 ? (
+                filteredLists.map((list) => (
+                  <tr
+                    key={list._id}
+                    onClick={() => router.push(`/lists/${list._id}`)}
+                    style={{ cursor: "pointer" }}
                   >
-                    View
-                  </Link>
-                  <button
-                    className="list-card-delete-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(list);
-                    }}
-                    disabled={deletingId === list._id}
-                    title="Delete list"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                      <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+                    <td>
+                      <Link
+                        href={`/lists/${list._id}`}
+                        className="referral-link"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {list.name}
+                      </Link>
+                    </td>
+                    <td style={{ color: "#999", fontStyle: list.description ? "normal" : "italic" }}>
+                      {list.description || "—"}
+                    </td>
+                    <td>
+                      <span className="linked-leads-count">{list.leadIds.length}</span>
+                    </td>
+                    <td>
+                      {list.createdAt
+                        ? new Date(list.createdAt).toLocaleDateString()
+                        : "—"}
+                    </td>
+                    <td onClick={(e) => e.stopPropagation()}>
+                      <button
+                        className="list-delete-btn"
+                        onClick={() => handleDelete(list)}
+                        disabled={deletingId === list._id}
+                        title="Delete list"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                          <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                        </svg>
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: "center", padding: "2rem" }}>
+                    {search
+                      ? `No lists matching "${search}"`
+                      : 'No lists yet. Go to Leads and use "Save Filtered to List" to get started.'}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
       {toastElement}
     </div>

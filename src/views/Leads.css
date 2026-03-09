@@ -751,3 +751,501 @@ body.dark-mode .priority-low {
         text-align: center;
     }
 }
+
+/* ── Role chips ─────────────────────────────────────────────────────────── */
+.leads-chips-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 10px 0 8px;
+}
+
+.leads-chip {
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 1.5px solid #ddd;
+    background: #f8f8f8;
+    color: #555;
+    font-size: 8.5pt;
+    font-family: Verdana, Geneva, sans-serif;
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s, color 0.12s;
+    white-space: nowrap;
+}
+
+.leads-chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.leads-chip--active {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #fff;
+}
+
+.leads-chip--active:hover {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #fff;
+    opacity: 0.85;
+}
+
+.leads-chip-clear {
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1.5px solid #ccc;
+    background: none;
+    color: #999;
+    font-size: 8.5pt;
+    font-family: Verdana, Geneva, sans-serif;
+    cursor: pointer;
+}
+
+.leads-chip-clear:hover {
+    color: #333;
+    border-color: #999;
+}
+
+/* ── Toolbar (saved tabs + actions) ─────────────────────────────────────── */
+.leads-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.leads-saved-tabs {
+    display: flex;
+    gap: 0;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.leads-saved-tab {
+    padding: 4px 12px;
+    background: none;
+    border: none;
+    font-size: 9pt;
+    font-family: Verdana, Geneva, sans-serif;
+    cursor: pointer;
+    color: #666;
+    transition: background 0.12s, color 0.12s;
+    border-right: 1px solid #e0e0e0;
+}
+
+.leads-saved-tab:last-child {
+    border-right: none;
+}
+
+.leads-saved-tab--active {
+    background: var(--accent);
+    color: #fff;
+    font-weight: bold;
+}
+
+.leads-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.leads-count {
+    font-size: 9pt;
+    color: #828282;
+}
+
+/* Dark mode */
+body.dark-mode .leads-chip {
+    border-color: #444;
+    background: #2a2a2a;
+    color: #bbb;
+}
+
+body.dark-mode .leads-chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+body.dark-mode .leads-chip--active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+body.dark-mode .leads-chip--active:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    opacity: 0.85;
+}
+
+body.dark-mode .leads-chip-clear {
+    border-color: #444;
+    color: #666;
+}
+
+body.dark-mode .leads-chip-clear:hover {
+    color: #ccc;
+    border-color: #888;
+}
+
+body.dark-mode .leads-saved-tabs {
+    border-color: #444;
+}
+
+body.dark-mode .leads-saved-tab {
+    color: #aaa;
+    border-right-color: #444;
+}
+
+body.dark-mode .leads-saved-tab--active {
+    background: var(--accent);
+    color: #fff;
+}
+
+body.dark-mode .leads-count {
+    color: #666;
+}
+
+/* Location chips (Remote/Hybrid) — dashed border */
+.leads-chip--location {
+    border-style: dashed;
+}
+
+/* Divider between role chips and location chips */
+.leads-chips-divider {
+    width: 1px;
+    background: #ddd;
+    align-self: stretch;
+    margin: 0 2px;
+}
+
+body.dark-mode .leads-chips-divider {
+    background: #444;
+}
+
+/* ── Lead Cards ─────────────────────────────────────────────────────────── */
+.leads-cards-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 1px solid #e6e6df;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.leads-select-all-row {
+    padding: 6px 16px;
+    background: #f6f6ef;
+    border-bottom: 1px solid #e6e6df;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.leads-select-all-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 8.5pt;
+    color: #888;
+    cursor: pointer;
+    user-select: none;
+}
+
+.leads-select-all-label span {
+    color: #888;
+}
+
+.lead-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid #f0f0ea;
+    cursor: pointer;
+    transition: background 0.1s;
+    background: #fff;
+}
+
+.lead-card:last-child {
+    border-bottom: none;
+}
+
+.lead-card:hover {
+    background: #fafaf7;
+}
+
+.lead-card--saved {
+    border-left: 3px solid var(--accent);
+    padding-left: 13px;
+}
+
+.lead-card-actions {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.lead-card-checkbox {
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.lead-card-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: bold;
+    color: #fff;
+    letter-spacing: 0.5px;
+    margin-top: 1px;
+}
+
+.lead-card-avatar--logo {
+    background: none;
+    border: 1px solid #e8e8e0;
+    overflow: hidden;
+    padding: 2px;
+}
+
+body.dark-mode .lead-card-avatar--logo {
+    border-color: #404040;
+    background: #2a2a2a;
+}
+
+.lead-card-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.lead-card-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.lead-card-title {
+    font-size: 11pt;
+    font-weight: bold;
+    color: #000;
+    text-decoration: none;
+    line-height: 1.3;
+}
+
+.lead-card-title:hover {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.lead-card-title:visited {
+    color: #555;
+}
+
+.lead-card-company {
+    font-size: 9pt;
+    color: #777;
+    font-weight: normal;
+}
+
+.lead-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+.lead-card-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 8pt;
+    border: 1px solid #e0e0da;
+    background: #f6f6ef;
+    color: #666;
+    white-space: nowrap;
+}
+
+.lead-card-tag--location {
+    color: #555;
+}
+
+.lead-card-tag--remote {
+    background: #edf7ed;
+    border-color: #b8ddb8;
+    color: #2e7d32;
+}
+
+.lead-card-tag--hybrid {
+    background: #e8f0fb;
+    border-color: #b8cdf8;
+    color: #1a56a0;
+}
+
+.lead-card-tag--comp {
+    background: #f0fbf0;
+    border-color: #b8ddb8;
+    color: #2e7d32;
+    font-weight: bold;
+    font-family: monospace;
+    font-size: 8.5pt;
+}
+
+.lead-card-tag--date {
+    color: #999;
+    border-color: transparent;
+    background: none;
+    padding-left: 0;
+}
+
+.lead-card-tag--contact {
+    color: #777;
+}
+
+
+.lead-card-save {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 4px;
+    border: 1.5px solid var(--accent);
+    background: none;
+    color: var(--accent);
+    font-size: 9pt;
+    font-family: Verdana, Geneva, sans-serif;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+    white-space: nowrap;
+}
+
+.lead-card-save:hover {
+    background: var(--accent);
+    color: #fff;
+}
+
+.lead-card-save--saved {
+    border-color: #ccc;
+    color: #888;
+    cursor: not-allowed;
+    background: #f6f6f6;
+}
+
+.lead-card-save--saved:hover {
+    background: #f6f6f6;
+    color: #888;
+}
+
+/* Dark mode — cards */
+body.dark-mode .leads-cards-container {
+    background: #2a2a2a;
+    border-color: #404040;
+}
+
+body.dark-mode .leads-select-all-row {
+    background: #1a1a1a;
+    border-color: #404040;
+}
+
+body.dark-mode .lead-card {
+    background: #2a2a2a;
+    border-color: #383838;
+}
+
+body.dark-mode .lead-card:hover {
+    background: #333;
+}
+
+body.dark-mode .lead-card--saved {
+    border-left-color: var(--accent);
+}
+
+body.dark-mode .lead-card-title {
+    color: #e0e0e0;
+}
+
+body.dark-mode .lead-card-title:visited {
+    color: #999;
+}
+
+body.dark-mode .lead-card-company {
+    color: #888;
+}
+
+body.dark-mode .lead-card-tag {
+    background: #333;
+    border-color: #484848;
+    color: #aaa;
+}
+
+body.dark-mode .lead-card-tag--remote {
+    background: #1f3a1f;
+    border-color: #2f5a2f;
+    color: #66bb6a;
+}
+
+body.dark-mode .lead-card-tag--hybrid {
+    background: #1a2a3a;
+    border-color: #2a4a6a;
+    color: #64b0f0;
+}
+
+body.dark-mode .lead-card-tag--comp {
+    background: #1f3a1f;
+    border-color: #2f5a2f;
+    color: #66bb6a;
+}
+
+body.dark-mode .lead-card-tag--date {
+    color: #666;
+    background: none;
+    border-color: transparent;
+}
+
+body.dark-mode .lead-card-tag--contact {
+    color: #888;
+}
+
+body.dark-mode .lead-card-save {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+body.dark-mode .lead-card-save:hover {
+    background: var(--accent);
+    color: #fff;
+}
+
+body.dark-mode .lead-card-save--saved {
+    border-color: #444;
+    color: #666;
+    background: #333;
+}
+
+body.dark-mode .leads-select-all-label {
+    color: #666;
+}
+
+body.dark-mode .leads-select-all-label span {
+    color: #666;
+}

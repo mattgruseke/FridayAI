@@ -3,13 +3,86 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import api from '../api/client';
+import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/useToast';
 import { getErrorMessage } from '../lib/errors';
 import AddToListModal from '../components/AddToListModal';
+
+const AVATAR_COLORS = [
+  '#e57373', '#f06292', '#ba68c8', '#7986cb',
+  '#4fc3f7', '#4db6ac', '#81c784', '#dce775',
+  '#ffb74d', '#ff8a65', '#a1887f', '#90a4ae',
+];
+
+function companyAvatar(company: string) {
+  let hash = 0;
+  for (let i = 0; i < company.length; i++) hash = company.charCodeAt(i) + ((hash << 5) - hash);
+  const color = AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+  const initials = company
+    .replace(/[^a-zA-Z0-9 ]/g, '')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(w => w[0].toUpperCase())
+    .join('');
+  const domain = company
+    .toLowerCase()
+    .replace(/\b(inc|llc|corp|ltd|co|company|technologies|technology|solutions|services|group|holdings|software|systems)\b/g, '')
+    .replace(/[^a-z0-9]/g, '') + '.com';
+  return { color, initials: initials || '?', domain };
+}
+
+const LOGO_TOKEN = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN;
+
+function CompanyLogo({ company }: { company: string }) {
+  const av = companyAvatar(company);
+  if (!LOGO_TOKEN) {
+    return (
+      <div className="lead-card-avatar" style={{ background: av.color }} aria-hidden="true">
+        {av.initials}
+      </div>
+    );
+  }
+  return (
+    <div className="lead-card-avatar lead-card-avatar--logo" aria-hidden="true">
+      <img
+        src={`https://img.logo.dev/${av.domain}?token=${LOGO_TOKEN}&size=64`}
+        alt=""
+        width={36}
+        height={36}
+        style={{ borderRadius: 6, objectFit: 'contain' }}
+        onError={e => {
+          const img = e.currentTarget;
+          img.style.display = 'none';
+          const fallback = img.nextElementSibling as HTMLElement | null;
+          if (fallback) fallback.style.display = 'flex';
+        }}
+      />
+      <div className="lead-card-avatar" style={{ background: av.color, display: 'none' }}>
+        {av.initials}
+      </div>
+    </div>
+  );
+}
+
+const ROLE_CHIPS = [
+  "Solutions Engineer",
+  "Sales Engineer",
+  "Technical Account Manager",
+  "Customer Success Manager",
+  "Customer Success Engineer",
+  "Solutions Architect",
+  "Implementation Specialist",
+  "Software Engineer",
+  "Product Manager",
+  "DevOps / Platform Engineer",
+  "Data Engineer",
+  "UX / Product Designer",
+];
 
 type Lead = {
   _id: string;
@@ -36,112 +109,70 @@ const Leads = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { showToast, toastElement } = useToast();
+  const { preferredRoles } = useAuth();
+
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const [addToListTarget, setAddToListTarget] = useState<string[] | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [savedLeads, setSavedLeads] = useState<Set<string>>(new Set());
-  const [userLeadsMap, setUserLeadsMap] = useState<Map<string, UserLead>>(new Map()); // Map of leadId -> userLead data
+  const [userLeadsMap, setUserLeadsMap] = useState<Map<string, UserLead>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState({
-    total: 0,
-    highPriority: 0,
-    activeThisWeek: 0
-  });
 
-  // Pagination state
+  // Chip filter state — initialized from preferredRoles once they load
+  const [selectedChips, setSelectedChips] = useState<Set<string>>(new Set());
+  const chipsInitialized = useRef(false);
+
+  // Saved filter: 'all' | 'saved' | 'unsaved'
+  const [savedFilter, setSavedFilter] = useState<'all' | 'saved' | 'unsaved'>('all');
+
+  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalLeads, setTotalLeads] = useState(0);
   const leadsPerPage = 50;
 
-  // Filter state
-  const [filters, setFilters] = useState<Record<string, any>>({
-    companies: new Set<string>(),
-    locations: new Set<string>(),
-    industries: new Set<string>(),
-    teams: new Set<string>(),
-    priorities: new Set<string>(),
-    saved: false, // true = show only saved, false = show all
-    hideSaved: false // true = hide saved leads, false = show all
-  });
-
-  // Search state
+  // Search
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Collapsible state for filter groups
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
-    locations: true,
-    companies: true,
-    industries: true,
-    teams: true,
-    priorities: true,
-    saved: true
-  });
-
-  // Mobile filter drawer state
-  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
-
-  const toggleCollapse = (category: string) => {
-    setCollapsed(prev => ({
-      ...prev,
-      [category]: !prev[category]
-    }));
-  };
-
-  // Re-fetch leads on mount and when location changes
+  // Initialize chips from preferredRoles once available
   useEffect(() => {
-    fetchLeads();
-  }, [pathname, searchParams]); // Re-run when route changes
+    if (!chipsInitialized.current && preferredRoles.length > 0) {
+      const roleSet = new Set([...ROLE_CHIPS, 'Remote', 'Hybrid']);
+      setSelectedChips(new Set(preferredRoles.filter(r => roleSet.has(r))));
+      chipsInitialized.current = true;
+    }
+  }, [preferredRoles]);
 
-  // Reset to page 1 when filters or search changes
+  // Reset page on filter/search change
   useEffect(() => {
     setCurrentPage(1);
-  }, [filters, searchQuery]);
+  }, [selectedChips, searchQuery, savedFilter]);
+
+  useEffect(() => {
+    fetchLeads();
+  }, [pathname, searchParams]);
 
   const fetchLeads = async () => {
     try {
       setLoading(true);
-      // Fetch all leads for client-side filtering and pagination
-      const response = (await api.leads.getAll({
-        page: 1,
-        limit: 10000,
-      })) as { leads?: Lead[]; totalLeads?: number };
+      const response = (await api.leads.getAll({ page: 1, limit: 10000 })) as { leads?: Lead[]; totalLeads?: number };
       setLeads(response.leads || []);
-      setTotalLeads(response.totalLeads || 0);
-      setTotalPages(Math.ceil((response.totalLeads || 0) / leadsPerPage));
 
-      // Fetch saved leads to know which ones are already saved
       const userLeadsResponse = (await api.userLeads.getAll()) as UserLead[];
       const savedLeadIds = new Set(
         userLeadsResponse
-          .map((ul) =>
-            typeof ul.leadId === "string" ? ul.leadId : ul.leadId?._id
-          )
+          .map((ul) => typeof ul.leadId === "string" ? ul.leadId : ul.leadId?._id)
           .filter(Boolean) as string[]
       );
       setSavedLeads(savedLeadIds);
 
-      // Create a map of leadId -> userLead for easy lookup
-      const userLeadsMapping = new Map<string, UserLead>();
+      const ulMap = new Map<string, UserLead>();
       userLeadsResponse.forEach((ul) => {
-        const leadId =
-          typeof ul.leadId === "string" ? ul.leadId : ul.leadId?._id;
-        if (leadId) {
-          userLeadsMapping.set(leadId, ul);
-        }
+        const leadId = typeof ul.leadId === "string" ? ul.leadId : ul.leadId?._id;
+        if (leadId) ulMap.set(leadId, ul);
       });
-      setUserLeadsMap(userLeadsMapping);
-
-      // Calculate stats (you can also create a separate API endpoint for this)
-      setStats({
-        total: response.totalLeads || 0,
-        highPriority: 0,
-        activeThisWeek: 0,
-      });
+      setUserLeadsMap(ulMap);
     } catch (err) {
       setError(getErrorMessage(err));
-      console.error('Error fetching leads:', err);
     } finally {
       setLoading(false);
     }
@@ -149,15 +180,34 @@ const Leads = () => {
 
   const handleSaveLead = async (leadId: string) => {
     try {
-      await api.userLeads.save({
-        leadId
-      });
-      // Update saved leads set
+      await api.userLeads.save({ leadId });
       setSavedLeads(prev => new Set([...prev, leadId]));
     } catch (err) {
       showToast(`Error saving lead: ${getErrorMessage(err)}`, 'error');
     }
   };
+
+  // Chips derived from saved preferences
+  const allValidChips = new Set([...ROLE_CHIPS, 'Remote', 'Hybrid']);
+  const preferredChips = new Set(preferredRoles.filter(r => allValidChips.has(r)));
+
+  const setsEqual = (a: Set<string>, b: Set<string>) =>
+    a.size === b.size && [...a].every(v => b.has(v));
+
+  const isAtPreferred = preferredChips.size > 0 && setsEqual(selectedChips, preferredChips);
+  const hasPreferred = preferredChips.size > 0;
+
+  const toggleChip = (chip: string) => {
+    setSelectedChips(prev => {
+      const next = new Set(prev);
+      if (next.has(chip)) next.delete(chip);
+      else next.add(chip);
+      return next;
+    });
+  };
+
+  const clearChips = () => setSelectedChips(new Set());
+  const resetToPreferred = () => setSelectedChips(new Set(preferredChips));
 
   if (loading) {
     return (
@@ -181,116 +231,39 @@ const Leads = () => {
     );
   }
 
-  // Get unique values for filters
-  const uniqueCompanies = [...new Set(leads.map(l => l.company).filter(Boolean))].sort();
+  // Filter and sort
+  // Chips only apply in "All" tab — Saved/New show everything in that category
+  const chipsActive = selectedChips.size > 0 && savedFilter === 'all';
 
-  // Sort locations with "Remote" at the top
-  const uniqueLocations = [...new Set(leads.map(l => l.location).filter(Boolean))].sort((a, b) => {
-    const aIsRemote = a.toLowerCase().includes('remote');
-    const bIsRemote = b.toLowerCase().includes('remote');
-
-    if (aIsRemote && !bIsRemote) return -1;
-    if (!aIsRemote && bIsRemote) return 1;
-    return a.localeCompare(b);
-  });
-
-  const uniqueIndustries = [...new Set(leads.map(l => l.industry).filter(Boolean))].sort();
-  const uniqueTeams = [...new Set(leads.map(l => l.team).filter(Boolean))].sort();
-
-  // Toggle filter
-  const toggleFilter = (category: string, value: string) => {
-    setFilters(prev => {
-      const newFilters = { ...prev };
-      const categorySet = new Set(newFilters[category]);
-
-      if (categorySet.has(value)) {
-        categorySet.delete(value);
-      } else {
-        categorySet.add(value);
-      }
-
-      newFilters[category] = categorySet;
-      return newFilters;
-    });
-  };
-
-  // Toggle saved filter
-  const toggleSavedFilter = () => {
-    setFilters(prev => ({
-      ...prev,
-      saved: !prev.saved,
-      hideSaved: false // Turn off hideSaved when showing only saved
-    }));
-  };
-
-  // Toggle hide saved filter
-  const toggleHideSavedFilter = () => {
-    setFilters(prev => ({
-      ...prev,
-      hideSaved: !prev.hideSaved,
-      saved: false // Turn off saved when hiding saved
-    }));
-  };
-
-  // Clear all filters
-  const clearAllFilters = () => {
-    setFilters({
-      companies: new Set<string>(),
-      locations: new Set<string>(),
-      industries: new Set<string>(),
-      teams: new Set<string>(),
-      priorities: new Set<string>(),
-      saved: false,
-      hideSaved: false
-    });
-  };
-
-  // Apply filters and sort
   const filteredAndSortedLeads = [...leads]
     .filter(lead => {
-      // Check search query
+      // Chip filter — role chips filter by title, Remote/Hybrid by location
+      if (chipsActive) {
+        const title = lead.title?.toLowerCase() ?? '';
+        const location = lead.location?.toLowerCase() ?? '';
+        const matchesChip = [...selectedChips].some(chip => {
+          if (chip === 'Remote') return location.includes('remote');
+          if (chip === 'Hybrid') return location.includes('hybrid');
+          return title.includes(chip.toLowerCase());
+        });
+        if (!matchesChip) return false;
+      }
+
+      // Search filter
       if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        const matchesSearch =
-          lead.title?.toLowerCase().includes(query) ||
-          lead.company?.toLowerCase().includes(query) ||
-          lead.location?.toLowerCase().includes(query);
-
-        if (!matchesSearch) return false;
+        const q = searchQuery.toLowerCase();
+        const matches =
+          lead.title?.toLowerCase().includes(q) ||
+          lead.company?.toLowerCase().includes(q) ||
+          lead.location?.toLowerCase().includes(q);
+        if (!matches) return false;
       }
 
-      // Check saved filter (show only saved)
-      if (filters.saved && !savedLeads.has(lead._id)) {
-        return false;
-      }
+      // Saved filter
+      if (savedFilter === 'saved' && !savedLeads.has(lead._id)) return false;
+      if (savedFilter === 'unsaved' && savedLeads.has(lead._id)) return false;
 
-      // Check hide saved filter (hide all saved leads)
-      if (filters.hideSaved && savedLeads.has(lead._id)) {
-        return false;
-      }
-
-      // Check if any filters are active
-      const hasActiveFilters =
-        filters.companies.size > 0 ||
-        filters.locations.size > 0 ||
-        filters.industries.size > 0 ||
-        filters.teams.size > 0 ||
-        filters.priorities.size > 0;
-
-      if (!hasActiveFilters) return true;
-
-      // Check each filter category
-      const matchesCompany = filters.companies.size === 0 || filters.companies.has(lead.company);
-      const matchesLocation = filters.locations.size === 0 || filters.locations.has(lead.location);
-      const matchesIndustry = filters.industries.size === 0 || filters.industries.has(lead.industry);
-      const matchesTeam = filters.teams.size === 0 || filters.teams.has(lead.team);
-
-      // Check priority filter
-      const userLead = userLeadsMap.get(lead._id);
-      const matchesPriority = filters.priorities.size === 0 ||
-        (userLead?.priority && filters.priorities.has(userLead.priority));
-
-      return matchesCompany && matchesLocation && matchesIndustry && matchesTeam && matchesPriority;
+      return true;
     })
     .sort((a, b) => {
       const aIsSaved = savedLeads.has(a._id);
@@ -298,36 +271,24 @@ const Leads = () => {
       const aUserLead = userLeadsMap.get(a._id);
       const bUserLead = userLeadsMap.get(b._id);
 
-      // Priority ranking: high = 3, medium = 2, low = 1, none = 0
-      const priorityValue = { high: 3, medium: 2, low: 1 };
-      const aKey = aUserLead?.priority;
-      const bKey = bUserLead?.priority;
-      const aPriority = aKey && aKey in priorityValue ? priorityValue[aKey] : 0;
-      const bPriority = bKey && bKey in priorityValue ? priorityValue[bKey] : 0;
+      const priorityValue: Record<string, number> = { high: 3, medium: 2, low: 1 };
+      const aPriority = aUserLead?.priority ? (priorityValue[aUserLead.priority] ?? 0) : 0;
+      const bPriority = bUserLead?.priority ? (priorityValue[bUserLead.priority] ?? 0) : 0;
 
-      // If both are saved and have priorities, sort by priority
-      if (aIsSaved && bIsSaved && aPriority > 0 && bPriority > 0) {
-        return bPriority - aPriority; // Higher priority first
-      }
-
-      // If one is saved and the other isn't, saved comes first
+      if (aIsSaved && bIsSaved && aPriority > 0 && bPriority > 0) return bPriority - aPriority;
       if (aIsSaved && !bIsSaved) return -1;
       if (!aIsSaved && bIsSaved) return 1;
 
-      // For saved leads without priority or non-saved leads, sort by date posted (newest first)
-    const aDate = a.datePosted ? new Date(a.datePosted) : new Date(0);
-    const bDate = b.datePosted ? new Date(b.datePosted) : new Date(0);
-    return bDate.getTime() - aDate.getTime();
-  });
+      const aDate = a.datePosted ? new Date(a.datePosted) : new Date(0);
+      const bDate = b.datePosted ? new Date(b.datePosted) : new Date(0);
+      return bDate.getTime() - aDate.getTime();
+    });
 
-  // Check if any saved leads have a priority set
   const hasPriorities = Array.from(userLeadsMap.values()).some(ul => ul.priority);
 
-  // Calculate pagination for filtered results
   const filteredTotalPages = Math.ceil(filteredAndSortedLeads.length / leadsPerPage);
   const startIndex = (currentPage - 1) * leadsPerPage;
-  const endIndex = startIndex + leadsPerPage;
-  const paginatedLeads = filteredAndSortedLeads.slice(startIndex, endIndex);
+  const paginatedLeads = filteredAndSortedLeads.slice(startIndex, startIndex + leadsPerPage);
 
   return (
     <div className="container">
@@ -344,412 +305,238 @@ const Leads = () => {
           />
         </div>
 
-        <div className="stats">
-          <span>{stats.total} leads</span>
-          {/* <span>{stats.highPriority} high priority</span>
-          <span>{stats.activeThisWeek} active this week</span> */}
+        {/* Role + location chips — selected float to front */}
+        <div className="leads-chips-row">
+          {[...ROLE_CHIPS].sort((a, b) => {
+            const aSelected = selectedChips.has(a) ? 0 : 1;
+            const bSelected = selectedChips.has(b) ? 0 : 1;
+            return aSelected - bSelected;
+          }).map(chip => (
+            <button
+              key={chip}
+              type="button"
+              className={`leads-chip ${selectedChips.has(chip) ? 'leads-chip--active' : ''}`}
+              onClick={() => toggleChip(chip)}
+            >
+              {chip}
+            </button>
+          ))}
+          <span className="leads-chips-divider" />
+          {['Remote', 'Hybrid'].map(chip => (
+            <button
+              key={chip}
+              type="button"
+              className={`leads-chip leads-chip--location ${selectedChips.has(chip) ? 'leads-chip--active' : ''}`}
+              onClick={() => toggleChip(chip)}
+            >
+              {chip}
+            </button>
+          ))}
+          {hasPreferred && !isAtPreferred && (
+            <button type="button" className="leads-chip-clear" onClick={resetToPreferred}>
+              Reset to my roles
+            </button>
+          )}
+          {!hasPreferred && selectedChips.size > 0 && (
+            <button type="button" className="leads-chip-clear" onClick={clearChips}>
+              Clear
+            </button>
+          )}
         </div>
 
-        <div className="actions">
-          <button className="btn" onClick={fetchLeads}>Refresh leads</button>
-          <button
-            className="btn"
-            onClick={() => setAddToListTarget(filteredAndSortedLeads.map((l) => l._id))}
-            disabled={filteredAndSortedLeads.length === 0}
-          >
-            Save Filtered to List
-          </button>
-          <Link href="/leads/new" className="btn-add-lead">Add Lead</Link>
-        </div>
-
-        {/* Mobile filter toggle button */}
-        <button
-          className="filter-toggle-btn"
-          onClick={() => setFilterDrawerOpen(true)}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="4" y1="6" x2="20" y2="6"></line>
-            <line x1="4" y1="12" x2="20" y2="12"></line>
-            <line x1="4" y1="18" x2="20" y2="18"></line>
-          </svg>
-          Filters
-        </button>
-
-        <div className="leads-content">
-          <div className={`filter-sidebar ${filterDrawerOpen ? 'open' : ''}`}>
-            <div className="filter-section">
-              <div className="filter-header">
-                <div className="filter-title">Filters</div>
-                <button className="clear-filters-btn" onClick={clearAllFilters}>
-                  Clear All
-                </button>
-              </div>
-
-              {/* Saved Filter */}
-              <div className="filter-group">
-                <div
-                  className="filter-group-header"
-                  onClick={() => toggleCollapse('saved')}
-                >
-                  <span className="filter-group-title">Saved</span>
-                  <span className="collapse-icon">{collapsed.saved ? '+' : '−'}</span>
-                </div>
-                {!collapsed.saved && (
-                  <div className="filter-group-content">
-                    <label className="filter-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={filters.saved}
-                        onChange={toggleSavedFilter}
-                      />
-                      <span>Saved Jobs Only</span>
-                    </label>
-                    <label className="filter-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={filters.hideSaved}
-                        onChange={toggleHideSavedFilter}
-                      />
-                      <span>Hide Saved Jobs</span>
-                    </label>
-                  </div>
-                )}
-              </div>
-
-              {/* Priority Filter */}
-              {hasPriorities && (
-                <div className="filter-group">
-                  <div
-                    className="filter-group-header"
-                    onClick={() => toggleCollapse('priorities')}
-                  >
-                    <span className="filter-group-title">Priority</span>
-                    <span className="collapse-icon">{collapsed.priorities ? '+' : '−'}</span>
-                  </div>
-                  {!collapsed.priorities && (
-                    <div className="filter-group-content">
-                      {['high', 'medium', 'low'].map(priority => (
-                        <label key={priority} className="filter-checkbox">
-                          <input
-                            type="checkbox"
-                            checked={filters.priorities.has(priority)}
-                            onChange={() => toggleFilter('priorities', priority)}
-                          />
-                          <span style={{ textTransform: 'capitalize' }}>{priority}</span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="filter-group">
-                <div
-                  className="filter-group-header"
-                  onClick={() => toggleCollapse('teams')}
-                >
-                  <span className="filter-group-title">Team</span>
-                  <span className="collapse-icon">{collapsed.teams ? '+' : '−'}</span>
-                </div>
-                {!collapsed.teams && (
-                  <div className="filter-group-content">
-                    {uniqueTeams.map(team => (
-                      <label key={team} className="filter-checkbox">
-                        <input
-                          type="checkbox"
-                          checked={filters.teams.has(team)}
-                          onChange={() => toggleFilter('teams', team)}
-                        />
-                        <span>{team}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="filter-group">
-                <div
-                  className="filter-group-header"
-                  onClick={() => toggleCollapse('locations')}
-                >
-                  <span className="filter-group-title">Location</span>
-                  <span className="collapse-icon">{collapsed.locations ? '+' : '−'}</span>
-                </div>
-                {!collapsed.locations && (
-                  <div className="filter-group-content">
-                    {uniqueLocations.map(location => (
-                      <label key={location} className="filter-checkbox">
-                        <input
-                          type="checkbox"
-                          checked={filters.locations.has(location)}
-                          onChange={() => toggleFilter('locations', location)}
-                        />
-                        <span>{location}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="filter-group">
-                <div
-                  className="filter-group-header"
-                  onClick={() => toggleCollapse('companies')}
-                >
-                  <span className="filter-group-title">Company</span>
-                  <span className="collapse-icon">{collapsed.companies ? '+' : '−'}</span>
-                </div>
-                {!collapsed.companies && (
-                  <div className="filter-group-content">
-                    {uniqueCompanies.map(company => (
-                      <label key={company} className="filter-checkbox">
-                        <input
-                          type="checkbox"
-                          checked={filters.companies.has(company)}
-                          onChange={() => toggleFilter('companies', company)}
-                        />
-                        <span>{company}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="filter-group">
-                <div
-                  className="filter-group-header"
-                  onClick={() => toggleCollapse('industries')}
-                >
-                  <span className="filter-group-title">Industry</span>
-                  <span className="collapse-icon">{collapsed.industries ? '+' : '−'}</span>
-                </div>
-                {!collapsed.industries && (
-                  <div className="filter-group-content">
-                    {uniqueIndustries.map(industry => (
-                      <label key={industry} className="filter-checkbox">
-                        <input
-                          type="checkbox"
-                          checked={filters.industries.has(industry)}
-                          onChange={() => toggleFilter('industries', industry)}
-                        />
-                        <span>{industry}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Show results button for mobile */}
+        {/* Saved filter toggles + actions */}
+        <div className="leads-toolbar">
+          <div className="leads-saved-tabs">
+            {(['all', 'saved', 'unsaved'] as const).map(opt => (
               <button
-                className="show-results-btn"
-                onClick={() => setFilterDrawerOpen(false)}
+                key={opt}
+                type="button"
+                className={`leads-saved-tab ${savedFilter === opt ? 'leads-saved-tab--active' : ''}`}
+                onClick={() => setSavedFilter(opt)}
               >
-                Show Results ({filteredAndSortedLeads.length})
+                {opt === 'all' ? 'All' : opt === 'saved' ? 'Saved' : 'New'}
               </button>
+            ))}
+          </div>
+
+          <div className="leads-toolbar-actions">
+            <span className="leads-count">{filteredAndSortedLeads.length} leads</span>
+            <button className="btn" onClick={fetchLeads}>Refresh</button>
+            <button
+              className="btn"
+              onClick={() => setAddToListTarget(filteredAndSortedLeads.map(l => l._id))}
+              disabled={filteredAndSortedLeads.length === 0}
+            >
+              Save to List
+            </button>
+            <Link href="/leads/new" className="btn-add-lead">Add Lead</Link>
+          </div>
+        </div>
+
+        <div className="leads-cards-container">
+          {/* Select-all row */}
+          {paginatedLeads.length > 0 && (
+            <div className="leads-select-all-row">
+              <label className="leads-select-all-label">
+                <input
+                  type="checkbox"
+                  checked={paginatedLeads.every(l => selectedLeads.has(l._id))}
+                  onChange={e => {
+                    if (e.target.checked) {
+                      setSelectedLeads(prev => new Set([...prev, ...paginatedLeads.map(l => l._id)]));
+                    } else {
+                      setSelectedLeads(prev => {
+                        const next = new Set(prev);
+                        paginatedLeads.forEach(l => next.delete(l._id));
+                        return next;
+                      });
+                    }
+                  }}
+                />
+                <span>Select all on page</span>
+              </label>
             </div>
-          </div>
+          )}
 
-          <div className="leads-table-container">
-            <table className="leads-table">
-              <thead>
-                <tr>
-                  <th onClick={(e) => e.stopPropagation()} style={{ width: 32 }}>
-                    <input
-                      type="checkbox"
-                      checked={paginatedLeads.length > 0 && paginatedLeads.every((l) => selectedLeads.has(l._id))}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedLeads((prev) => new Set([...prev, ...paginatedLeads.map((l) => l._id)]));
-                        } else {
-                          setSelectedLeads((prev) => {
-                            const next = new Set(prev);
-                            paginatedLeads.forEach((l) => next.delete(l._id));
-                            return next;
-                          });
-                        }
-                      }}
-                    />
-                  </th>
-                  {hasPriorities && <th>Priority</th>}
-                  <th>Position</th>
-                  <th>Company</th>
-                  <th>Location</th>
-                  <th>Team</th>
-                  <th>Compensation</th>
-                  <th>Date Posted</th>
-                  <th>Contact</th>
-                  <th>Email</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedLeads.map((lead) => {
-                  const userLead = userLeadsMap.get(lead._id);
-                  return (
-                    <tr
-                      key={lead._id}
-                      onClick={() => router.push(`/leads/${lead._id}`)}
-                      style={{ cursor: 'pointer' }}
+
+          {paginatedLeads.map(lead => {
+            const userLead = userLeadsMap.get(lead._id);
+            const comp = lead.compensation?.raw ||
+              (lead.compensation?.min && lead.compensation?.max
+                ? `$${lead.compensation.min}–$${lead.compensation.max}`
+                : null);
+            const locLower = lead.location?.toLowerCase() ?? '';
+            const isRemote = locLower.includes('remote');
+            const isHybrid = locLower.includes('hybrid');
+
+            return (
+              <div
+                key={lead._id}
+                className={`lead-card ${savedLeads.has(lead._id) ? 'lead-card--saved' : ''}`}
+                onClick={() => router.push(`/leads/${lead._id}`)}
+              >
+                {lead.company && <CompanyLogo company={lead.company} />}
+
+                <div className="lead-card-body">
+                  <div className="lead-card-top">
+                    <Link
+                      href={`/leads/${lead._id}`}
+                      className="lead-card-title"
+                      onClick={e => e.stopPropagation()}
                     >
-                      <td onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={selectedLeads.has(lead._id)}
-                          onChange={(e) => {
-                            setSelectedLeads((prev) => {
-                              const next = new Set(prev);
-                              if (e.target.checked) next.add(lead._id);
-                              else next.delete(lead._id);
-                              return next;
-                            });
-                          }}
-                        />
-                      </td>
-                      {hasPriorities && (
-                        <td>
-                          {userLead?.priority ? (
-                            <span className={`priority-badge priority-${userLead.priority}`}>
-                              {userLead.priority}
-                            </span>
-                          ) : (
-                            '-'
-                          )}
-                        </td>
-                      )}
-                      <td>
-                        <Link href={`/leads/${lead._id}`} className="position-link">
-                          {lead.title}
-                        </Link>
-                      </td>
-                      <td>{lead.company}</td>
-                      <td>{lead.location}</td>
-                      <td>{lead.team || 'N/A'}</td>
-                      <td>
-                        <span className="comp">
-                          {lead.compensation?.raw ||
-                            (lead.compensation?.min && lead.compensation?.max
-                              ? `$${lead.compensation.min}-$${lead.compensation.max}`
-                              : 'N/A')}
-                        </span>
-                      </td>
-                      <td>
-                        {lead.datePosted ? new Date(lead.datePosted).toLocaleDateString() : 'N/A'}
-                      </td>
-                      <td>{lead.contactName || 'N/A'}</td>
-                      <td>
-                        {lead.contactEmail ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span>{lead.contactEmail}</span>
-                            <button
-                              className="copy-icon-btn"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigator.clipboard.writeText(lead.contactEmail);
-                                const button = e.currentTarget;
-                                const originalHTML = button.innerHTML;
-                                button.innerHTML = '<span style="font-size: 8pt; color: #00a000; white-space: nowrap;">Copied!</span>';
-                                button.style.padding = '4px 6px';
-                                setTimeout(() => {
-                                  button.innerHTML = originalHTML;
-                                  button.style.padding = '4px';
-                                }, 1500);
-                              }}
-                              title="Copy email"
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                              </svg>
-                            </button>
-                          </div>
+                      {lead.title}
+                    </Link>
+                    {hasPriorities && userLead?.priority && (
+                      <span className={`priority-badge priority-${userLead.priority}`}>{userLead.priority}</span>
+                    )}
+                  </div>
+
+                  {lead.company && (
+                    <div className="lead-card-company">{lead.company}</div>
+                  )}
+
+                  <div className="lead-card-tags">
+                    {lead.location && (
+                      <span className={`lead-card-tag lead-card-tag--location ${isRemote ? 'lead-card-tag--remote' : ''} ${isHybrid ? 'lead-card-tag--hybrid' : ''}`}>
+                        {isRemote ? (
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}>
+                            <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                          </svg>
                         ) : (
-                          'N/A'
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}>
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                          </svg>
                         )}
-                      </td>
-                      <td onClick={(e) => e.stopPropagation()}>
-                        {savedLeads.has(lead._id) ? (
-                          <button className="action-btn saved" disabled>
-                            Saved
-                          </button>
-                        ) : (
-                          <button
-                            className="action-btn"
-                            onClick={() => handleSaveLead(lead._id)}
-                          >
-                            Save
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        {lead.location}
+                      </span>
+                    )}
+                    {comp && (
+                      <span className="lead-card-tag lead-card-tag--comp">{comp}</span>
+                    )}
+                    {lead.datePosted && (
+                      <span className="lead-card-tag lead-card-tag--date">
+                        {new Date(lead.datePosted).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    )}
+                    {lead.contactName && (
+                      <span className="lead-card-tag lead-card-tag--contact">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}>
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        {lead.contactName}
+                      </span>
+                    )}
+                  </div>
+                </div>
 
-            {filteredAndSortedLeads.length === 0 && leads.length > 0 && (
-              <div style={{ textAlign: 'center', padding: '2rem' }}>
-                <p>No leads match the selected filters.</p>
+                <div className="lead-card-actions" onClick={e => e.stopPropagation()}>
+                  {savedLeads.has(lead._id) ? (
+                    <button className="lead-card-save lead-card-save--saved" disabled>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                      </svg>
+                      Saved
+                    </button>
+                  ) : (
+                    <button className="lead-card-save" onClick={() => handleSaveLead(lead._id)}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                      </svg>
+                      Save
+                    </button>
+                  )}
+                  <input
+                    type="checkbox"
+                    className="lead-card-checkbox"
+                    checked={selectedLeads.has(lead._id)}
+                    onChange={e => {
+                      setSelectedLeads(prev => {
+                        const next = new Set(prev);
+                        if (e.target.checked) next.add(lead._id);
+                        else next.delete(lead._id);
+                        return next;
+                      });
+                    }}
+                  />
+                </div>
               </div>
-            )}
+            );
+          })}
 
-            {leads.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '2rem' }}>
-                <p>No leads found. Import your CSV to get started!</p>
-              </div>
-            )}
+          {filteredAndSortedLeads.length === 0 && leads.length > 0 && (
+            <div style={{ textAlign: 'center', padding: '2rem' }}>
+              <p>No leads match your current filters.</p>
+              {selectedChips.size > 0 && (
+                <button className="btn" onClick={clearChips} style={{ marginTop: 8 }}>Clear role filters</button>
+              )}
+            </div>
+          )}
 
-            {/* Pagination Controls */}
-            {filteredTotalPages > 1 && (
-              <div className="pagination">
-                <button
-                  className="pagination-btn"
-                  onClick={() => setCurrentPage(1)}
-                  disabled={currentPage === 1}
-                >
-                  First
-                </button>
-                <button
-                  className="pagination-btn"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </button>
-                <span className="pagination-info">
-                  Page {currentPage} of {filteredTotalPages} ({filteredAndSortedLeads.length} results)
-                </span>
-                <button
-                  className="pagination-btn"
-                  onClick={() => setCurrentPage(prev => Math.min(filteredTotalPages, prev + 1))}
-                  disabled={currentPage === filteredTotalPages}
-                >
-                  Next
-                </button>
-                <button
-                  className="pagination-btn"
-                  onClick={() => setCurrentPage(filteredTotalPages)}
-                  disabled={currentPage === filteredTotalPages}
-                >
-                  Last
-                </button>
-              </div>
-            )}
-          </div>
+          {leads.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '2rem' }}>
+              <p>No leads found. Import your CSV to get started!</p>
+            </div>
+          )}
+
+          {filteredTotalPages > 1 && (
+            <div className="pagination">
+              <button className="pagination-btn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>First</button>
+              <button className="pagination-btn" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>Previous</button>
+              <span className="pagination-info">Page {currentPage} of {filteredTotalPages} ({filteredAndSortedLeads.length} results)</span>
+              <button className="pagination-btn" onClick={() => setCurrentPage(p => Math.min(filteredTotalPages, p + 1))} disabled={currentPage === filteredTotalPages}>Next</button>
+              <button className="pagination-btn" onClick={() => setCurrentPage(filteredTotalPages)} disabled={currentPage === filteredTotalPages}>Last</button>
+            </div>
+          )}
         </div>
       </div>
+
       {selectedLeads.size > 0 && (
         <div className="leads-action-bar">
           <span className="leads-action-bar-count">{selectedLeads.size} selected</span>
-          <button
-            className="leads-action-bar-btn"
-            onClick={() => setAddToListTarget([...selectedLeads])}
-          >
+          <button className="leads-action-bar-btn" onClick={() => setAddToListTarget([...selectedLeads])}>
             Add to List
           </button>
-          <button
-            className="leads-action-bar-clear"
-            onClick={() => setSelectedLeads(new Set())}
-          >
+          <button className="leads-action-bar-clear" onClick={() => setSelectedLeads(new Set())}>
             Clear
           </button>
         </div>
@@ -759,7 +546,7 @@ const Leads = () => {
         <AddToListModal
           leadIds={addToListTarget}
           onDismiss={() => setAddToListTarget(null)}
-          onSuccess={(msg) => {
+          onSuccess={msg => {
             showToast(msg, 'success');
             setAddToListTarget(null);
             setSelectedLeads(new Set());

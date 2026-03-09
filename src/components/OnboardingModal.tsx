@@ -20,9 +20,14 @@ const ROLE_CHIPS = [
 ];
 
 type OnboardingModalProps = {
-  onDismiss: () => void;
+  onDismiss: () => void | Promise<void>;
   mode?: "onboarding" | "edit";
   initialRoles?: string[];
+};
+
+type CompletedResult = {
+  listId: string;
+  leadCount: number;
 };
 
 export default function OnboardingModal({
@@ -33,7 +38,6 @@ export default function OnboardingModal({
   const router = useRouter();
   const isEdit = mode === "edit";
 
-  // Pre-populate from initialRoles
   const knownInitial = initialRoles.filter((r) => ROLE_CHIPS.includes(r));
   const customInitial = initialRoles.filter((r) => r !== "Remote" && r !== "Hybrid" && !ROLE_CHIPS.includes(r));
 
@@ -45,6 +49,7 @@ export default function OnboardingModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [completed, setCompleted] = useState<CompletedResult | null>(null);
 
   const toggleRole = (role: string) => {
     setSelectedRoles((prev) =>
@@ -95,11 +100,12 @@ export default function OnboardingModal({
           onDismiss();
         }, 1200);
       } else {
-        const result = await onboardingAPI.complete(allRoles) as { list?: { _id?: string } };
-        onDismiss();
-        if (result?.list?._id) {
-          router.push(`/lists/${result.list._id}`);
-        }
+        const result = await onboardingAPI.complete(allRoles) as { list?: { _id?: string }; leadCount?: number };
+        // Show success screen before dismissing (onDismiss unmounts the gate)
+        setCompleted({
+          listId: result?.list?._id ?? "",
+          leadCount: result?.leadCount ?? 0,
+        });
       }
     } catch {
       setError("Something went wrong. Please try again.");
@@ -116,6 +122,51 @@ export default function OnboardingModal({
     }
     onDismiss();
   };
+
+  const handleSeeList = async () => {
+    await onDismiss();
+    if (completed?.listId) {
+      router.push(`/lists/${completed.listId}`);
+    }
+  };
+
+  const handleGoDashboard = async () => {
+    await onDismiss();
+    router.push("/");
+  };
+
+  // Success screen shown after onboarding completes
+  if (completed) {
+    return (
+      <div className="modal-overlay onboarding-overlay">
+        <div className="modal-content onboarding-modal onboarding-modal--success">
+          <div className="onboarding-success-icon">
+            <img src="/frog.svg" alt="GigFrog" width={48} height={48} />
+          </div>
+          <h2 className="onboarding-title" style={{ fontSize: "1.4rem" }}>Your list is ready!</h2>
+          <p className="onboarding-subtitle">
+            We found <strong>{completed.leadCount}</strong> lead{completed.leadCount !== 1 ? "s" : ""} matching your criteria and saved them to your first list.
+          </p>
+          <div className="onboarding-footer" style={{ marginTop: 28 }}>
+            <button
+              type="button"
+              className="onboarding-btn-primary"
+              onClick={handleSeeList}
+            >
+              See My List →
+            </button>
+            <button
+              type="button"
+              className="onboarding-btn-skip"
+              onClick={handleGoDashboard}
+            >
+              Go to dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="modal-overlay onboarding-overlay">
@@ -221,7 +272,7 @@ export default function OnboardingModal({
             onClick={handleSubmit}
             disabled={loading}
           >
-            {loading ? "Saving…" : saved ? "Saved!" : isEdit ? "Save Roles" : "Get Started"}
+            {loading ? "Finding leads…" : saved ? "Saved!" : isEdit ? "Save Roles" : "Get Started"}
           </button>
           {!isEdit ? (
             <button

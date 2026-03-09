@@ -54,32 +54,20 @@ export const AuthProvider = ({
   const [userProfile, setUserProfile] = useState<UserProfile>(initialProfile);
   const [loading, setLoading] = useState(false);
 
-  const fetchOrCreateProfile = async (userId: string) => {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("user_profiles")
-      .select("*")
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (data) {
+  const fetchProfile = async () => {
+    try {
+      const res = await fetch("/api/profile", { credentials: "include" });
+      if (!res.ok) return;
+      const data = await res.json();
       setUserProfile(data);
-      return;
+    } catch {
+      // best effort
     }
-
-    // First login — create the profile row
-    const { data: created } = await supabase
-      .from("user_profiles")
-      .insert({ id: userId })
-      .select("*")
-      .single();
-
-    setUserProfile(created);
   };
 
   const refreshProfile = async () => {
     if (!user) return;
-    await fetchOrCreateProfile(user.id);
+    await fetchProfile();
   };
 
   useEffect(() => {
@@ -92,7 +80,7 @@ export const AuthProvider = ({
       setUser(currentUser);
 
       if (currentUser) {
-        await fetchOrCreateProfile(currentUser.id);
+        await fetchProfile();
       } else {
         setUserProfile(null);
       }
