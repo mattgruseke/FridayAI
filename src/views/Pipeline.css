@@ -102,7 +102,11 @@
     background: #ffffff;
     border: 1px solid #e6e6df;
     padding: 4px 6px;
-    font-size: 8pt;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11pt;
     text-transform: uppercase;
     color: #828282;
     font-weight: bold;
@@ -112,10 +116,10 @@
 .col-header .count {
     background: var(--accent);
     color: #ffffff;
-    padding: 1px 4px;
+    padding: 2px 6px;
     border-radius: 2px;
-    font-size: 8pt;
-    margin-left: 4px;
+    font-size: 11pt;
+    margin-left: 6px;
 }
 
 .job-card {
