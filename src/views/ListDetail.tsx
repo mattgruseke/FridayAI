@@ -143,6 +143,7 @@ const ListDetail = ({ listId }: Props) => {
 
         <div className="actions">
           <button className="btn" onClick={fetchData}>Refresh</button>
+          <Link href="/leads" className="btn">Find more leads</Link>
         </div>
 
         <div className="search-bar">

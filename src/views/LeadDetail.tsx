@@ -1060,7 +1060,7 @@ const LeadDetail = () => {
           className="btn btn-primary"
           onClick={handleSave}
         >
-          {isNewLead ? 'Add Lead' : userLead ? 'Save Changes' : 'Save Lead to Pipeline'}
+          {isNewLead ? 'Add Lead' : userLead ? 'Save Changes' : 'Save Lead'}
         </button>
 
         {userLead && (
@@ -1147,7 +1147,7 @@ const LeadDetail = () => {
                 <div className="section-title">
                   Job Posting
                   {!userLead && (
-                    <span className="edit-banner">Save this lead to enable editing</span>
+                    <span className="section-locked-hint">Save this lead to enable editing</span>
                   )}
                   {userLead && !isEditingBasic && !lead.isGlobal && (
                     <button className="edit-icon-btn" onClick={() => handleStartEdit('basic')} title="Edit job posting">
@@ -1176,26 +1176,6 @@ const LeadDetail = () => {
                       {lead.datePosted && <tr><td>Date Posted</td><td>{new Date(lead.datePosted).toLocaleDateString()}</td></tr>}
                       {lead.sourceLink && (
                         <tr><td>Source URL</td><td><a href={lead.sourceLink} target="_blank" rel="noopener noreferrer">View Source →</a></td></tr>
-                      )}
-                      {!userLead && (
-                        <tr>
-                          <td></td>
-                          <td>
-                            <button
-                              className="btn btn-primary save-lead-btn"
-                              onClick={async () => {
-                                try {
-                                  await api.userLeads.save({ leadId: lead._id, priority, notes: serializeNotes(noteEntries) });
-                                  await fetchLeadDetails();
-                                } catch (err) {
-                                  showToast(`Error saving lead: ${getErrorMessage(err)}`, 'error');
-                                }
-                              }}
-                            >
-                              Save Lead
-                            </button>
-                          </td>
-                        </tr>
                       )}
                     </tbody>
                   </table>
@@ -1459,13 +1439,16 @@ const LeadDetail = () => {
               <>
                 <div className="section-title">
                    Contacts
-              {!isEditingYourContacts && (
+              {!isEditingYourContacts && userLead && (
                 <button className="edit-icon-btn" onClick={() => handleStartEdit('yourContacts')} title="Edit your contacts">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                   </svg>
                 </button>
+              )}
+              {!isEditingYourContacts && !userLead && (
+                <span className="section-locked-hint">Save this lead to enable editing</span>
               )}
               {isEditingYourContacts && (
                 <span className="section-edit-actions">
@@ -1558,15 +1541,17 @@ const LeadDetail = () => {
                     </td>
                   </tr>
                 ))}
-                <tr>
-                  <td></td>
-                  <td>
-                    <button type="button" className="btn-add-email" onClick={() => {
-                      if (!isEditingYourContacts) handleStartEdit('yourContacts');
-                      updateUserLead({ additionalEmails: [...(userLead?.additionalEmails || []), ''] });
-                    }}>+ Add email</button>
-                  </td>
-                </tr>
+                {userLead && (
+                  <tr>
+                    <td></td>
+                    <td>
+                      <button type="button" className="btn-add-email" onClick={() => {
+                        if (!isEditingYourContacts) handleStartEdit('yourContacts');
+                        updateUserLead({ additionalEmails: [...(userLead?.additionalEmails || []), ''] });
+                      }}>+ Add email</button>
+                    </td>
+                  </tr>
+                )}
                 {(userLead?.additionalLinks || []).map((link: { title?: string; url?: string }, index: number) => (
                   <tr key={`add-link-${index}`}>
                     <td>{index === 0 ? 'Links' : ''}</td>
@@ -1601,15 +1586,17 @@ const LeadDetail = () => {
                     </td>
                   </tr>
                 ))}
-                <tr>
-                  <td>{(userLead?.additionalLinks || []).length === 0 ? 'Links' : ''}</td>
-                  <td>
-                    <button type="button" className="btn-add-email" onClick={() => {
-                      if (!isEditingYourContacts) handleStartEdit('yourContacts');
-                      updateUserLead({ additionalLinks: [...(userLead?.additionalLinks || []), { title: '', url: '' }] });
-                    }}>{(userLead?.additionalLinks || []).length === 0 ? '+ Add link' : '+ Add another link'}</button>
-                  </td>
-                </tr>
+                {userLead && (
+                  <tr>
+                    <td>{(userLead?.additionalLinks || []).length === 0 ? 'Links' : ''}</td>
+                    <td>
+                      <button type="button" className="btn-add-email" onClick={() => {
+                        if (!isEditingYourContacts) handleStartEdit('yourContacts');
+                        updateUserLead({ additionalLinks: [...(userLead?.additionalLinks || []), { title: '', url: '' }] });
+                      }}>{(userLead?.additionalLinks || []).length === 0 ? '+ Add link' : '+ Add another link'}</button>
+                    </td>
+                  </tr>
+                )}
                 {referral ? (
                   <>
                     <tr>
@@ -1671,9 +1658,9 @@ const LeadDetail = () => {
                     <button className="btn" onClick={handleCancelAddNote}>Cancel</button>
                   </div>
                 </div>
-              ) : (
+              ) : userLead ? (
                 <button className="btn btn-primary" onClick={() => setIsAddingNote(true)} style={{ marginBottom: 8 }}>Add Note</button>
-              )}
+              ) : null}
               {noteEntries.length > 0 ? (
                 [...noteEntries].reverse().map((entry) => (
                   <div key={entry.id} className="note-entry">

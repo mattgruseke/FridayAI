@@ -180,6 +180,15 @@
      margin-left: 16px;
  }
 
+.section-locked-hint {
+    font-size: 8pt;
+    color: #aaa;
+    font-weight: normal;
+    text-transform: none;
+    font-style: italic;
+    margin-left: 8px;
+}
+
  .edit-icon-btn {
      background: none;
      border: none;
