@@ -305,14 +305,6 @@ const Leads = () => {
 
           <div className="leads-toolbar-actions">
             <span className="leads-count">{filteredAndSortedLeads.length} leads</span>
-            <button className="btn" onClick={fetchLeads}>Refresh</button>
-            <button
-              className="btn"
-              onClick={() => setAddToListTarget(filteredAndSortedLeads.map(l => l._id))}
-              disabled={filteredAndSortedLeads.length === 0}
-            >
-              Save to List
-            </button>
             <Link href="/leads/new" className="btn-add-lead">Add Lead</Link>
           </div>
         </div>
@@ -339,6 +331,15 @@ const Leads = () => {
                 />
                 <span>Select all on page</span>
               </label>
+              {filteredTotalPages > 1 && !filteredAndSortedLeads.every(l => selectedLeads.has(l._id)) && (
+                <button
+                  type="button"
+                  className="leads-select-all-results"
+                  onClick={() => setSelectedLeads(new Set(filteredAndSortedLeads.map(l => l._id)))}
+                >
+                  Select all {filteredAndSortedLeads.length} results
+                </button>
+              )}
             </div>
           )}
 

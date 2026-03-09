@@ -945,7 +945,19 @@ body.dark-mode .leads-chips-divider {
     background: #f6f6ef;
     border-bottom: 1px solid #e6e6df;
     display: flex;
+    align-items: center;
     justify-content: flex-end;
+    gap: 16px;
+}
+
+.leads-select-all-results {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 8.5pt;
+    color: var(--accent);
+    cursor: pointer;
+    user-select: none;
 }
 
 .leads-select-all-label {
@@ -1160,6 +1172,10 @@ body.dark-mode .lead-card-avatar--logo {
 body.dark-mode .leads-cards-container {
     background: #2a2a2a;
     border-color: #404040;
+}
+
+body.dark-mode .leads-select-all-results {
+    color: var(--accent);
 }
 
 body.dark-mode .leads-select-all-row {
