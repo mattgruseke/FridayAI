@@ -12,6 +12,7 @@ import PublishLeadModal from '../components/PublishLeadModal';
 import type { PublishLeadMode } from '../components/PublishLeadModal';
 import { getErrorMessage } from '../lib/errors';
 import NoteEditor from '../components/NoteEditor';
+import CompanyLogo from '../components/CompanyLogo';
 
 type Lead = {
   _id?: string;
@@ -977,14 +978,17 @@ const LeadDetail = () => {
       <div className="page-header">
         <button onClick={handleBackClick} className="back-link">← back</button>
         <div className="page-title-row">
-          <div className="page-title">{isNewLead ? 'Add New Lead' : lead.title}</div>
+          {!isNewLead && lead.company && <CompanyLogo company={lead.company} size={40} className="lead-detail-avatar" />}
+          <div>
+            <div className="page-title">{isNewLead ? 'Add New Lead' : lead.title}</div>
+            {!isNewLead && <div className="page-subtitle">{lead.company}{lead.location ? ` | ${lead.location}` : ''}</div>}
+          </div>
           {isNewLead && (
             <button className="btn btn-import" onClick={() => setShowImportModal(true)}>
               Import Lead from URL
             </button>
           )}
         </div>
-        {!isNewLead && <div className="page-subtitle">{lead.company} | {lead.location}</div>}
       </div>
 
       {/* Import Modal */}

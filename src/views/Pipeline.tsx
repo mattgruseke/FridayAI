@@ -11,6 +11,7 @@ import { useToast } from '../hooks/useToast';
 import PublishLeadModal from '../components/PublishLeadModal';
 import type { PublishLeadMode } from '../components/PublishLeadModal';
 import { getErrorMessage } from '../lib/errors';
+import CompanyLogo from '../components/CompanyLogo';
 
 type PipelineLeadItem = {
   userLead?: { _id?: string; priority?: "high" | "medium" | "low"; lastActivityAt?: string; compensation?: { raw?: string } };
@@ -362,7 +363,10 @@ const Pipeline = () => {
                   className="job-card"
                   onClick={() => router.push(`/leads/${leadDetails._id}`)}
                 >
-                  <div className="job-company">{leadDetails.company}</div>
+                  <div className="job-company-row">
+                    {leadDetails.company && <CompanyLogo company={leadDetails.company} size={28} className="job-card-avatar" />}
+                    <div className="job-company">{leadDetails.company}</div>
+                  </div>
                   <div className="job-title">
                     <Link href={`/leads/${leadDetails._id}`}>
                       {leadDetails.title}

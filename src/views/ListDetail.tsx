@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import api from "../api/client";
 import { useToast } from "../hooks/useToast";
 import { getErrorMessage } from "../lib/errors";
+import CompanyLogo from "../components/CompanyLogo";
 
 type Lead = {
   _id: string;
@@ -131,78 +132,101 @@ const ListDetail = ({ listId }: Props) => {
           <button className="btn" onClick={fetchData}>Refresh</button>
         </div>
 
-        <input
-          type="text"
-          className="referral-search"
-          placeholder="Search by position, company, or location…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <div className="search-bar">
+          <input
+            type="text"
+            className="search-input"
+            placeholder="Search by position, company, or location…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
 
-        <div className="referrals-table-container">
-          <table className="referrals-table">
-            <thead>
-              <tr>
-                <th>Position</th>
-                <th>Company</th>
-                <th>Location</th>
-                <th>Compensation</th>
-                <th>Date Posted</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredLeads.length > 0 ? (
-                filteredLeads.map((lead) => (
-                  <tr
-                    key={lead._id}
-                    onClick={() => router.push(`/leads/${lead._id}`)}
-                    style={{ cursor: "pointer" }}
-                  >
-                    <td>
+        <div className="leads-cards-container">
+          {filteredLeads.length > 0 ? (
+            filteredLeads.map((lead) => {
+              const comp = lead.compensation?.raw ||
+                (lead.compensation?.min && lead.compensation?.max
+                  ? `$${lead.compensation.min}–$${lead.compensation.max}`
+                  : null);
+              const locLower = lead.location?.toLowerCase() ?? '';
+              const isRemote = locLower.includes('remote');
+              const isHybrid = locLower.includes('hybrid');
+
+              return (
+                <div
+                  key={lead._id}
+                  className={`lead-card ${savedLeads.has(lead._id) ? 'lead-card--saved' : ''}`}
+                  onClick={() => router.push(`/leads/${lead._id}`)}
+                >
+                  {lead.company && <CompanyLogo company={lead.company} />}
+
+                  <div className="lead-card-body">
+                    <div className="lead-card-top">
                       <Link
                         href={`/leads/${lead._id}`}
-                        className="referral-link"
+                        className="lead-card-title"
                         onClick={(e) => e.stopPropagation()}
                       >
                         {lead.title}
                       </Link>
-                    </td>
-                    <td>{lead.company || "N/A"}</td>
-                    <td>{lead.location || "N/A"}</td>
-                    <td>
-                      {lead.compensation?.raw ||
-                        (lead.compensation?.min && lead.compensation?.max
-                          ? `$${lead.compensation.min}–$${lead.compensation.max}`
-                          : "N/A")}
-                    </td>
-                    <td>
-                      {lead.datePosted
-                        ? new Date(lead.datePosted).toLocaleDateString()
-                        : "N/A"}
-                    </td>
-                    <td onClick={(e) => e.stopPropagation()}>
-                      {savedLeads.has(lead._id) ? (
-                        <button className="action-btn saved" disabled>Saved</button>
-                      ) : (
-                        <button className="action-btn" onClick={() => handleSaveLead(lead._id)}>
-                          Save
-                        </button>
+                    </div>
+
+                    {lead.company && (
+                      <div className="lead-card-company">{lead.company}</div>
+                    )}
+
+                    <div className="lead-card-tags">
+                      {lead.location && (
+                        <span className={`lead-card-tag lead-card-tag--location ${isRemote ? 'lead-card-tag--remote' : ''} ${isHybrid ? 'lead-card-tag--hybrid' : ''}`}>
+                          {isRemote ? (
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}>
+                              <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                            </svg>
+                          ) : (
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}>
+                              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                            </svg>
+                          )}
+                          {lead.location}
+                        </span>
                       )}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={6} style={{ textAlign: "center", padding: "2rem" }}>
-                    {search
-                      ? `No leads matching "${search}"`
-                      : "No leads in this list."}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                      {comp && (
+                        <span className="lead-card-tag lead-card-tag--comp">{comp}</span>
+                      )}
+                      {lead.datePosted && (
+                        <span className="lead-card-tag lead-card-tag--date">
+                          {new Date(lead.datePosted).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="lead-card-actions" onClick={(e) => e.stopPropagation()}>
+                    {savedLeads.has(lead._id) ? (
+                      <button className="lead-card-save lead-card-save--saved" disabled>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                        </svg>
+                        Saved
+                      </button>
+                    ) : (
+                      <button className="lead-card-save" onClick={() => handleSaveLead(lead._id)}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                        </svg>
+                        Save
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div style={{ textAlign: "center", padding: "2rem" }}>
+              {search ? `No leads matching "${search}"` : "No leads in this list."}
+            </div>
+          )}
         </div>
       </div>
       {toastElement}
