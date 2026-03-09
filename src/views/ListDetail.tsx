@@ -124,9 +124,22 @@ const ListDetail = ({ listId }: Props) => {
           </Link>
         </div>
         <div className="page-title">{list.name}</div>
-        {list.description && (
-          <p style={{ color: "#888", fontSize: "13px", margin: "0 0 12px" }}>{list.description}</p>
-        )}
+        {list.description && (() => {
+          const chips = list.description
+            .replace(/^leads matching:\s*/i, '')
+            .split(',')
+            .map(s => s.trim())
+            .filter(Boolean);
+          return (
+            <div className="leads-chips-row" style={{ marginBottom: 12, pointerEvents: 'none' }}>
+              {chips.map(chip => (
+                <span key={chip} className="leads-chip leads-chip--active" style={{ opacity: 0.7, cursor: 'default' }}>
+                  {chip}
+                </span>
+              ))}
+            </div>
+          );
+        })()}
 
         <div className="actions">
           <button className="btn" onClick={fetchData}>Refresh</button>
