@@ -1,0 +1,884 @@
+/* Network page styles */
+
+/* Cross-reference loading modal */
+.network-crossref-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.network-crossref-modal {
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 36px 40px;
+    width: 420px;
+    max-width: 90vw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+}
+
+.network-crossref-modal-title {
+    font-size: 12pt;
+    font-weight: bold;
+    text-align: center;
+    color: #000000;
+    margin: 0;
+}
+
+.network-crossref-modal-step {
+    font-size: 9pt;
+    color: #666666;
+    text-align: center;
+    min-height: 1.4em;
+    transition: opacity 0.2s;
+}
+
+/* Spinner */
+.network-crossref-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid #e0e0e0;
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: network-spin 0.75s linear infinite;
+    flex-shrink: 0;
+}
+
+@keyframes network-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Progress bar */
+.network-crossref-progress-track {
+    width: 100%;
+    height: 5px;
+    background: #e8e8e8;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.network-crossref-progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 999px;
+    transition: width 0.5s ease;
+}
+
+/* Dark mode */
+body.dark-mode .network-crossref-modal {
+    background: #1a1a1a;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+body.dark-mode .network-crossref-modal-title {
+    color: #e0e0e0;
+}
+
+body.dark-mode .network-crossref-modal-step {
+    color: #888888;
+}
+
+body.dark-mode .network-crossref-spinner {
+    border-color: #333333;
+    border-top-color: var(--accent);
+}
+
+body.dark-mode .network-crossref-progress-track {
+    background: #333333;
+}
+
+.network-table-container {
+    margin-top: 12px;
+    overflow-x: auto;
+}
+
+.network-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9pt;
+    background: #ffffff;
+}
+
+.network-table thead {
+    background: #f6f6ef;
+    border-bottom: 1px solid #cccccc;
+}
+
+.network-table th {
+    padding: 6px 8px;
+    text-align: left;
+    font-weight: bold;
+    font-size: 9pt;
+}
+
+.network-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #eeeeee;
+}
+
+.network-table tbody tr:hover {
+    background: #f6f6ef;
+}
+
+.network-connection-link {
+    color: #000000;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.network-connection-link:hover {
+    text-decoration: underline;
+}
+
+/* View switcher tabs — matches leads-saved-tabs pattern */
+.network-view-tabs {
+    display: flex;
+    gap: 0;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 16px;
+    margin-top: 12px;
+    width: fit-content;
+}
+
+.network-view-tab {
+    padding: 4px 12px;
+    background: none;
+    border: none;
+    font-size: 9pt;
+    font-family: Verdana, Geneva, sans-serif;
+    cursor: pointer;
+    color: #666;
+    transition: background 0.12s, color 0.12s;
+    border-right: 1px solid #e0e0e0;
+}
+
+.network-view-tab:last-child {
+    border-right: none;
+}
+
+.network-view-tab--active {
+    background: var(--accent);
+    color: #fff;
+    font-weight: bold;
+}
+
+body.dark-mode .network-view-tabs {
+    border-color: #444;
+}
+
+body.dark-mode .network-view-tab {
+    color: #aaa;
+    border-right-color: #444;
+}
+
+body.dark-mode .network-view-tab--active {
+    background: var(--accent);
+    color: #fff;
+}
+
+/* Stats cards row */
+.network-stats-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    margin-top: 12px;
+}
+
+.network-stat-card {
+    flex: 1;
+    min-width: 100px;
+    padding: 10px 14px;
+    border: 1px solid #e6e6df;
+    background: #ffffff;
+}
+
+.network-stat-card--accent {
+    border-color: var(--accent);
+}
+
+.network-stat-value {
+    font-size: 18pt;
+    font-weight: bold;
+    line-height: 1.1;
+    color: #000000;
+}
+
+.network-stat-card--accent .network-stat-value {
+    color: var(--accent);
+}
+
+.network-stat-label {
+    font-size: 8pt;
+    color: #888888;
+    margin-top: 2px;
+}
+
+/* Cross-reference section */
+.network-crossref-section {
+    border: 1px solid #e6e6df;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    background: #ffffff;
+}
+
+.network-crossref-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.network-crossref-header h3 {
+    margin: 0;
+    font-size: 10pt;
+    font-weight: bold;
+}
+
+.network-match-count {
+    display: inline-block;
+    background: var(--accent);
+    color: #ffffff;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 8pt;
+    font-weight: bold;
+}
+
+/* Dark mode — stats + crossref */
+body.dark-mode .network-stat-card {
+    background: #1a1a1a;
+    border-color: #333333;
+}
+
+body.dark-mode .network-stat-value {
+    color: #e0e0e0;
+}
+
+body.dark-mode .network-stat-label {
+    color: #666666;
+}
+
+body.dark-mode .network-crossref-section {
+    background: #1a1a1a;
+    border-color: #333333;
+}
+
+body.dark-mode .network-crossref-header h3 {
+    color: #e0e0e0;
+}
+
+/* Networking Plan list */
+.network-plan-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 1px solid #e6e6df;
+}
+
+.network-plan-group {
+    border-bottom: 1px solid #e6e6df;
+}
+
+.network-plan-group:last-child {
+    border-bottom: none;
+}
+
+.network-plan-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    cursor: pointer;
+    background: #ffffff;
+    gap: 8px;
+}
+
+.network-plan-group-header:hover {
+    background: #f6f6ef;
+}
+
+.network-plan-group-left {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+}
+
+.network-plan-logo {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 7pt;
+    font-weight: bold;
+    color: #ffffff;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.network-plan-company {
+    font-weight: bold;
+    font-size: 9pt;
+    white-space: nowrap;
+}
+
+.network-plan-meta {
+    font-size: 8pt;
+    color: #888888;
+    white-space: nowrap;
+}
+
+.network-plan-conns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.network-plan-chevron {
+    font-size: 8pt;
+    color: #aaaaaa;
+    flex-shrink: 0;
+}
+
+/* Expanded leads */
+.network-plan-leads {
+    border-top: 1px solid #f0f0ea;
+    background: #fafaf7;
+    padding: 6px 10px 6px 20px;
+}
+
+.network-plan-lead-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0;
+    border-bottom: 1px solid #f0f0ea;
+    font-size: 9pt;
+}
+
+.network-plan-lead-row:last-child {
+    border-bottom: none;
+}
+
+/* "preferred" badge on lead rows */
+.network-preferred-badge {
+    display: inline-block;
+    font-size: 7pt;
+    color: #999999;
+    border: 1px solid #cccccc;
+    border-radius: 3px;
+    padding: 1px 4px;
+    white-space: nowrap;
+    opacity: 0.8;
+}
+
+/* Connection chips — clickable, open LinkedIn */
+.network-conn-chip {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid #cccccc;
+    background: #ffffff;
+    font-size: 8pt;
+    font-family: Verdana, Geneva, sans-serif;
+    color: #333333;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: border-color 0.1s, color 0.1s;
+}
+
+.network-conn-chip:hover {
+    border-color: #0077b5;
+    color: #0077b5;
+}
+
+.network-conn-chip--no-link {
+    cursor: default;
+    color: #666666;
+}
+
+.network-conn-chip--no-link:hover {
+    border-color: #cccccc;
+    color: #666666;
+}
+
+/* Dark mode — plan */
+body.dark-mode .network-plan-list {
+    border-color: #333333;
+}
+
+body.dark-mode .network-plan-group {
+    border-bottom-color: #333333;
+}
+
+body.dark-mode .network-plan-group-header {
+    background: #1a1a1a;
+}
+
+body.dark-mode .network-plan-group-header:hover {
+    background: #2a2a2a;
+}
+
+body.dark-mode .network-plan-company {
+    color: #e0e0e0;
+}
+
+body.dark-mode .network-plan-meta {
+    color: #666666;
+}
+
+body.dark-mode .network-plan-leads {
+    background: #111111;
+    border-top-color: #2a2a2a;
+}
+
+body.dark-mode .network-plan-lead-row {
+    border-bottom-color: #2a2a2a;
+}
+
+body.dark-mode .network-conn-chip {
+    background: #2a2a2a;
+    border-color: #444444;
+    color: #cccccc;
+}
+
+body.dark-mode .network-conn-chip:hover {
+    border-color: #0077b5;
+    color: #4da6d4;
+}
+
+body.dark-mode .network-conn-chip--no-link {
+    color: #666666;
+}
+
+body.dark-mode .network-conn-chip--no-link:hover {
+    border-color: #444444;
+    color: #666666;
+}
+
+/* Filter chips — matches leads-chip pattern */
+.network-chips-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 8px;
+    margin-top: 8px;
+}
+
+.network-chip {
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 1.5px solid #ddd;
+    background: #fff;
+    font-size: 9pt;
+    font-family: Verdana, Geneva, sans-serif;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.network-chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.network-chip--active {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #fff;
+}
+
+.network-chip--active:hover {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #fff;
+    opacity: 0.85;
+}
+
+.network-chip-clear {
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1.5px solid #ccc;
+    background: transparent;
+    font-size: 9pt;
+    font-family: Verdana, Geneva, sans-serif;
+    color: #999;
+    cursor: pointer;
+}
+
+.network-chip-clear:hover {
+    color: #333;
+    border-color: #999;
+}
+
+/* Copy icon button */
+.copy-icon-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    color: #666666;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.copy-icon-btn:hover {
+    color: #000000;
+}
+
+body.dark-mode .copy-icon-btn {
+    color: #999999;
+}
+
+body.dark-mode .copy-icon-btn:hover {
+    color: #e0e0e0;
+}
+
+/* Dark mode */
+body.dark-mode .network-table {
+    background: #1a1a1a;
+    color: #e0e0e0;
+}
+
+body.dark-mode .network-table thead {
+    background: #2a2a2a;
+    border-bottom-color: #444444;
+}
+
+body.dark-mode .network-table td {
+    border-bottom-color: #333333;
+}
+
+body.dark-mode .network-table tbody tr:hover {
+    background: #2a2a2a;
+}
+
+body.dark-mode .network-connection-link {
+    color: #e0e0e0;
+}
+
+body.dark-mode .network-chip {
+    border-color: #444;
+    background: #2a2a2a;
+    color: #bbb;
+}
+
+body.dark-mode .network-chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+body.dark-mode .network-chip--active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+body.dark-mode .network-chip--active:hover {
+    opacity: 0.85;
+}
+
+body.dark-mode .network-chip-clear {
+    border-color: #444;
+    color: #666;
+}
+
+body.dark-mode .network-chip-clear:hover {
+    color: #ccc;
+    border-color: #888;
+}
+
+/* ── Onboarding modal ──────────────────────────────────────── */
+.network-onboarding-modal {
+    width: 520px;
+    max-width: 92vw;
+    padding: 36px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.network-onboarding-step-dots {
+    display: flex;
+    gap: 7px;
+    justify-content: center;
+}
+
+.network-onboarding-step-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #dddddd;
+    transition: background 0.2s;
+}
+
+.network-onboarding-step-dot--active {
+    background: var(--accent);
+}
+
+.network-onboarding-title {
+    font-size: 13pt;
+    font-weight: bold;
+    text-align: center;
+    color: #000000;
+    margin: 0;
+}
+
+.network-onboarding-body {
+    font-size: 10pt;
+    color: #444444;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.network-onboarding-email-preview {
+    background: #f8f8f5;
+    border: 1px solid #e0e0d8;
+    border-radius: 6px;
+    padding: 16px 18px;
+    font-size: 9pt;
+    line-height: 1.7;
+    color: #333333;
+    white-space: pre-wrap;
+}
+
+.network-onboarding-email-note {
+    font-size: 8.5pt;
+    color: #888888;
+    font-style: italic;
+    margin: 0;
+}
+
+.network-onboarding-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+/* Email icon button on lead rows */
+.network-email-icon-btn {
+    background: #e8f5e9;
+    border: 1px solid #a5d6a7;
+    cursor: pointer;
+    padding: 3px 8px;
+    color: #2e7d32;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: 4px;
+    font-size: 8pt;
+    font-family: Verdana, Geneva, sans-serif;
+    transition: background 0.12s, border-color 0.12s;
+}
+
+.network-email-icon-btn:hover {
+    background: #c8e6c9;
+    border-color: #81c784;
+    color: #1b5e20;
+}
+
+.network-email-icon-btn--sent {
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    color: #888;
+    cursor: default;
+    padding: 3px 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: 4px;
+    font-size: 8pt;
+    font-family: Verdana, Geneva, sans-serif;
+}
+
+/* Email compose modal */
+.network-email-modal {
+    width: 560px;
+    max-width: 94vw;
+    padding: 28px 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+}
+
+.network-email-modal-header {
+    font-size: 11pt;
+    font-weight: bold;
+    color: #000000;
+    margin: 0 0 18px 0;
+}
+
+.network-email-field {
+    display: flex;
+    align-items: flex-start;
+    border-bottom: 1px solid #eeeeee;
+    padding: 8px 0;
+}
+
+.network-email-field-label {
+    font-size: 8.5pt;
+    color: #888888;
+    width: 54px;
+    flex-shrink: 0;
+    padding-top: 2px;
+}
+
+.network-email-field-value {
+    font-size: 9pt;
+    color: #444444;
+    flex: 1;
+}
+
+.network-email-field input,
+.network-email-field textarea {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 9pt;
+    font-family: Verdana, Geneva, sans-serif;
+    color: #222222;
+    background: transparent;
+    padding: 0;
+    resize: none;
+    width: 100%;
+}
+
+.network-email-body-field {
+    padding-top: 12px;
+    border-bottom: none;
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.network-email-body-field textarea {
+    min-height: 160px;
+    line-height: 1.65;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.network-email-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 20px;
+}
+
+.network-email-sent-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 20px 0 8px;
+    text-align: center;
+}
+
+.network-email-sent-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #e8f5e9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #2e7d32;
+}
+
+.network-email-sent-title {
+    font-size: 12pt;
+    font-weight: bold;
+    color: #000000;
+    margin: 0;
+}
+
+.network-email-sent-sub {
+    font-size: 9pt;
+    color: #888888;
+    margin: 0;
+}
+
+/* Dark mode — onboarding + email modals */
+body.dark-mode .network-onboarding-title {
+    color: #e0e0e0;
+}
+
+body.dark-mode .network-onboarding-body {
+    color: #aaaaaa;
+}
+
+body.dark-mode .network-onboarding-email-preview {
+    background: #111111;
+    border-color: #333333;
+    color: #cccccc;
+}
+
+body.dark-mode .network-onboarding-step-dot {
+    background: #444444;
+}
+
+body.dark-mode .network-email-icon-btn {
+    background: #1a2e1a;
+    border-color: #2e5c2e;
+    color: #66bb6a;
+}
+
+body.dark-mode .network-email-icon-btn:hover {
+    background: #1e3a1e;
+    border-color: #4caf50;
+    color: #a5d6a7;
+}
+
+body.dark-mode .network-email-modal-header {
+    color: #e0e0e0;
+}
+
+body.dark-mode .network-email-field {
+    border-bottom-color: #2a2a2a;
+}
+
+body.dark-mode .network-email-field-label {
+    color: #666666;
+}
+
+body.dark-mode .network-email-field-value {
+    color: #cccccc;
+}
+
+body.dark-mode .network-email-field input,
+body.dark-mode .network-email-field textarea {
+    color: #e0e0e0;
+}
+
+body.dark-mode .network-email-sent-icon {
+    background: #1a2e1a;
+    color: #66bb6a;
+}
+
+body.dark-mode .network-email-sent-title {
+    color: #e0e0e0;
+}
+
+body.dark-mode .network-email-sent-sub {
+    color: #666666;
+}

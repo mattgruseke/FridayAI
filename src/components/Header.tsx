@@ -111,6 +111,7 @@ const Header = () => {
             <Link href="/pipeline">pipeline</Link>
             <Link href="/leads">leads</Link>
             <Link href="/lists">lists</Link>
+            <Link href="/network">network</Link>
             <Link href="/referrals">referrals</Link>
           </nav>
 
@@ -247,6 +248,9 @@ const Header = () => {
               </Link>
               <Link href="/lists" onClick={() => setMobileMenuOpen(false)}>
                 Lists
+              </Link>
+              <Link href="/network" onClick={() => setMobileMenuOpen(false)}>
+                Network
               </Link>
               <Link href="/referrals" onClick={() => setMobileMenuOpen(false)}>
                 Referrals

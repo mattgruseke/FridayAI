@@ -135,6 +135,11 @@ const LeadDetail = () => {
   const [selectedReferralId, setSelectedReferralId] = useState('');
   const [referralSearchQuery, setReferralSearchQuery] = useState('');
 
+  // Contact email compose modal
+  const [contactEmailDraft, setContactEmailDraft] = useState<{ to: string; subject: string; body: string } | null>(null);
+  const [contactEmailSending, setContactEmailSending] = useState(false);
+  const [contactEmailSent, setContactEmailSent] = useState(false);
+
   // Track initial values to detect changes
   const [initialValues, setInitialValues] = useState<any | null>(null);
 
@@ -945,6 +950,51 @@ const LeadDetail = () => {
     }
   };
 
+  function openContactEmailModal() {
+    const name = userLead?.userContactName || '';
+    const firstName = name.split(/[\s(]/)[0] || 'there';
+    setContactEmailDraft({
+      to: userLead?.userContactEmail || '',
+      subject: `Following up on ${lead?.title || 'the role'} at ${lead?.company || 'your company'}`,
+      body: [
+        `Hi ${firstName},`,
+        '',
+        `I wanted to follow up regarding the ${lead?.title || 'role'} opening at ${lead?.company}. I'm very interested and wanted to reach out directly.`,
+        '',
+        'Looking forward to hearing from you!',
+        '',
+        'Best,',
+      ].join('\n'),
+    });
+    setContactEmailSending(false);
+    setContactEmailSent(false);
+  }
+
+  async function handleSendContactEmail() {
+    if (!contactEmailDraft || !userLead?._id) return;
+    setContactEmailSending(true);
+    await new Promise((r) => setTimeout(r, 1500));
+    const activityNote = `Email sent to ${contactEmailDraft.to}`;
+    try {
+      if (userLead.currentStatus === 'saved') {
+        // Advance to Contacted; use email note as the history entry
+        await api.userLeads.updateStatus(userLead._id, 'contacted', activityNote);
+        setUserLead((prev) => prev ? { ...prev, currentStatus: 'contacted' } : prev);
+        setStatus('contacted');
+      } else {
+        // Already past Saved — just log the activity, don't change status
+        await api.userLeads.update(userLead._id, {
+          activityNote,
+          activityAction: 'email_sent',
+        });
+      }
+      const activityData = (await api.userLeads.getActivity(userLead._id)) as any[];
+      setActivity(activityData || []);
+    } catch {}
+    setContactEmailSending(false);
+    setContactEmailSent(true);
+  }
+
   const filteredReferrals = availableReferrals.filter(ref => {
     if (!referralSearchQuery) return true;
     const query = referralSearchQuery.toLowerCase();
@@ -990,6 +1040,54 @@ const LeadDetail = () => {
           )}
         </div>
       </div>
+
+      {/* Contact Email Compose Modal */}
+      {contactEmailDraft && (
+        <div className="modal-overlay" onClick={() => !contactEmailSending && setContactEmailDraft(null)}>
+          <div className="modal-content" style={{ width: 520, maxWidth: '96vw' }} onClick={(e) => e.stopPropagation()}>
+            {contactEmailSent ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '24px 0' }}>
+                <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2e7d32' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+                <p style={{ fontWeight: 600, fontSize: '1.05rem', margin: 0 }}>Email Sent!</p>
+                <p style={{ color: '#666', fontSize: 13, margin: 0 }}>Your message is on its way.</p>
+                <button className="btn btn-primary" style={{ marginTop: 8 }} onClick={() => setContactEmailDraft(null)}>Done</button>
+              </div>
+            ) : (
+              <>
+                <div className="modal-header">
+                  <h3>Send Email</h3>
+                  <button className="modal-close" onClick={() => setContactEmailDraft(null)}>×</button>
+                </div>
+                <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #eee', padding: '8px 0' }}>
+                    <span style={{ width: 54, flexShrink: 0, color: '#888', fontSize: 13 }}>To</span>
+                    <input type="email" value={contactEmailDraft.to} onChange={(e) => setContactEmailDraft({ ...contactEmailDraft, to: e.target.value })} style={{ flex: 1, border: 'none', outline: 'none', fontSize: 13 }} />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #eee', padding: '8px 0' }}>
+                    <span style={{ width: 54, flexShrink: 0, color: '#888', fontSize: 13 }}>Subject</span>
+                    <input type="text" value={contactEmailDraft.subject} onChange={(e) => setContactEmailDraft({ ...contactEmailDraft, subject: e.target.value })} style={{ flex: 1, border: 'none', outline: 'none', fontSize: 13 }} />
+                  </div>
+                  <textarea
+                    value={contactEmailDraft.body}
+                    onChange={(e) => setContactEmailDraft({ ...contactEmailDraft, body: e.target.value })}
+                    style={{ width: '100%', boxSizing: 'border-box', minHeight: 160, border: 'none', outline: 'none', fontSize: 13, resize: 'vertical', marginTop: 8, fontFamily: 'inherit' }}
+                  />
+                </div>
+                <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                  <button className="btn" onClick={() => setContactEmailDraft(null)} disabled={contactEmailSending}>Cancel</button>
+                  <button className="btn btn-primary" onClick={handleSendContactEmail} disabled={contactEmailSending}>
+                    {contactEmailSending ? 'Sending...' : 'Send Email'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Import Modal */}
       {showImportModal && (
@@ -1469,7 +1567,7 @@ const LeadDetail = () => {
                   <td>Primary Email</td>
                   <td>
                     {!isEditingYourContacts && userLead?.userContactEmail ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                         <a href={`mailto:${userLead.userContactEmail}`}>{userLead.userContactEmail}</a>
                         <button className="copy-icon-btn" onClick={(e) => {
                           e.stopPropagation();
@@ -1484,6 +1582,17 @@ const LeadDetail = () => {
                             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                           </svg>
+                        </button>
+                        <button
+                          onClick={openContactEmailModal}
+                          title="Compose email"
+                          style={{ background: '#e8f5e9', border: '1px solid #a5d6a7', color: '#2e7d32', cursor: 'pointer', padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: 4, borderRadius: 4, fontSize: '8pt', fontFamily: 'Verdana, Geneva, sans-serif' }}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                            <polyline points="22,6 12,13 2,6"/>
+                          </svg>
+                          Send email
                         </button>
                       </div>
                     ) : (

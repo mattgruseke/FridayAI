@@ -118,17 +118,23 @@ export async function POST(request: Request) {
   const status = payload.status || payload.currentStatus || "saved";
   const now = new Date().toISOString();
 
+  const statusHistory: Array<Record<string, string>> = [
+    { status, timestamp: now, note: "Lead saved to pipeline" },
+  ];
+  if (payload.activityNote) {
+    statusHistory.push({
+      status,
+      timestamp: now,
+      note: payload.activityNote,
+      action: payload.activityAction || "update",
+    });
+  }
+
   const userLeadDoc = {
     user_id: user!.id,
     lead_id: payload.leadId,
     current_status: status,
-    status_history: [
-      {
-        status,
-        timestamp: now,
-        note: "Lead saved to pipeline",
-      },
-    ],
+    status_history: statusHistory,
     priority: payload.priority || "medium",
     notes: payload.notes || "",
     saved_at: now,
