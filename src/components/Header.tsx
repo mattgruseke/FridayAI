@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import frogIcon from "../assets/frog.svg";
+import { canAccessNetwork } from "../lib/beta";
 
 const COLOR_THEMES = [
   { id: 'orange',     label: 'Orange',     hex: '#ff6600' },
@@ -111,7 +112,7 @@ const Header = () => {
             <Link href="/pipeline">pipeline</Link>
             <Link href="/leads">leads</Link>
             <Link href="/lists">lists</Link>
-            <Link href="/network">network</Link>
+            {canAccessNetwork(user?.id) && <Link href="/network">network</Link>}
             <Link href="/referrals">referrals</Link>
           </nav>
 
@@ -249,9 +250,11 @@ const Header = () => {
               <Link href="/lists" onClick={() => setMobileMenuOpen(false)}>
                 Lists
               </Link>
-              <Link href="/network" onClick={() => setMobileMenuOpen(false)}>
-                Network
-              </Link>
+              {canAccessNetwork(user?.id) && (
+                <Link href="/network" onClick={() => setMobileMenuOpen(false)}>
+                  Network
+                </Link>
+              )}
               <Link href="/referrals" onClick={() => setMobileMenuOpen(false)}>
                 Referrals
               </Link>

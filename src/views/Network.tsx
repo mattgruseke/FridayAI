@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Papa from "papaparse";
 import "./Network.css";
 import { createClient } from "../lib/supabase/client";
@@ -9,6 +10,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../hooks/useToast";
 import CompanyLogo from "../components/CompanyLogo";
 import api from "../api/client";
+import { canAccessNetwork } from "../lib/beta";
 
 type LinkedInRow = {
   first_name: string;
@@ -126,7 +128,14 @@ function matchesPreferredRole(title: string, roles: string[]): boolean {
 export default function Network() {
   const { user, preferredRoles } = useAuth();
   const { showToast, toastElement } = useToast();
+  const router = useRouter();
   const supabase = createClient();
+
+  useEffect(() => {
+    if (user && !canAccessNetwork(user.id)) {
+      router.replace("/leads");
+    }
+  }, [user, router]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [connections, setConnections] = useState<Connection[]>([]);
