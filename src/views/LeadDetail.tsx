@@ -1275,6 +1275,9 @@ const LeadDetail = () => {
                       {lead.sourceLink && (
                         <tr><td>Source URL</td><td><a href={lead.sourceLink} target="_blank" rel="noopener noreferrer">View Source →</a></td></tr>
                       )}
+                      {lead.sourceApplicationLink && (
+                        <tr><td>Application Link</td><td><a href={lead.sourceApplicationLink} target="_blank" rel="noopener noreferrer">Apply →</a></td></tr>
+                      )}
                     </tbody>
                   </table>
                 ) : (
@@ -1307,6 +1310,10 @@ const LeadDetail = () => {
                       <tr>
                         <td>Date Posted</td>
                         <td><input type="date" value={lead.datePosted || ''} onChange={(e) => updateLead({ datePosted: e.target.value })} /></td>
+                      </tr>
+                      <tr>
+                        <td>Application URL</td>
+                        <td><input type="text" value={lead.sourceApplicationLink || ''} onChange={(e) => updateLead({ sourceApplicationLink: e.target.value })} placeholder="https://..." /></td>
                       </tr>
                       <tr>
                         <td>Source URL</td>
@@ -1466,45 +1473,6 @@ const LeadDetail = () => {
                       />
                     </td>
                   </tr>
-                  {(isEditingTracking || userLead.sourceApplicationLink || lead.sourceApplicationLink) && (
-                    <tr>
-                      <td>Application Link</td>
-                      <td>
-                        {isEditingTracking ? (
-                          <input
-                            type="text"
-                            value={userLead.sourceApplicationLink || ''}
-                            onChange={(e) => updateUserLead({ sourceApplicationLink: e.target.value })}
-                            placeholder={lead.sourceApplicationLink || 'https://...'}
-                          />
-                        ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <a href={userLead.sourceApplicationLink || lead.sourceApplicationLink} target="_blank" rel="noopener noreferrer">
-                              Application Link
-                            </a>
-                            <button
-                              className="copy-icon-btn"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigator.clipboard.writeText(userLead.sourceApplicationLink || lead.sourceApplicationLink || '');
-                                const button = e.currentTarget;
-                                const originalHTML = button.innerHTML;
-                                button.innerHTML = '<span style="font-size: 8pt; color: #00a000; white-space: nowrap;">Copied!</span>';
-                                button.style.padding = '4px 6px';
-                                setTimeout(() => { button.innerHTML = originalHTML; button.style.padding = '4px'; }, 1500);
-                              }}
-                              title="Copy URL"
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                              </svg>
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>
