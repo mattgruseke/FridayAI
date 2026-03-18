@@ -34,6 +34,15 @@ export async function GET() {
         referral !== null && typeof referral === "object"
     );
 
+  const { data: networkMatches } = await supabase
+    .from("network_lead_matches")
+    .select("lead_id, connection_count, connection_names, connection_urls")
+    .eq("user_id", user!.id);
+
+  const networkMatchMap = new Map(
+    (networkMatches || []).map((m) => [m.lead_id, { connectionCount: m.connection_count, connectionNames: m.connection_names || [], connectionUrls: m.connection_urls || [] }])
+  );
+
   const leads = (userLeads || []).map((row) => {
     const leadDetails = row.lead ? mapLead(row.lead) : null;
     const userLead = mapUserLead(row);
@@ -46,10 +55,13 @@ export async function GET() {
         return linkedLeads.includes(userLead?._id);
       }) || null;
 
+    const networkConnections = leadDetails?._id ? (networkMatchMap.get(leadDetails._id) || null) : null;
+
     return {
       userLead,
       leadDetails,
       referral,
+      networkConnections,
     };
   });
 

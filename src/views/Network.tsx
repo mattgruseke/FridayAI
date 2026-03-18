@@ -1246,7 +1246,7 @@ export default function Network() {
       {/* Connections list — hidden in "matches" view */}
       {!preview && activeView !== "matches" && (
         <>
-          {total > 0 && (
+          {stats && stats.total > 0 && (
             <div style={{ marginBottom: 16 }}>
               <input
                 className="search-input"

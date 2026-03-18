@@ -231,6 +231,12 @@ export const userListsAPI = {
     }),
 };
 
+// Network Connections API
+export const networkConnectionsAPI = {
+  getByLeadId: (leadId: string) =>
+    fetchAPI(`/network-connections?leadId=${encodeURIComponent(leadId)}`),
+};
+
 // Onboarding API
 export const onboardingAPI = {
   complete: (preferredRoles: string[]) =>
@@ -265,6 +271,7 @@ export const api = {
   publish: publishLeadsAPI,
   userLists: userListsAPI,
   onboarding: onboardingAPI,
+  networkConnections: networkConnectionsAPI,
 };
 
 export default api;

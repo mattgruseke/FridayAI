@@ -17,6 +17,7 @@ type PipelineLeadItem = {
   userLead?: { _id?: string; priority?: "high" | "medium" | "low"; lastActivityAt?: string; compensation?: { raw?: string } };
   leadDetails?: { _id?: string; title?: string; company?: string; location?: string; compensation?: { raw?: string } };
   referral?: { name?: string; email?: string };
+  networkConnections?: { connectionCount: number; connectionNames: string[]; connectionUrls: string[] } | null;
 };
 
 function getActivityAge(dateStr: string | undefined): { label: string; className: string } | null {
@@ -120,6 +121,7 @@ const Pipeline = () => {
   // Archive confirmation modal state
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [pendingArchive, setPendingArchive] = useState<{ userLeadId: string; leadDetails: PipelineLeadItem['leadDetails'] | null } | null>(null);
+  const [expandedNetworkCards, setExpandedNetworkCards] = useState<Set<string>>(new Set());
 
   const handleArchiveClick = (userLeadId: string | undefined, leadDetails: PipelineLeadItem['leadDetails'] | null, e: React.MouseEvent) => {
     if (!userLeadId) return;
@@ -355,7 +357,7 @@ const Pipeline = () => {
                 {column.title} <span className="count">{count}</span>
               </div>
 
-              {leads.map(({ userLead, leadDetails, referral }) => {
+              {leads.map(({ userLead, leadDetails, referral, networkConnections }) => {
                 if (!userLead || !leadDetails) return null;
                 return (
                 <div
@@ -419,6 +421,37 @@ const Pipeline = () => {
                       </div>
                     </div>
                   )}
+
+                  {/* Network connections */}
+                  {networkConnections && networkConnections.connectionCount > 0 && (() => {
+                    const cardId = userLead._id!;
+                    const isExpanded = expandedNetworkCards.has(cardId);
+                    const hasMany = networkConnections.connectionCount > 1;
+                    const visibleNames = isExpanded || !hasMany ? networkConnections.connectionNames : [networkConnections.connectionNames[0]];
+                    const visibleUrls = isExpanded || !hasMany ? networkConnections.connectionUrls : [networkConnections.connectionUrls[0]];
+                    return (
+                      <div className="job-referral" onClick={(e) => e.stopPropagation()}>
+                        <div className="referral-label">Connections:</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 2, alignItems: 'center' }}>
+                          {visibleNames.map((name, i) => (
+                            visibleUrls[i] ? (
+                              <a key={i} href={visibleUrls[i]} target="_blank" rel="noopener noreferrer" className="network-conn-chip" onClick={(e) => e.stopPropagation()}>{name}</a>
+                            ) : (
+                              <span key={i} className="network-conn-chip network-conn-chip--no-link">{name}</span>
+                            )
+                          ))}
+                          {hasMany && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setExpandedNetworkCards(prev => { const next = new Set(prev); isExpanded ? next.delete(cardId) : next.add(cardId); return next; }); }}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontSize: '8pt', padding: '0 2px' }}
+                            >
+                              {isExpanded ? '▲ less' : `+${networkConnections.connectionCount - 1} more`}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Last activity */}
                   {(() => {

@@ -140,6 +140,10 @@ const LeadDetail = () => {
   const [contactEmailSending, setContactEmailSending] = useState(false);
   const [contactEmailSent, setContactEmailSent] = useState(false);
 
+  // Network connections (LinkedIn matches)
+  type NetworkConnection = { name: string; linkedinUrl: string | null; email: string | null };
+  const [networkConnections, setNetworkConnections] = useState<NetworkConnection[]>([]);
+
   // Track initial values to detect changes
   const [initialValues, setInitialValues] = useState<any | null>(null);
 
@@ -529,6 +533,14 @@ const LeadDetail = () => {
           userLeadData._id
         )) as any[];
         setActivity(activityData || []);
+
+        // Fetch network connections (best-effort)
+        try {
+          const ncData = (await api.networkConnections.getByLeadId(leadId!)) as { connections: NetworkConnection[] };
+          setNetworkConnections(ncData?.connections || []);
+        } catch {
+          setNetworkConnections([]);
+        }
 
         // Fetch referral if this lead is linked to any referral
         try {
@@ -1673,6 +1685,27 @@ const LeadDetail = () => {
                       }}>{(userLead?.additionalLinks || []).length === 0 ? '+ Add link' : '+ Add another link'}</button>
                     </td>
                   </tr>
+                )}
+                {networkConnections.length > 0 && (
+                  <>
+                    {networkConnections.map((conn, i) => (
+                      <tr key={`nc-${i}`}>
+                        <td>{i === 0 ? 'Connections' : ''}</td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            {conn.linkedinUrl ? (
+                              <a href={conn.linkedinUrl} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 500 }}>{conn.name}</a>
+                            ) : (
+                              <span style={{ fontWeight: 500 }}>{conn.name}</span>
+                            )}
+                            {conn.email && (
+                              <span style={{ color: '#828282', fontSize: '8pt' }}>{conn.email}</span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </>
                 )}
                 {referral ? (
                   <>
