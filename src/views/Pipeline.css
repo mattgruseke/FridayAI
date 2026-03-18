@@ -393,6 +393,37 @@
     color: #2e7d32;
     border: 1px solid #a5d6a7;
 }
+/* Network connection chips */
+.network-conn-chip {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid #cccccc;
+    background: #ffffff;
+    font-size: 8pt;
+    font-family: Verdana, Geneva, sans-serif;
+    color: #333333;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: border-color 0.1s, color 0.1s;
+}
+
+.network-conn-chip:hover {
+    border-color: #0077b5;
+    color: #0077b5;
+}
+
+.network-conn-chip--no-link {
+    cursor: default;
+    color: #666666;
+}
+
+.network-conn-chip--no-link:hover {
+    border-color: #cccccc;
+    color: #666666;
+}
+
 /* Dark Mode Styles */
 body.dark-mode .main {
     background: #1a1a1a;
@@ -547,4 +578,24 @@ body.dark-mode .btn-save-view.unsaved {
     background: var(--accent);
     color: #ffffff;
     border-color: var(--accent);
+}
+
+body.dark-mode .network-conn-chip {
+    background: #2a2a2a;
+    border-color: #444444;
+    color: #cccccc;
+}
+
+body.dark-mode .network-conn-chip:hover {
+    border-color: #0077b5;
+    color: #4da6d4;
+}
+
+body.dark-mode .network-conn-chip--no-link {
+    color: #666666;
+}
+
+body.dark-mode .network-conn-chip--no-link:hover {
+    border-color: #444444;
+    color: #666666;
 }
