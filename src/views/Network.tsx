@@ -895,18 +895,37 @@ export default function Network() {
 
       {/* Onboarding prompt — only shown before any connections are loaded */}
       {stats?.total === 0 && !preview && (
-        <div className="card" style={{ marginBottom: 24 }}>
-          <p style={{ marginBottom: 8 }}>
-            In order to maximize your network and find new leads, cross-referencing your LinkedIn connections is the way to go. Click the link below and follow the steps to download your connections. It can take up to 24 hours for LinkedIn to send the file — once you receive it, look for the file called <strong>Connections.csv</strong>.
+        <div className="network-empty-upload">
+          <div className="network-empty-icon">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </div>
+          <h3 className="network-empty-title">Unlock your network</h3>
+          <p className="network-empty-subtitle">
+            Upload your LinkedIn connections to see who you know at companies hiring for your target roles.
           </p>
-          <a
-            href="https://www.linkedin.com/help/linkedin/answer/a566336/export-connections-from-linkedin"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ fontSize: 14 }}
-          >
-            How to export your LinkedIn connections →
-          </a>
+          <div className="network-empty-steps">
+            <div className="network-empty-step">
+              <span className="network-empty-step-num">1</span>
+              <span>Go to <a href="https://www.linkedin.com/mypreferences/d/categories/privacy" target="_blank" rel="noopener noreferrer">LinkedIn → Settings &amp; Privacy</a></span>
+            </div>
+            <div className="network-empty-step">
+              <span className="network-empty-step-num">2</span>
+              <span>Click <strong>Data Privacy</strong> → <strong>Download my data</strong> → select <strong>Connections</strong> → click <strong>Request archive</strong></span>
+            </div>
+            <div className="network-empty-step">
+              <span className="network-empty-step-num">3</span>
+              <span>LinkedIn will email you a download link — <strong>this can take up to 24 hours</strong></span>
+            </div>
+            <div className="network-empty-step">
+              <span className="network-empty-step-num">4</span>
+              <span>Come back and upload the Connections.csv file using the button below</span>
+            </div>
+          </div>
         </div>
       )}
 
@@ -928,7 +947,7 @@ export default function Network() {
             <polyline points="17 8 12 3 7 8"/>
             <line x1="12" y1="3" x2="12" y2="15"/>
           </svg>
-          Upload LinkedIn Connections
+          Upload LinkedIn Connections.csv file
         </button>
       </div>
 
@@ -1276,8 +1295,37 @@ export default function Network() {
           {loading ? (
             <div className="loading-state">Loading...</div>
           ) : connections.length === 0 && !search ? (
-            <div className="empty-state">
-              <p>No connections yet. Upload your Connections.csv to get started.</p>
+            <div className="network-empty-upload">
+              <div className="network-empty-icon">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              </div>
+              <h3 className="network-empty-title">Unlock your network</h3>
+              <p className="network-empty-subtitle">
+                Upload your LinkedIn connections to see who you know at companies hiring for your target roles.
+              </p>
+              <div className="network-empty-steps">
+                <div className="network-empty-step">
+                  <span className="network-empty-step-num">1</span>
+                  <span>Go to <a href="https://www.linkedin.com/mypreferences/d/categories/privacy" target="_blank" rel="noopener noreferrer">LinkedIn → Settings &amp; Privacy</a></span>
+                </div>
+                <div className="network-empty-step">
+                  <span className="network-empty-step-num">2</span>
+                  <span>Click <strong>Data Privacy</strong> → <strong>Download my data</strong> → select <strong>Connections</strong> → click <strong>Request archive</strong></span>
+                </div>
+                <div className="network-empty-step">
+                  <span className="network-empty-step-num">3</span>
+                  <span>LinkedIn will email you a download link — <strong>this can take up to 24 hours</strong></span>
+                </div>
+                <div className="network-empty-step">
+                  <span className="network-empty-step-num">4</span>
+                  <span>Come back and upload the Connections.csv using the button above</span>
+                </div>
+              </div>
             </div>
           ) : connections.length === 0 ? (
             <div className="empty-state">No connections match &ldquo;{search}&rdquo;</div>

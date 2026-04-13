@@ -882,3 +882,90 @@ body.dark-mode .network-email-sent-title {
 body.dark-mode .network-email-sent-sub {
     color: #666666;
 }
+
+/* ── Empty upload state ── */
+.network-empty-upload {
+    max-width: 520px;
+    margin: 48px auto;
+    padding: 40px 36px;
+    background: #ffffff;
+    border: 1px solid #e6e6df;
+    border-radius: 16px;
+    text-align: center;
+}
+
+.network-empty-icon {
+    color: var(--accent);
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: center;
+}
+
+.network-empty-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #222222;
+    margin: 0 0 10px;
+    font-family: Verdana, Geneva, sans-serif;
+}
+
+.network-empty-subtitle {
+    font-size: 9pt;
+    color: #666666;
+    margin: 0 0 28px;
+    line-height: 1.6;
+    font-family: Verdana, Geneva, sans-serif;
+}
+
+.network-empty-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    text-align: left;
+}
+
+.network-empty-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 9pt;
+    font-family: Verdana, Geneva, sans-serif;
+    color: #333333;
+    line-height: 1.5;
+}
+
+.network-empty-step-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #ffffff;
+    font-size: 8pt;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.network-empty-step a {
+    color: var(--accent);
+}
+
+body.dark-mode .network-empty-upload {
+    background: #1a1a1a;
+    border-color: #333333;
+}
+
+body.dark-mode .network-empty-title {
+    color: #eeeeee;
+}
+
+body.dark-mode .network-empty-subtitle {
+    color: #888888;
+}
+
+body.dark-mode .network-empty-step {
+    color: #cccccc;
+}
