@@ -446,17 +446,17 @@ export default function OnboardingModal({
                 <span>
                   Go to{" "}
                   <a
-                    href="https://www.linkedin.com/mynetwork/invite-connect/connections/"
+                    href="https://www.linkedin.com/mypreferences/d/categories/privacy"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    LinkedIn → My Network → Connections
+                    LinkedIn → Settings → Data Privacy
                   </a>
                 </span>
               </div>
               <div className="onboarding-linkedin-step">
                 <span className="onboarding-linkedin-num">2</span>
-                <span>Click <strong>Manage my network</strong> → <strong>Connections</strong> → <strong>Export contacts</strong></span>
+                <span>Click <strong>Data Privacy</strong> → <strong>Get a copy of your data</strong> → select <strong>Connections</strong> → <strong>Request archive</strong></span>
               </div>
               <div className="onboarding-linkedin-step">
                 <span className="onboarding-linkedin-num">3</span>
