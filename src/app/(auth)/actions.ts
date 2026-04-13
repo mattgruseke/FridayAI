@@ -70,6 +70,16 @@ export async function signUp(
       .from("user_profiles")
       .update({ invite_code_used: inviteCode.toUpperCase() })
       .eq("id", data.user.id);
+
+    // Seed onboarding notification
+    await supabase.from("notifications").insert({
+      user_id: data.user.id,
+      type: "linkedin_upload",
+      message: "Upload your LinkedIn connections to unlock the Network tab and see who you know at hiring companies.",
+      action_url: "/network",
+      is_dismissed: false,
+      is_completed: false,
+    });
   }
 
   return data;

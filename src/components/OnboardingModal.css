@@ -376,6 +376,79 @@ body.dark-mode .modal-cancel-btn {
   color: #aaa;
 }
 
+/* ── Step dots ── */
+.onboarding-steps {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 16px 0 4px;
+}
+
+.onboarding-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #dddddd;
+  transition: background 0.2s;
+}
+
+.onboarding-dot--active {
+  background: var(--accent);
+}
+
+.onboarding-dot--done {
+  background: #aaaaaa;
+}
+
+/* ── LinkedIn steps ── */
+.onboarding-linkedin-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.onboarding-linkedin-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 9pt;
+  font-family: Verdana, Geneva, sans-serif;
+  color: #333333;
+  line-height: 1.5;
+}
+
+.onboarding-linkedin-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 8pt;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.onboarding-linkedin-step a {
+  color: var(--accent);
+}
+
+body.dark-mode .onboarding-dot {
+  background: #444444;
+}
+
+body.dark-mode .onboarding-dot--done {
+  background: #666666;
+}
+
+body.dark-mode .onboarding-linkedin-step {
+  color: #cccccc;
+}
+
 @media (max-width: 480px) {
   .onboarding-modal {
     padding: 28px 20px 20px;

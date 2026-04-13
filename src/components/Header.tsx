@@ -7,6 +7,17 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import frogIcon from "../assets/frog.svg";
 import { canAccessNetwork } from "../lib/beta";
+import api from "../api/client";
+
+type Notification = {
+  id: string;
+  type: string;
+  message: string;
+  action_url?: string;
+  is_dismissed: boolean;
+  is_completed: boolean;
+  created_at: string;
+};
 
 const COLOR_THEMES = [
   { id: 'orange',     label: 'Orange',     hex: '#ff6600' },
@@ -37,8 +48,25 @@ const Header = () => {
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const sidebarRef = useRef<HTMLDivElement | null>(null);
   const colorPickerRef = useRef<HTMLDivElement | null>(null);
+  const notifRef = useRef<HTMLDivElement | null>(null);
+
+  const unreadCount = notifications.filter((n) => !n.is_dismissed).length;
+
+  useEffect(() => {
+    if (!user) return;
+    api.notifications.getAll().then((data) => setNotifications(data as Notification[])).catch(() => {});
+  }, [user]);
+
+  async function handleDismissNotif(id: string) {
+    await api.notifications.dismiss(id).catch(() => {});
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, is_dismissed: true } : n))
+    );
+  }
 
   useEffect(() => {
     if (darkMode) {
@@ -71,6 +99,12 @@ const Header = () => {
         !colorPickerRef.current.contains(event.target as Node)
       ) {
         setColorPickerOpen(false);
+      }
+      if (
+        notifRef.current &&
+        !notifRef.current.contains(event.target as Node)
+      ) {
+        setNotifOpen(false);
       }
     };
 
@@ -117,6 +151,65 @@ const Header = () => {
           </nav>
 
           <div className="spacer"></div>
+
+          {/* Notifications bell */}
+          {user && (
+            <div className="notif-wrap" ref={notifRef}>
+              <button
+                className="notif-btn"
+                onClick={() => setNotifOpen((o) => !o)}
+                title="Notifications"
+                aria-label="Notifications"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                {unreadCount > 0 && (
+                  <span className="notif-badge">{unreadCount}</span>
+                )}
+              </button>
+
+              {notifOpen && (
+                <div className="notif-dropdown">
+                  <div className="notif-dropdown-header">Notifications</div>
+                  {notifications.length === 0 ? (
+                    <div className="notif-empty">No notifications</div>
+                  ) : (
+                    notifications.map((n) => (
+                      <div
+                        key={n.id}
+                        className={`notif-item ${n.is_dismissed ? "notif-item--read" : "notif-item--unread"}`}
+                      >
+                        <div className="notif-item-body">
+                          {n.action_url ? (
+                            <Link
+                              href={n.action_url}
+                              className="notif-item-msg"
+                              onClick={() => setNotifOpen(false)}
+                            >
+                              {n.message}
+                            </Link>
+                          ) : (
+                            <span className="notif-item-msg">{n.message}</span>
+                          )}
+                        </div>
+                        {!n.is_dismissed && (
+                          <button
+                            className="notif-dismiss-btn"
+                            onClick={() => handleDismissNotif(n.id)}
+                            title="Dismiss"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* iOS-style dark mode toggle */}
           <button

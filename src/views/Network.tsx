@@ -566,6 +566,8 @@ export default function Network() {
       setImporting(false);
       fetchConnections(0, "");
       fetchStats();
+      // Mark linkedin_upload notification as complete
+      api.notifications.completeByType("linkedin_upload").catch(() => {});
       const hadMatches = await runCrossReference();
       if (hadMatches) {
         const seen = localStorage.getItem(`network_onboarded_${user!.id}`);

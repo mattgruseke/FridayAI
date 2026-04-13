@@ -12,7 +12,7 @@ const apiClient = axios.create({
 });
 
 type FetchOptions = {
-  method?: "GET" | "POST" | "PUT" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   headers?: Record<string, string>;
   body?: string;
 };
@@ -239,10 +239,10 @@ export const networkConnectionsAPI = {
 
 // Onboarding API
 export const onboardingAPI = {
-  complete: (preferredRoles: string[]) =>
+  complete: (preferredRoles: string[], preferredCompensation: string[] = []) =>
     fetchAPI("/onboarding", {
       method: "POST",
-      body: JSON.stringify({ preferredRoles }),
+      body: JSON.stringify({ preferredRoles, preferredCompensation }),
     }),
 
   skip: () =>
@@ -263,6 +263,23 @@ export const onboardingAPI = {
     }),
 };
 
+// Notifications API
+export const notificationsAPI = {
+  getAll: () => fetchAPI("/notifications"),
+
+  dismiss: (id: string) =>
+    fetchAPI(`/notifications?id=${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ action: "dismiss" }),
+    }),
+
+  completeByType: (type: string) =>
+    fetchAPI("/notifications", {
+      method: "PATCH",
+      body: JSON.stringify({ type }),
+    }),
+};
+
 // Export combined API object
 export const api = {
   leads: leadsAPI,
@@ -272,6 +289,7 @@ export const api = {
   userLists: userListsAPI,
   onboarding: onboardingAPI,
   networkConnections: networkConnectionsAPI,
+  notifications: notificationsAPI,
 };
 
 export default api;
