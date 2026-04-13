@@ -929,7 +929,7 @@ export default function Network() {
         </div>
       )}
 
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'center' }}>
         <input
           ref={fileInputRef}
           type="file"
