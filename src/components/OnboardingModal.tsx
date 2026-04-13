@@ -456,7 +456,7 @@ export default function OnboardingModal({
               </div>
               <div className="onboarding-linkedin-step">
                 <span className="onboarding-linkedin-num">2</span>
-                <span>Click <strong>Data Privacy</strong> → <strong>Get a copy of your data</strong> → select <strong>Connections</strong> → <strong>Request archive</strong></span>
+                <span>Click <strong>Data Privacy</strong> → <strong>Download my data</strong> → select <strong>Download larger data archive...</strong> → Click <strong>Request archive</strong></span>
               </div>
               <div className="onboarding-linkedin-step">
                 <span className="onboarding-linkedin-num">3</span>
