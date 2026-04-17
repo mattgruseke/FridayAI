@@ -200,7 +200,7 @@ body.dark-mode .tour-btn-skip:hover {
   z-index: 500;
   pointer-events: none;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-  max-width: 240px;
+  max-width: 320px;
   white-space: normal;
   text-align: center;
 }
@@ -261,6 +261,6 @@ body.dark-mode .tour-tip-badge:hover {
   }
 
   .tour-tip-popup {
-    max-width: 180px;
+    max-width: 240px;
   }
 }
