@@ -17,9 +17,14 @@ type ScoreLeadsResponse = {
 
 type Props = {
   onboardingCompleted: boolean;
+  /** Renders a smaller, tighter version of the card (used on /network) */
+  compact?: boolean;
+  /** If provided, shows a Re-run button in the card header */
+  onRerun?: () => void;
+  rerunLoading?: boolean;
 };
 
-export default function NetworkAnalysisCard({ onboardingCompleted }: Props) {
+export default function NetworkAnalysisCard({ onboardingCompleted, compact, onRerun, rerunLoading }: Props) {
   const [data, setData] = useState<ScoreLeadsResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,10 +42,13 @@ export default function NetworkAnalysisCard({ onboardingCompleted }: Props) {
   const totalScored = data?.distribution.reduce((sum, b) => sum + b.count, 0) ?? 0;
   const strongCount = data?.distribution.find((b) => b.zone === "high")?.count ?? 0;
 
+  const cardClass = ["na-card", compact ? "na-card--compact" : ""].filter(Boolean).join(" ");
+  const blankCardClass = ["na-card", "na-card--blank", compact ? "na-card--compact" : ""].filter(Boolean).join(" ");
+
   // ── Blank: onboarding not done ────────────────────────────────────────────
   if (!onboardingCompleted) {
     return (
-      <div className="na-card na-card--blank">
+      <div className={blankCardClass}>
         <div className="na-card-header">
           <span className="na-card-title">Network Analysis</span>
         </div>
@@ -63,7 +71,7 @@ export default function NetworkAnalysisCard({ onboardingCompleted }: Props) {
   // ── Blank: loading ────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="na-card na-card--blank">
+      <div className={blankCardClass}>
         <div className="na-card-header">
           <span className="na-card-title">Network Analysis</span>
         </div>
@@ -77,7 +85,7 @@ export default function NetworkAnalysisCard({ onboardingCompleted }: Props) {
   // ── Blank: no connections uploaded ───────────────────────────────────────
   if (!data?.hasConnections) {
     return (
-      <div className="na-card na-card--blank">
+      <div className={blankCardClass}>
         <div className="na-card-header">
           <span className="na-card-title">Network Analysis</span>
         </div>
@@ -93,7 +101,7 @@ export default function NetworkAnalysisCard({ onboardingCompleted }: Props) {
           <p className="na-blank-text">
             Upload your LinkedIn connections to see how your network overlaps with open roles.
           </p>
-          <Link href="/network" className="na-blank-btn">Go to Network →</Link>
+          {!compact && <Link href="/network" className="na-blank-btn">Go to Network →</Link>}
         </div>
       </div>
     );
@@ -101,10 +109,23 @@ export default function NetworkAnalysisCard({ onboardingCompleted }: Props) {
 
   // ── Populated: show chart ─────────────────────────────────────────────────
   return (
-    <div className="na-card">
+    <div className={cardClass}>
       <div className="na-card-header">
         <span className="na-card-title">Network Analysis</span>
-        <Link href="/network" className="na-card-link">view network</Link>
+        <div className="na-card-header-actions">
+          {onRerun && (
+            <button
+              className="btn btn-secondary na-rerun-btn"
+              onClick={onRerun}
+              disabled={rerunLoading}
+            >
+              {rerunLoading ? "Running..." : "Re-run"}
+            </button>
+          )}
+          {!compact && (
+            <Link href="/network" className="na-card-link">view network</Link>
+          )}
+        </div>
       </div>
 
       {strongCount > 0 && (
@@ -113,7 +134,7 @@ export default function NetworkAnalysisCard({ onboardingCompleted }: Props) {
         </div>
       )}
 
-      <BellCurveChart distribution={data.distribution} />
+      <BellCurveChart distribution={data.distribution} compact={compact} />
 
       <p className="na-footer-note">
         Scored across {totalScored.toLocaleString()} leads using your profile, network, and referrals.

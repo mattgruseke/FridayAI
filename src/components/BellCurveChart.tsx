@@ -5,6 +5,7 @@ import type { ScoreBucket } from "@/lib/scoring";
 
 type Props = {
   distribution: ScoreBucket[];
+  compact?: boolean;
 };
 
 const ZONE_COLORS: Record<string, string> = {
@@ -19,11 +20,11 @@ const ZONE_HOVER: Record<string, string> = {
   high:   "var(--bell-high-hover)",
 };
 
-export default function BellCurveChart({ distribution }: Props) {
+export default function BellCurveChart({ distribution, compact }: Props) {
   const router = useRouter();
 
   const SVG_W = 480;
-  const SVG_H = 160;
+  const SVG_H = compact ? 110 : 160;
   const PAD_L = 8;
   const PAD_R = 8;
   const PAD_TOP = 16;

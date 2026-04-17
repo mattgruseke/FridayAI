@@ -11,6 +11,8 @@ import { useToast } from "../hooks/useToast";
 import CompanyLogo from "../components/CompanyLogo";
 import api from "../api/client";
 import { canAccessNetwork } from "../lib/beta";
+import NetworkAnalysisCard from "../components/NetworkAnalysisCard";
+
 
 type LinkedInRow = {
   first_name: string;
@@ -126,7 +128,7 @@ function matchesPreferredRole(title: string, roles: string[]): boolean {
 }
 
 export default function Network() {
-  const { user, preferredRoles } = useAuth();
+  const { user, preferredRoles, onboardingCompleted } = useAuth();
   const { showToast, toastElement } = useToast();
   const router = useRouter();
   const supabase = createClient();
@@ -446,7 +448,7 @@ export default function Network() {
     try {
       const stored = localStorage.getItem(`network_emailed_${user.id}`);
       if (stored) setSentEmails(JSON.parse(stored));
-    } catch {}
+    } catch { }
   }, [user]);
 
   function handleSearchChange(value: string) {
@@ -567,7 +569,7 @@ export default function Network() {
       fetchConnections(0, "");
       fetchStats();
       // Mark linkedin_upload notification as complete
-      api.notifications.completeByType("linkedin_upload").catch(() => {});
+      api.notifications.completeByType("linkedin_upload").catch(() => { });
       const hadMatches = await runCrossReference();
       if (hadMatches) {
         const seen = localStorage.getItem(`network_onboarded_${user!.id}`);
@@ -661,7 +663,7 @@ export default function Network() {
     const sentAt = new Date().toISOString();
     setSentEmails((prev) => {
       const updated = { ...prev, [emailDraft.leadId]: sentAt };
-      try { localStorage.setItem(`network_emailed_${user!.id}`, JSON.stringify(updated)); } catch {}
+      try { localStorage.setItem(`network_emailed_${user!.id}`, JSON.stringify(updated)); } catch { }
       return updated;
     });
     setEmailSending(false);
@@ -893,15 +895,24 @@ export default function Network() {
         <h1 className="page-title">Network</h1>
       </div>
 
+      <div className="section">
+        <NetworkAnalysisCard
+          onboardingCompleted={onboardingCompleted}
+          compact
+          onRerun={crossRefMatches.length > 0 ? runCrossReference : undefined}
+          rerunLoading={crossRefLoading}
+        />
+      </div>
+
       {/* Onboarding prompt — only shown before any connections are loaded */}
       {stats?.total === 0 && !preview && (
         <div className="network-empty-upload">
           <div className="network-empty-icon">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
             </svg>
           </div>
           <h3 className="network-empty-title">Unlock your network</h3>
@@ -943,9 +954,9 @@ export default function Network() {
           onClick={() => fileInputRef.current?.click()}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
           </svg>
           Upload LinkedIn Connections.csv file
         </button>
@@ -1002,15 +1013,6 @@ export default function Network() {
                 </span>
               )}
             </div>
-            {crossRefMatches.length > 0 && (
-              <button
-                className="btn btn-secondary"
-                onClick={runCrossReference}
-                disabled={crossRefLoading}
-              >
-                {crossRefLoading ? "Running..." : "Re-run"}
-              </button>
-            )}
           </div>
 
           {roles.length > 0 && (
@@ -1116,8 +1118,8 @@ export default function Network() {
                                   onClick={(e) => { e.stopPropagation(); openEmailModal(m, g); }}
                                 >
                                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                                    <polyline points="22,6 12,13 2,6"/>
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                                    <polyline points="22,6 12,13 2,6" />
                                   </svg>
                                   Send email
                                 </button>
@@ -1298,10 +1300,10 @@ export default function Network() {
             <div className="network-empty-upload">
               <div className="network-empty-icon">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                  <circle cx="9" cy="7" r="4"/>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                 </svg>
               </div>
               <h3 className="network-empty-title">Unlock your network</h3>

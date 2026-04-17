@@ -117,6 +117,44 @@
   text-align: right;
 }
 
+/* Header actions (Re-run + link) */
+.na-card-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.na-rerun-btn {
+  font-size: 0.75rem;
+  padding: 3px 10px;
+  height: auto;
+}
+
+/* Compact variant (used on /network page) */
+.na-card--compact {
+  padding: 12px 16px 10px;
+}
+
+.na-card--compact .na-card-header {
+  margin-bottom: 10px;
+}
+
+.na-card--compact .na-callout {
+  font-size: 0.75rem;
+  padding: 5px 10px;
+  margin-bottom: 10px;
+}
+
+.na-card--compact .na-footer-note {
+  font-size: 0.7rem;
+  margin-top: 6px;
+}
+
+.na-card--compact .na-blank-body {
+  padding: 16px 12px;
+  gap: 8px;
+}
+
 /* Dark mode */
 body.dark-mode .na-card {
   background: #1e1e1e;
