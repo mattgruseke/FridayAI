@@ -901,6 +901,7 @@ export default function Network() {
           compact
           onRerun={crossRefMatches.length > 0 ? runCrossReference : undefined}
           rerunLoading={crossRefLoading}
+          onUpload={stats && stats.total > 0 ? () => fileInputRef.current?.click() : undefined}
         />
       </div>
 
@@ -940,27 +941,31 @@ export default function Network() {
         </div>
       )}
 
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'center' }}>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".csv"
-          style={{ display: "none" }}
-          onChange={handleFileChange}
-          onClick={() => { if (fileInputRef.current) fileInputRef.current.value = ""; }}
-        />
-        <button
-          className="btn btn-primary"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" y1="3" x2="12" y2="15" />
-          </svg>
-          Upload LinkedIn Connections.csv file
-        </button>
-      </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".csv"
+        style={{ display: "none" }}
+        onChange={handleFileChange}
+        onClick={() => { if (fileInputRef.current) fileInputRef.current.value = ""; }}
+      />
+
+      {/* Upload button — only shown before connections exist; after upload it moves to card header */}
+      {(!stats || stats.total === 0) && (
+        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'center' }}>
+          <button
+            className="btn btn-primary"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            Upload LinkedIn Connections.csv file
+          </button>
+        </div>
+      )}
 
       {/* View switcher — only shown once connections exist */}
       {stats && stats.total > 0 && (
