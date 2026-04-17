@@ -376,6 +376,93 @@ body.dark-mode .modal-cancel-btn {
   color: #aaa;
 }
 
+/* ── Situation options ── */
+.onboarding-situation-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.onboarding-situation-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1.5px solid #ddd;
+  background: #f8f8f8;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.onboarding-situation-option:hover {
+  border-color: var(--accent);
+}
+
+.onboarding-situation-option--selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, white);
+}
+
+.onboarding-situation-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.onboarding-situation-label {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #222;
+}
+
+.onboarding-situation-sub {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.onboarding-situation-radio {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #ccc;
+  flex-shrink: 0;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.onboarding-situation-radio--selected {
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: inset 0 0 0 3px #fff;
+}
+
+body.dark-mode .onboarding-situation-option {
+  border-color: #444;
+  background: #2a2a2a;
+}
+
+body.dark-mode .onboarding-situation-option:hover {
+  border-color: var(--accent);
+}
+
+body.dark-mode .onboarding-situation-option--selected {
+  background: color-mix(in srgb, var(--accent) 15%, #1e1e1e);
+}
+
+body.dark-mode .onboarding-situation-label {
+  color: #f0f0f0;
+}
+
+body.dark-mode .onboarding-situation-sub {
+  color: #888;
+}
+
+body.dark-mode .onboarding-situation-radio {
+  border-color: #555;
+}
+
 /* ── Step dots ── */
 .onboarding-steps {
   display: flex;
