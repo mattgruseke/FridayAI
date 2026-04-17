@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import api from "@/api/client";
 import BellCurveChart from "./BellCurveChart";
+import TourTooltip from "./TourTooltip";
 import "./BellCurveChart.css";
 import "./NetworkAnalysisCard.css";
 import type { ScoreBucket } from "@/lib/scoring";
@@ -50,7 +51,7 @@ export default function NetworkAnalysisCard({ onboardingCompleted, compact, onRe
     return (
       <div className={blankCardClass}>
         <div className="na-card-header">
-          <span className="na-card-title">Network Analysis</span>
+          <span className="na-card-title">Lead Analysis</span>
         </div>
         <div className="na-blank-body">
           <div className="na-blank-icon">
@@ -73,7 +74,7 @@ export default function NetworkAnalysisCard({ onboardingCompleted, compact, onRe
     return (
       <div className={blankCardClass}>
         <div className="na-card-header">
-          <span className="na-card-title">Network Analysis</span>
+          <span className="na-card-title">Lead Analysis</span>
         </div>
         <div className="na-blank-body na-blank-body--loading">
           <div className="na-skeleton na-skeleton--chart" />
@@ -87,7 +88,7 @@ export default function NetworkAnalysisCard({ onboardingCompleted, compact, onRe
     return (
       <div className={blankCardClass}>
         <div className="na-card-header">
-          <span className="na-card-title">Network Analysis</span>
+          <span className="na-card-title">Lead Analysis</span>
         </div>
         <div className="na-blank-body">
           <div className="na-blank-icon">
@@ -111,7 +112,13 @@ export default function NetworkAnalysisCard({ onboardingCompleted, compact, onRe
   return (
     <div className={cardClass}>
       <div className="na-card-header">
-        <span className="na-card-title">Network Analysis</span>
+        <span className="na-card-title">
+          Lead Analysis
+          <TourTooltip
+            text="Each lead is scored 0–100 across role fit, compensation, location, network connections, referrals, and recency. Low = 0–39, Moderate = 40–69, Strong = 70–100."
+            align="left"
+          />
+        </span>
         <div className="na-card-header-actions">
           {onRerun && (
             <button

@@ -877,7 +877,7 @@ export default function Network() {
         <div className="network-crossref-modal-overlay">
           <div className="network-crossref-modal">
             <div className="network-crossref-spinner" />
-            <p className="network-crossref-modal-title">Building Your Networking Plan</p>
+            <p className="network-crossref-modal-title">Analyzing your connections...</p>
             <p className="network-crossref-modal-step">
               {CROSSREF_STEPS[crossRefStep] || "Working..."}
             </p>
@@ -1006,7 +1006,7 @@ export default function Network() {
           {/* Header */}
           <div className="network-crossref-header">
             <div>
-              <strong>Networking Plan</strong>
+              <strong>LinkedIn Analysis</strong>
               {crossRefRunAt && (
                 <span style={{ color: "var(--text-muted)", fontSize: 12, marginLeft: 10 }}>
                   Last run {new Date(crossRefRunAt).toLocaleDateString()}

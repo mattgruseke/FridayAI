@@ -22,9 +22,10 @@
 .na-card-title {
   font-size: 0.8125rem;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
   color: #6b7280;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .na-card-link {
