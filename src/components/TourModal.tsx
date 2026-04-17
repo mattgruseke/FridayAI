@@ -68,7 +68,7 @@ const TOUR_STEPS: TourStep[] = [
       </svg>
     ),
     title: "Network",
-    description: "Upload your LinkedIn connections CSV and GigFrog cross-references them against every open lead — so you always know who you know at each company before you apply.",
+    description: "Upload your LinkedIn Connections.csv and GigFrog cross-references them against every open lead — so you always know who you know at each company before you apply.",
   },
   {
     icon: (
