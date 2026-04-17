@@ -48,6 +48,9 @@ type UserLead = {
   currentStatus?: string;
 };
 
+type NetworkConnection = { name: string; url: string | null; email: string | null };
+type NetworkMatchMap = Map<string, NetworkConnection[]>;
+
 const Leads = () => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -55,6 +58,7 @@ const Leads = () => {
   const { showToast, toastElement } = useToast();
   const { preferredRoles } = useAuth();
 
+  const [networkMatchMap, setNetworkMatchMap] = useState<NetworkMatchMap>(new Map());
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const [addToListTarget, setAddToListTarget] = useState<string[] | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -138,6 +142,14 @@ const Leads = () => {
         if (leadId) ulMap.set(leadId, ul);
       });
       setUserLeadsMap(ulMap);
+
+      // Network matches — best effort, don't block on failure
+      try {
+        const netRes = (await api.networkConnections.getSummary()) as { matches: { leadId: string; connections: NetworkConnection[] }[] };
+        const nmap = new Map<string, NetworkConnection[]>();
+        for (const m of netRes.matches || []) nmap.set(m.leadId, m.connections);
+        setNetworkMatchMap(nmap);
+      } catch { /* no connections uploaded yet */ }
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -456,6 +468,16 @@ const Leads = () => {
                         {lead.contactName}
                       </span>
                     )}
+                    {(networkMatchMap.get(lead._id) || []).map((conn, i) => (
+                      <span key={i} className="lead-card-tag lead-card-tag--linkedin" title={conn.email || conn.url || undefined}>
+                        {/* LinkedIn "in" logo */}
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }}>
+                          <path d="M19 0h-14c-2.76 0-5 2.24-5 5v14c0 2.76 2.24 5 5 5h14c2.76 0 5-2.24 5-5v-14c0-2.76-2.24-5-5-5zm-11 19h-3v-10h3v10zm-1.5-11.27c-.97 0-1.75-.79-1.75-1.76s.78-1.75 1.75-1.75 1.75.78 1.75 1.75-.78 1.76-1.75 1.76zm13.5 11.27h-3v-5.6c0-1.34-.03-3.07-1.87-3.07-1.87 0-2.16 1.46-2.16 2.97v5.7h-3v-10h2.88v1.36h.04c.4-.76 1.38-1.56 2.84-1.56 3.04 0 3.6 2 3.6 4.59v5.61z"/>
+                        </svg>
+                        {conn.name}
+                        {conn.email && <span className="lead-card-tag-email">{conn.email}</span>}
+                      </span>
+                    ))}
                   </div>
                 </div>
 

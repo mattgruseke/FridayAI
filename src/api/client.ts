@@ -233,6 +233,7 @@ export const userListsAPI = {
 
 // Network Connections API
 export const networkConnectionsAPI = {
+  getSummary: () => fetchAPI("/network-connections?summary=true"),
   getByLeadId: (leadId: string) =>
     fetchAPI(`/network-connections?leadId=${encodeURIComponent(leadId)}`),
 };

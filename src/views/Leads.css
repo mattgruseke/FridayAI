@@ -1175,6 +1175,29 @@ body.dark-mode .lead-card-avatar--logo {
     color: #777;
 }
 
+.lead-card-tag--linkedin {
+    background: #e8f0fb;
+    border-color: #b8cdf8;
+    color: #0a66c2;
+    gap: 4px;
+}
+
+.lead-card-tag-email {
+    color: #555;
+    font-size: 7.5pt;
+    margin-left: 2px;
+}
+
+body.dark-mode .lead-card-tag--linkedin {
+    background: #1a2a3a;
+    border-color: #2a4a6a;
+    color: #5b9fd6;
+}
+
+body.dark-mode .lead-card-tag-email {
+    color: #9ca3af;
+}
+
 
 .lead-card-save {
     display: inline-flex;

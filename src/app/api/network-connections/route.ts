@@ -23,6 +23,45 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const leadId = searchParams.get("leadId");
 
+  // GET /api/network-connections?summary=true
+  // Returns all pre-computed matches for the current user (one query, no per-lead lookup)
+  const summary = searchParams.get("summary");
+  if (summary === "true") {
+    const { data, error } = await supabase
+      .from("network_lead_matches")
+      .select("lead_id, connection_count, connection_names, connection_urls")
+      .eq("user_id", user!.id)
+      .gt("connection_count", 0);
+
+    if (error) return jsonResponse({ error: error.message }, 500);
+
+    // Also fetch emails keyed by linkedin_url
+    const allUrls: string[] = (data || []).flatMap((r) => r.connection_urls || []);
+    let emailByUrl: Record<string, string> = {};
+    if (allUrls.length > 0) {
+      const { data: connRows } = await supabase
+        .from("linkedin_connections")
+        .select("linkedin_url, email")
+        .eq("user_id", user!.id)
+        .in("linkedin_url", allUrls);
+      for (const row of connRows || []) {
+        if (row.linkedin_url && row.email) emailByUrl[row.linkedin_url] = row.email;
+      }
+    }
+
+    const result = (data || []).map((row) => ({
+      leadId: row.lead_id,
+      count: row.connection_count,
+      connections: (row.connection_names || []).map((name: string, i: number) => ({
+        name,
+        url: row.connection_urls?.[i] || null,
+        email: row.connection_urls?.[i] ? (emailByUrl[row.connection_urls[i]] || null) : null,
+      })),
+    }));
+
+    return jsonResponse({ matches: result });
+  }
+
   if (!leadId) {
     return jsonResponse({ error: "leadId is required" }, 400);
   }
