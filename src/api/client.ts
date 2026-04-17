@@ -263,6 +263,11 @@ export const onboardingAPI = {
     }),
 };
 
+// Score Leads API
+export const scoreLeadsAPI = {
+  get: () => fetchAPI("/score-leads"),
+};
+
 // Notifications API
 export const notificationsAPI = {
   getAll: () => fetchAPI("/notifications"),
@@ -289,6 +294,7 @@ export const api = {
   userLists: userListsAPI,
   onboarding: onboardingAPI,
   networkConnections: networkConnectionsAPI,
+  scoreLeads: scoreLeadsAPI,
   notifications: notificationsAPI,
 };
 

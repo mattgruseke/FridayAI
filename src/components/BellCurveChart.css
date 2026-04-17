@@ -1,0 +1,130 @@
+/* ── Bell curve chart ─────────────────────────────────────────────────────── */
+
+:root {
+  --bell-low:           #d1d5db;
+  --bell-low-hover:     #9ca3af;
+  --bell-medium:        color-mix(in srgb, var(--accent) 55%, #fbbf24);
+  --bell-medium-hover:  color-mix(in srgb, var(--accent) 75%, #fbbf24);
+  --bell-high:          #22c55e;
+  --bell-high-hover:    #16a34a;
+}
+
+body.dark-mode {
+  --bell-low:           #374151;
+  --bell-low-hover:     #4b5563;
+  --bell-medium:        color-mix(in srgb, var(--accent) 70%, #f59e0b);
+  --bell-medium-hover:  var(--accent);
+  --bell-high:          #16a34a;
+  --bell-high-hover:    #15803d;
+}
+
+.bell-curve-wrap {
+  width: 100%;
+}
+
+.bell-curve-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+/* Bar hit area makes the whole column clickable */
+.bell-bar-group {
+  cursor: pointer;
+}
+
+.bell-bar {
+  transition: filter 0.15s;
+}
+
+.bell-bar-group:hover .bell-bar {
+  filter: brightness(0.82);
+}
+
+.bell-curve-line {
+  stroke: #6b7280;
+  stroke-width: 2;
+  stroke-dasharray: none;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+body.dark-mode .bell-curve-line {
+  stroke: #9ca3af;
+}
+
+.bell-baseline {
+  stroke: #e5e7eb;
+  stroke-width: 1;
+}
+
+body.dark-mode .bell-baseline {
+  stroke: #374151;
+}
+
+.bell-count-label {
+  font-size: 10px;
+  fill: #6b7280;
+  pointer-events: none;
+}
+
+body.dark-mode .bell-count-label {
+  fill: #9ca3af;
+}
+
+.bell-axis-label {
+  font-size: 10px;
+  fill: #9ca3af;
+  pointer-events: none;
+}
+
+body.dark-mode .bell-axis-label {
+  fill: #6b7280;
+}
+
+/* Legend */
+.bell-legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.bell-legend-item {
+  font-size: 11px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #6b7280;
+}
+
+.bell-legend-item::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.bell-legend-low::before    { background: var(--bell-low); }
+.bell-legend-medium::before { background: var(--bell-medium); }
+.bell-legend-high::before   { background: var(--bell-high); }
+
+.bell-legend-hint {
+  margin-left: auto;
+  font-size: 11px;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+body.dark-mode .bell-legend-item {
+  color: #9ca3af;
+}
+
+body.dark-mode .bell-legend-hint {
+  color: #6b7280;
+}

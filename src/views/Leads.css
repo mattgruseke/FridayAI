@@ -929,6 +929,47 @@ body.dark-mode .leads-chips-divider {
     background: #444;
 }
 
+/* ── Score filter banner ────────────────────────────────────────────────── */
+.leads-score-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 14px;
+    margin-bottom: 12px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 7px;
+    font-size: 0.8125rem;
+    color: #166534;
+}
+
+.leads-score-banner-clear {
+    background: none;
+    border: none;
+    color: #16a34a;
+    font-size: 0.8125rem;
+    cursor: pointer;
+    padding: 0;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.leads-score-banner-clear:hover {
+    color: #166534;
+    text-decoration: underline;
+}
+
+body.dark-mode .leads-score-banner {
+    background: #052e16;
+    border-color: #166534;
+    color: #4ade80;
+}
+
+body.dark-mode .leads-score-banner-clear {
+    color: #4ade80;
+}
+
 /* ── Lead Cards ─────────────────────────────────────────────────────────── */
 .leads-cards-container {
     display: flex;

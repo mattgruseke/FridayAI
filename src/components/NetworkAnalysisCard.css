@@ -1,0 +1,151 @@
+/* ── Network Analysis Card ───────────────────────────────────────────────── */
+
+.na-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 18px 20px 14px;
+}
+
+.na-card--blank {
+  display: flex;
+  flex-direction: column;
+}
+
+.na-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.na-card-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6b7280;
+}
+
+.na-card-link {
+  font-size: 0.8rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.na-card-link:hover {
+  text-decoration: underline;
+}
+
+/* Blank state */
+.na-blank-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px 16px;
+  text-align: center;
+  flex: 1;
+}
+
+.na-blank-body--loading {
+  padding: 12px 0;
+}
+
+.na-blank-icon {
+  color: #d1d5db;
+}
+
+.na-blank-text {
+  font-size: 0.875rem;
+  color: #6b7280;
+  line-height: 1.5;
+  margin: 0;
+  max-width: 240px;
+}
+
+.na-blank-btn {
+  display: inline-block;
+  padding: 8px 18px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.na-blank-btn:hover {
+  opacity: 0.85;
+}
+
+/* Loading skeleton */
+.na-skeleton {
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: na-shimmer 1.4s infinite;
+  border-radius: 6px;
+}
+
+.na-skeleton--chart {
+  width: 100%;
+  height: 96px;
+}
+
+@keyframes na-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Populated state */
+.na-callout {
+  font-size: 0.8125rem;
+  color: #16a34a;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  padding: 7px 12px;
+  margin-bottom: 14px;
+}
+
+.na-footer-note {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin: 10px 0 0;
+  text-align: right;
+}
+
+/* Dark mode */
+body.dark-mode .na-card {
+  background: #1e1e1e;
+  border-color: #333;
+}
+
+body.dark-mode .na-card-title {
+  color: #9ca3af;
+}
+
+body.dark-mode .na-blank-icon {
+  color: #4b5563;
+}
+
+body.dark-mode .na-blank-text {
+  color: #9ca3af;
+}
+
+body.dark-mode .na-skeleton {
+  background: linear-gradient(90deg, #2a2a2a 25%, #333 50%, #2a2a2a 75%);
+  background-size: 200% 100%;
+}
+
+body.dark-mode .na-callout {
+  background: #052e16;
+  border-color: #166534;
+  color: #4ade80;
+}
+
+body.dark-mode .na-footer-note {
+  color: #6b7280;
+}

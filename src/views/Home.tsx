@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import api from "../api/client";
+import NetworkAnalysisCard from "../components/NetworkAnalysisCard";
 
 type StatusHistoryEntry = {
   status?: string;
@@ -49,7 +50,7 @@ type ActivityItem = {
 const Home = () => {
   const pathname = usePathname();
   const router = useRouter();
-  const { isAuthenticated, preferredRoles } = useAuth();
+  const { isAuthenticated, preferredRoles, onboardingCompleted } = useAuth();
   const [pipeline, setPipeline] = useState<PipelineStage[]>([]);
   const [recentLeads, setRecentLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -440,6 +441,10 @@ const Home = () => {
               </div>
             )}
           </div>
+        </div>
+
+        <div className="section">
+          <NetworkAnalysisCard onboardingCompleted={onboardingCompleted} />
         </div>
       </div>
     </div>

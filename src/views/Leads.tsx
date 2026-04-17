@@ -77,6 +77,29 @@ const Leads = () => {
   // Search
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Score filter — populated when navigating from the bell curve chart
+  const [scoreMap, setScoreMap] = useState<Map<string, number>>(new Map());
+  const minScore = Number(searchParams.get('minScore') ?? NaN);
+  const maxScore = Number(searchParams.get('maxScore') ?? NaN);
+  const hasScoreFilter = !isNaN(minScore) && !isNaN(maxScore);
+
+  // Fetch scores when a score filter is active
+  useEffect(() => {
+    if (!hasScoreFilter) {
+      setScoreMap(new Map());
+      return;
+    }
+    api.scoreLeads.get()
+      .then((res: any) => {
+        const map = new Map<string, number>();
+        for (const { id, score } of res.scoredLeads ?? []) {
+          map.set(id, score);
+        }
+        setScoreMap(map);
+      })
+      .catch(() => {}); // fail silently — filter just won't apply
+  }, [hasScoreFilter]);
+
   // Initialize chips from preferredRoles once available
   useEffect(() => {
     if (!chipsInitialized.current && preferredRoles.length > 0) {
@@ -207,6 +230,12 @@ const Leads = () => {
       if (savedFilter === 'saved' && !savedLeads.has(lead._id)) return false;
       if (savedFilter === 'unsaved' && savedLeads.has(lead._id)) return false;
 
+      // Score filter — from bell curve click
+      if (hasScoreFilter && scoreMap.size > 0) {
+        const score = scoreMap.get(lead._id) ?? -1;
+        if (score < minScore || score > maxScore) return false;
+      }
+
       return true;
     })
     .sort((a, b) => {
@@ -238,6 +267,22 @@ const Leads = () => {
     <div className="container">
       <div className="main">
         <div className="page-title">Leads</div>
+
+        {hasScoreFilter && (
+          <div className="leads-score-banner">
+            <span>
+              Showing leads with match score {minScore}–{maxScore}
+              {scoreMap.size === 0 ? " (loading scores…)" : ` (${filteredAndSortedLeads.length} results)`}
+            </span>
+            <button
+              type="button"
+              className="leads-score-banner-clear"
+              onClick={() => router.push('/leads')}
+            >
+              ✕ Clear filter
+            </button>
+          </div>
+        )}
 
         <div className="search-bar">
           <input
