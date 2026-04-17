@@ -26,7 +26,7 @@ export default function TourTooltip({ text, align = "center" }: Props) {
       onMouseEnter={() => setVisible(true)}
       onMouseLeave={() => setVisible(false)}
     >
-      <span className="tour-tip-badge" aria-label={text}>?</span>
+      <span className="tour-tip-badge" aria-label={text}>i</span>
       {visible && (
         <span className="tour-tip-popup" role="tooltip">{text}</span>
       )}

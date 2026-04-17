@@ -164,24 +164,27 @@ body.dark-mode .tour-btn-skip:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 11px;
-  height: 11px;
+  width: 13px;
+  height: 13px;
   border-radius: 50%;
+  border: 1.5px solid #ccc;
   background: transparent;
   color: #bbb;
   font-size: 8px;
   font-weight: 700;
+  font-style: italic;
   line-height: 1;
   cursor: default;
   flex-shrink: 0;
   margin-left: 4px;
-  transition: color 0.15s;
+  transition: border-color 0.15s, color 0.15s;
   vertical-align: middle;
 }
 
 .tour-tip-wrap:hover .tour-tip-badge,
 .tour-tip-badge:hover {
   background: transparent;
+  border-color: var(--accent);
   color: var(--accent);
 }
 
@@ -242,12 +245,14 @@ body.dark-mode .tour-btn-skip:hover {
 
 body.dark-mode .tour-tip-badge {
   background: transparent;
+  border-color: #444;
   color: #555;
 }
 
 body.dark-mode .tour-tip-wrap:hover .tour-tip-badge,
 body.dark-mode .tour-tip-badge:hover {
   background: transparent;
+  border-color: var(--accent);
   color: var(--accent);
 }
 
