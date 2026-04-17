@@ -33,6 +33,12 @@
   font-size: 10pt;
 }
 
+.nav-item-wrap {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+}
+
 .nav a {
   color: #000000;
   text-decoration: none;

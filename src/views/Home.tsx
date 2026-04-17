@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import api from "../api/client";
 import NetworkAnalysisCard from "../components/NetworkAnalysisCard";
+import TourTooltip from "../components/TourTooltip";
 
 type StatusHistoryEntry = {
   status?: string;
@@ -212,12 +213,12 @@ const Home = () => {
 
   const displayLeads = preferredRoles.length > 0
     ? recentLeads
-        .filter((lead) =>
-          preferredRoles.some((role) =>
-            lead.title?.toLowerCase().includes(role.toLowerCase())
-          )
+      .filter((lead) =>
+        preferredRoles.some((role) =>
+          lead.title?.toLowerCase().includes(role.toLowerCase())
         )
-        .slice(0, 10)
+      )
+      .slice(0, 10)
     : recentLeads.slice(0, 10);
 
   // Status display mapping
@@ -247,8 +248,11 @@ const Home = () => {
     <div className="container">
       <div className="main">
         <div className="section">
+          <NetworkAnalysisCard onboardingCompleted={onboardingCompleted} />
+        </div>
+        <div className="section">
           <div className="section-header">
-            <span>Pipeline</span>
+            <span>Pipeline <TourTooltip text="Your active lead counts by stage. Click any stage to open your pipeline." align="left" /></span>
             <Link href="/pipeline">view pipeline</Link>
           </div>
 
@@ -268,7 +272,7 @@ const Home = () => {
           {/* Needs attention callouts */}
           {Object.keys(attentionByStage).length > 0 && (
             <div className="attention-section">
-              <div className="attention-header">Needs Attention</div>
+              <div className="attention-header">Needs Attention <TourTooltip text="Leads idle longer than expected for their stage — these need a follow-up or status update." /></div>
               {statusColumns.map((column) => {
                 const items = attentionByStage[column.id];
                 if (!items || items.length === 0) return null;
@@ -308,7 +312,7 @@ const Home = () => {
         <div className="two-col">
           <div className="list-section">
             <div className="section-header">
-              <span>Recent Activity</span>
+              <span>Recent Activity <TourTooltip text="Status changes and actions across your pipeline, grouped by when they happened." align="left" /></span>
               <Link href="/pipeline">view pipeline</Link>
             </div>
             {hasActivity ? (
@@ -406,7 +410,7 @@ const Home = () => {
 
           <div className="list-section">
             <div className="section-header">
-              <span>New Leads for You</span>
+              <span>New Leads for You <TourTooltip text="The latest leads matching your target roles and location preferences." align="right" /></span>
               <Link href="/leads">view all leads</Link>
             </div>
             {displayLeads.length > 0 ? (
@@ -443,9 +447,7 @@ const Home = () => {
           </div>
         </div>
 
-        <div className="section">
-          <NetworkAnalysisCard onboardingCompleted={onboardingCompleted} />
-        </div>
+
       </div>
     </div>
   );

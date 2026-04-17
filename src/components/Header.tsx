@@ -8,6 +8,7 @@ import { useAuth } from "../contexts/AuthContext";
 import frogIcon from "../assets/frog.svg";
 import { canAccessNetwork } from "../lib/beta";
 import api from "../api/client";
+import TourTooltip from "./TourTooltip";
 
 type Notification = {
   id: string;
@@ -143,11 +144,28 @@ const Header = () => {
 
           {/* Desktop nav */}
           <nav className="nav desktop-nav">
-            <Link href="/pipeline">pipeline</Link>
-            <Link href="/leads">leads</Link>
-            <Link href="/lists">lists</Link>
-            {canAccessNetwork(user?.id) && <Link href="/network">network</Link>}
-            <Link href="/referrals">referrals</Link>
+            <span className="nav-item-wrap">
+              <Link href="/pipeline">pipeline</Link>
+              <TourTooltip text="Track every lead by stage — Saved, Contacted, Applied, Interviewing, Offer." align="left" />
+            </span>
+            <span className="nav-item-wrap">
+              <Link href="/leads">leads</Link>
+              <TourTooltip text="Browse and filter all available job leads matching your preferences." />
+            </span>
+            <span className="nav-item-wrap">
+              <Link href="/lists">lists</Link>
+              <TourTooltip text="Organize leads into named collections like 'Dream companies' or 'Apply this week'." />
+            </span>
+            {canAccessNetwork(user?.id) && (
+              <span className="nav-item-wrap">
+                <Link href="/network">network</Link>
+                <TourTooltip text="Cross-reference your LinkedIn connections with open leads to find warm intros." />
+              </span>
+            )}
+            <span className="nav-item-wrap">
+              <Link href="/referrals">referrals</Link>
+              <TourTooltip text="Track people who can refer you at specific companies and link them to leads." align="right" />
+            </span>
           </nav>
 
           <div className="spacer"></div>

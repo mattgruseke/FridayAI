@@ -38,3 +38,30 @@ export async function GET() {
 
   return jsonResponse(data);
 }
+
+// PATCH /api/profile
+// Body: { tour_completed?: boolean }
+export async function PATCH(request: Request) {
+  const supabase = await createClient();
+  const { user, errorResponse } = await requireUser();
+  if (errorResponse) return errorResponse;
+
+  const payload = await request.json();
+  const allowed: Record<string, unknown> = {};
+  if (typeof payload.tour_completed === "boolean") {
+    allowed.tour_completed = payload.tour_completed;
+  }
+
+  if (Object.keys(allowed).length === 0) {
+    return jsonResponse({ message: "No valid fields to update" }, 400);
+  }
+
+  const { error } = await supabase
+    .from("user_profiles")
+    .update(allowed)
+    .eq("id", user!.id);
+
+  if (error) return jsonResponse({ message: error.message }, 500);
+
+  return jsonResponse({ ok: true });
+}

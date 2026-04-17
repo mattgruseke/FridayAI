@@ -263,6 +263,15 @@ export const onboardingAPI = {
     }),
 };
 
+// Profile API
+export const profileAPI = {
+  completeTour: () =>
+    fetchAPI("/profile", {
+      method: "PATCH",
+      body: JSON.stringify({ tour_completed: true }),
+    }),
+};
+
 // Score Leads API
 export const scoreLeadsAPI = {
   get: () => fetchAPI("/score-leads"),
@@ -295,6 +304,7 @@ export const api = {
   onboarding: onboardingAPI,
   networkConnections: networkConnectionsAPI,
   scoreLeads: scoreLeadsAPI,
+  profile: profileAPI,
   notifications: notificationsAPI,
 };
 

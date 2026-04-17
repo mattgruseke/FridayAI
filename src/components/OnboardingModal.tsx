@@ -334,7 +334,7 @@ export default function OnboardingModal({
               </div>
               <div className="onboarding-linkedin-step">
                 <span className="onboarding-linkedin-num">4</span>
-                <span>Come back and upload the Connections.csv in the <strong>Network</strong> tab</span>
+                <span>Come back and upload the <strong>Connections.csv</strong> in the <strong>Network</strong> tab</span>
               </div>
             </div>
           </div>

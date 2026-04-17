@@ -14,6 +14,7 @@ type UserProfile = {
   onboarding_skipped?: boolean;
   preferred_roles?: string[];
   preferred_compensation?: string[];
+  tour_completed?: boolean;
   [key: string]: unknown;
 } | null;
 
@@ -27,6 +28,7 @@ type AuthContextValue = {
   onboardingSkipped: boolean;
   preferredRoles: string[];
   preferredCompensation: string[];
+  tourCompleted: boolean;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -105,6 +107,7 @@ export const AuthProvider = ({
     onboardingSkipped: userProfile?.onboarding_skipped === true,
     preferredRoles: (userProfile?.preferred_roles as string[]) ?? [],
     preferredCompensation: (userProfile?.preferred_compensation as string[]) ?? [],
+    tourCompleted: userProfile?.tour_completed === true,
     refreshProfile,
     signOut: signOutAction,
   };
