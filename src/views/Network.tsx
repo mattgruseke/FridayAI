@@ -418,6 +418,22 @@ export default function Network() {
     setActiveView("matches");
     setCrossRefLoading(false);
     setCrossRefStep(0);
+
+    // Save last_run_lead_count + last_run_at, dismiss any existing rerun notifications
+    const { count: currentLeadCount } = await supabase
+      .from("leads")
+      .select("*", { count: "exact", head: true })
+      .eq("is_global", true);
+    await supabase
+      .from("user_profiles")
+      .update({ last_run_lead_count: currentLeadCount ?? leadsData.length, last_run_at: new Date().toISOString() })
+      .eq("id", user.id);
+    await supabase
+      .from("notifications")
+      .update({ is_completed: true })
+      .eq("user_id", user.id)
+      .eq("type", "network_rerun_suggested");
+
     return true;
   }
 
@@ -459,6 +475,43 @@ export default function Network() {
     }
     setLoading(false);
   }
+
+  // Check if a rerun notification should be created on mount
+  useEffect(() => {
+    if (!user) return;
+    async function checkRerunNotification() {
+      const [
+        { count: currentLeadCount },
+        { data: profile },
+        { data: existing },
+      ] = await Promise.all([
+        supabase.from("leads").select("*", { count: "exact", head: true }).eq("is_global", true),
+        supabase.from("user_profiles").select("last_run_lead_count").eq("id", user!.id).single(),
+        supabase.from("notifications")
+          .select("id")
+          .eq("user_id", user!.id)
+          .eq("type", "network_rerun_suggested")
+          .eq("is_completed", false)
+          .limit(1),
+      ]);
+
+      const lastCount = profile?.last_run_lead_count ?? null;
+      if (lastCount === null) return; // never run before, no prompt needed
+      const delta = (currentLeadCount ?? 0) - lastCount;
+      if (delta < 10) return;
+      if (existing && existing.length > 0) return; // already have one
+
+      await supabase.from("notifications").insert({
+        user_id: user!.id,
+        type: "network_rerun_suggested",
+        message: `${delta} new leads added since your last network analysis — re-run to find new connections.`,
+        action_url: "/network",
+        is_dismissed: false,
+        is_completed: false,
+      });
+    }
+    checkRerunNotification();
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -932,22 +985,20 @@ export default function Network() {
         <h1 className="page-title">Network</h1>
       </div>
 
-      <div className="section">
-        <NetworkAnalysisCard
-          onboardingCompleted={onboardingCompleted}
-          compact
-          onRerun={crossRefMatches.length > 0 ? runCrossReference : undefined}
-          rerunLoading={crossRefLoading}
-          onUpload={stats && stats.total > 0 ? () => fileInputRef.current?.click() : undefined}
-          onScoresLoaded={(leads) => {
-            const map: Record<string, number> = {};
-            for (const l of leads) map[l.id] = l.score;
-            setScoreMap(map);
-          }}
-          onBarClick={(range) => setActiveScoreRange(range[0] === -1 ? null : range)}
-          activeScoreRange={activeScoreRange}
-        />
-      </div>
+      {/* Card shown full-width before connections are uploaded */}
+      {(!stats || stats.total === 0) && (
+        <div className="section">
+          <NetworkAnalysisCard
+            onboardingCompleted={onboardingCompleted}
+            compact
+            onScoresLoaded={(leads) => {
+              const map: Record<string, number> = {};
+              for (const l of leads) map[l.id] = l.score;
+              setScoreMap(map);
+            }}
+          />
+        </div>
+      )}
 
       {/* Onboarding prompt — only shown before any connections are loaded */}
       {stats?.total === 0 && !preview && (
@@ -1027,30 +1078,53 @@ export default function Network() {
         </div>
       )}
 
-      {/* Stats cards — hidden in "network" view */}
-      {stats && stats.total > 0 && activeView !== "network" && (
-        <div className="network-stats-row">
-          <div className="network-stat-card">
-            <div className="network-stat-value">{stats.total.toLocaleString()}</div>
-            <div className="network-stat-label">Connections</div>
+      {/* Two-column layout when connections exist and in matches view */}
+      {stats && stats.total > 0 && activeView === "matches" && (
+        <div className="network-split-layout">
+          {/* Left: sticky chart */}
+          <div className="network-split-col-chart">
+            <NetworkAnalysisCard
+              onboardingCompleted={onboardingCompleted}
+              onRerun={crossRefMatches.length > 0 ? runCrossReference : undefined}
+              rerunLoading={crossRefLoading}
+              onUpload={() => fileInputRef.current?.click()}
+              onScoresLoaded={(leads) => {
+                const map: Record<string, number> = {};
+                for (const l of leads) map[l.id] = l.score;
+                setScoreMap(map);
+              }}
+              onBarClick={(range) => setActiveScoreRange(range[0] === -1 ? null : range)}
+              activeScoreRange={activeScoreRange}
+            />
           </div>
-          <div className="network-stat-card">
-            <div className="network-stat-value">{stats.withEmail.toLocaleString()}</div>
-            <div className="network-stat-label">Have Email</div>
-          </div>
-          <div className="network-stat-card">
-            <div className="network-stat-value">{stats.uniqueCompanies.toLocaleString()}</div>
-            <div className="network-stat-label">Companies</div>
-          </div>
-          <div className="network-stat-card network-stat-card--accent">
-            <div className="network-stat-value">{stats.matchCount.toLocaleString()}</div>
-            <div className="network-stat-label">Lead Matches</div>
-          </div>
-        </div>
-      )}
 
-      {/* Networking Plan — hidden in "network" view */}
-      {stats && stats.total > 0 && activeView !== "network" && (
+          {/* Right: stats + analysis */}
+          <div className="network-split-col-results">
+            <div className="network-stats-row">
+              <div className="network-stat-card">
+                <div className="network-stat-value">{stats.total.toLocaleString()}</div>
+                <div className="network-stat-label">Connections</div>
+              </div>
+              <div className="network-stat-card">
+                <div className="network-stat-value">{stats.withEmail.toLocaleString()}</div>
+                <div className="network-stat-label">Have Email</div>
+              </div>
+              <div className="network-stat-card">
+                <div className="network-stat-value">
+                  {activeScoreRange ? planGroups.length.toLocaleString() : stats.uniqueCompanies.toLocaleString()}
+                </div>
+                <div className="network-stat-label">{activeScoreRange ? "Matched Co." : "Companies"}</div>
+              </div>
+              <div className="network-stat-card network-stat-card--accent">
+                <div className="network-stat-value">
+                  {activeScoreRange
+                    ? planGroups.reduce((n, g) => n + (activeRoles.length > 0 ? g.preferredLeads.length : g.leads.length), 0).toLocaleString()
+                    : stats.matchCount.toLocaleString()}
+                </div>
+                <div className="network-stat-label">{activeScoreRange ? "Filtered Matches" : "Lead Matches"}</div>
+              </div>
+            </div>
+
         <div className="network-crossref-section">
           {/* Header */}
           <div className="network-crossref-header">
@@ -1100,12 +1174,6 @@ export default function Network() {
           {/* Plan groups */}
           {planGroups.length > 0 && (
             <>
-              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10 }}>
-                {planGroups.length} {planGroups.length === 1 ? "company" : "companies"} ·{" "}
-                {planGroups.reduce((n, g) => n + (activeRoles.length > 0 ? g.preferredLeads.length : g.leads.length), 0)} leads with connections
-                {activeRoles.length > 0 ? " matching selected roles" : ""}
-              </div>
-
               <div className="network-plan-list">
                 {planGroups.map((g) => {
                   const isExpanded = expandedCompanies.has(g.company);
@@ -1271,6 +1339,8 @@ export default function Network() {
               </button>
             </p>
           )}
+        </div>
+          </div>
         </div>
       )}
 

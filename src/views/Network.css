@@ -1,5 +1,33 @@
 /* Network page styles */
 
+/* Two-column split layout: chart (left) + results (right) */
+.network-split-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+  margin-bottom: 24px;
+}
+
+.network-split-col-chart {
+  position: sticky;
+  top: 72px;
+}
+
+.network-split-col-results {
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .network-split-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .network-split-col-chart {
+    position: static;
+  }
+}
+
 /* Cross-reference loading modal */
 .network-crossref-modal-overlay {
     position: fixed;

@@ -204,7 +204,7 @@ const Header = () => {
                             <Link
                               href={n.action_url}
                               className="notif-item-msg"
-                              onClick={() => setNotifOpen(false)}
+                              onClick={() => { setNotifOpen(false); if (!n.is_dismissed) handleDismissNotif(n.id); }}
                             >
                               {n.message}
                             </Link>
