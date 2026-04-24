@@ -6,6 +6,10 @@ import type { ScoreBucket } from "@/lib/scoring";
 type Props = {
   distribution: ScoreBucket[];
   compact?: boolean;
+  /** If provided, calls this instead of navigating to /leads */
+  onBarClick?: (range: [number, number]) => void;
+  /** Highlights the bar matching this range, dims others */
+  activeRange?: [number, number] | null;
 };
 
 const ZONE_COLORS: Record<string, string> = {
@@ -20,7 +24,7 @@ const ZONE_HOVER: Record<string, string> = {
   high:   "var(--bell-high-hover)",
 };
 
-export default function BellCurveChart({ distribution, compact }: Props) {
+export default function BellCurveChart({ distribution, compact, onBarClick, activeRange }: Props) {
   const router = useRouter();
 
   const SVG_W = 480;
@@ -37,12 +41,10 @@ export default function BellCurveChart({ distribution, compact }: Props) {
   const gap = 6;
   const barW = (chartW - gap * (barCount - 1)) / barCount;
 
-  // Bar x positions
   const barX = (i: number) => PAD_L + i * (barW + gap);
   const barY = (count: number) => PAD_TOP + chartH - (count / maxCount) * chartH;
   const barH = (count: number) => (count / maxCount) * chartH;
 
-  // Bezier curve through bar top-center points
   const points = distribution.map((b, i) => ({
     x: barX(i) + barW / 2,
     y: barY(b.count),
@@ -68,10 +70,20 @@ export default function BellCurveChart({ distribution, compact }: Props) {
   const curvePath = buildCurve(points);
 
   const handleBarClick = (bucket: ScoreBucket) => {
-    const [min, max] = bucket.range;
-    router.push(`/leads?minScore=${min}&maxScore=${Math.min(max - 1, 100)}`);
+    if (onBarClick) {
+      // If clicking the already-active bar, clear the filter
+      if (activeRange && activeRange[0] === bucket.range[0]) {
+        onBarClick([-1, -1]);
+      } else {
+        onBarClick(bucket.range as [number, number]);
+      }
+    } else {
+      const [min, max] = bucket.range;
+      router.push(`/network?minScore=${min}&maxScore=${max}`);
+    }
   };
 
+  const isFiltering = activeRange && activeRange[0] !== -1;
   const baselineY = PAD_TOP + chartH;
 
   return (
@@ -81,52 +93,58 @@ export default function BellCurveChart({ distribution, compact }: Props) {
         className="bell-curve-svg"
         aria-label="Lead match score distribution"
       >
-        {/* Bars */}
-        {distribution.map((bucket, i) => (
-          <g key={bucket.label} className="bell-bar-group" onClick={() => handleBarClick(bucket)}>
-            <rect
-              x={barX(i)}
-              y={barY(bucket.count)}
-              width={barW}
-              height={Math.max(barH(bucket.count), bucket.count > 0 ? 2 : 0)}
-              rx={3}
-              fill={ZONE_COLORS[bucket.zone]}
-              className="bell-bar"
-              data-hover={ZONE_HOVER[bucket.zone]}
-            />
-            {/* Invisible wide hit target */}
-            <rect
-              x={barX(i) - gap / 2}
-              y={PAD_TOP}
-              width={barW + gap}
-              height={chartH + 4}
-              fill="transparent"
-              className="bell-bar-hit"
-            />
-            {/* Count label above bar */}
-            {bucket.count > 0 && (
+        {distribution.map((bucket, i) => {
+          const isActive = isFiltering && activeRange![0] === bucket.range[0];
+          const isDimmed = isFiltering && !isActive;
+          return (
+            <g
+              key={bucket.label}
+              className="bell-bar-group"
+              onClick={() => handleBarClick(bucket)}
+              style={{ opacity: isDimmed ? 0.3 : 1, transition: "opacity 0.2s" }}
+            >
+              <rect
+                x={barX(i)}
+                y={barY(bucket.count)}
+                width={barW}
+                height={Math.max(barH(bucket.count), bucket.count > 0 ? 2 : 0)}
+                rx={3}
+                fill={ZONE_COLORS[bucket.zone]}
+                className="bell-bar"
+                data-hover={ZONE_HOVER[bucket.zone]}
+                stroke={isActive ? "#1a1a1a" : "none"}
+                strokeWidth={isActive ? 1.5 : 0}
+              />
+              <rect
+                x={barX(i) - gap / 2}
+                y={PAD_TOP}
+                width={barW + gap}
+                height={chartH + 4}
+                fill="transparent"
+                className="bell-bar-hit"
+              />
+              {bucket.count > 0 && (
+                <text
+                  x={barX(i) + barW / 2}
+                  y={barY(bucket.count) - 4}
+                  textAnchor="middle"
+                  className="bell-count-label"
+                >
+                  {bucket.count}
+                </text>
+              )}
               <text
                 x={barX(i) + barW / 2}
-                y={barY(bucket.count) - 4}
+                y={baselineY + 14}
                 textAnchor="middle"
-                className="bell-count-label"
+                className="bell-axis-label"
               >
-                {bucket.count}
+                {bucket.label}
               </text>
-            )}
-            {/* Bucket label below */}
-            <text
-              x={barX(i) + barW / 2}
-              y={baselineY + 14}
-              textAnchor="middle"
-              className="bell-axis-label"
-            >
-              {bucket.label}
-            </text>
-          </g>
-        ))}
+            </g>
+          );
+        })}
 
-        {/* Baseline */}
         <line
           x1={PAD_L}
           y1={baselineY}
@@ -135,7 +153,6 @@ export default function BellCurveChart({ distribution, compact }: Props) {
           className="bell-baseline"
         />
 
-        {/* Curve overlay */}
         {curvePath && (
           <path
             d={curvePath}
@@ -149,7 +166,11 @@ export default function BellCurveChart({ distribution, compact }: Props) {
         <span className="bell-legend-item bell-legend-low">Low match</span>
         <span className="bell-legend-item bell-legend-medium">Moderate</span>
         <span className="bell-legend-item bell-legend-high">Strong match</span>
-        <span className="bell-legend-hint">Click a bar to filter leads</span>
+        <span className="bell-legend-hint">
+          {onBarClick
+            ? isFiltering ? "Click bar again to clear filter" : "Click a bar to filter below"
+            : "Click a bar to filter leads"}
+        </span>
       </div>
     </div>
   );

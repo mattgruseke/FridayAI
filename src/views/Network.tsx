@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Papa from "papaparse";
 import "./Network.css";
 import { createClient } from "../lib/supabase/client";
@@ -168,6 +168,16 @@ export default function Network() {
   const [expandedCompanies, setExpandedCompanies] = useState<Set<string>>(new Set());
   const [showAllMatches, setShowAllMatches] = useState(false);
 
+  // Score filter (driven by bell curve bar clicks or URL params from home)
+  const searchParams = useSearchParams();
+  const [scoreMap, setScoreMap] = useState<Record<string, number>>({});
+  const [activeScoreRange, setActiveScoreRange] = useState<[number, number] | null>(() => {
+    const min = searchParams.get("minScore");
+    const max = searchParams.get("maxScore");
+    if (min !== null && max !== null) return [Number(min), Number(max)];
+    return null;
+  });
+
   // Onboarding modal (first import only)
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(1);
@@ -202,8 +212,17 @@ export default function Network() {
 
   // Derived: group cross-ref matches by company for Networking Plan
   const planGroups = useMemo<PlanGroup[]>(() => {
+    // Apply score range filter if active
+    const scoredMatches =
+      activeScoreRange && activeScoreRange[0] !== -1
+        ? crossRefMatches.filter((m) => {
+            const score = scoreMap[m.lead_id] ?? -1;
+            return score >= activeScoreRange[0] && score <= activeScoreRange[1];
+          })
+        : crossRefMatches;
+
     const map = new Map<string, PlanGroup>();
-    for (const m of crossRefMatches) {
+    for (const m of scoredMatches) {
       if (!map.has(m.lead_company)) {
         map.set(m.lead_company, {
           company: m.lead_company,
@@ -238,7 +257,7 @@ export default function Network() {
         b.leads.length - a.leads.length ||
         b.uniqueNames.length - a.uniqueNames.length
     );
-  }, [crossRefMatches, activeRoles]);
+  }, [crossRefMatches, activeRoles, activeScoreRange, scoreMap]);
 
   async function fetchStats() {
     if (!user) return;
@@ -920,6 +939,13 @@ export default function Network() {
           onRerun={crossRefMatches.length > 0 ? runCrossReference : undefined}
           rerunLoading={crossRefLoading}
           onUpload={stats && stats.total > 0 ? () => fileInputRef.current?.click() : undefined}
+          onScoresLoaded={(leads) => {
+            const map: Record<string, number> = {};
+            for (const l of leads) map[l.id] = l.score;
+            setScoreMap(map);
+          }}
+          onBarClick={(range) => setActiveScoreRange(range[0] === -1 ? null : range)}
+          activeScoreRange={activeScoreRange}
         />
       </div>
 
@@ -1028,11 +1054,21 @@ export default function Network() {
         <div className="network-crossref-section">
           {/* Header */}
           <div className="network-crossref-header">
-            <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <strong>LinkedIn Analysis</strong>
               {crossRefRunAt && (
-                <span style={{ color: "var(--text-muted)", fontSize: 12, marginLeft: 10 }}>
+                <span style={{ color: "var(--text-muted)", fontSize: 12 }}>
                   Last run {new Date(crossRefRunAt).toLocaleDateString()}
+                </span>
+              )}
+              {activeScoreRange && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, background: "var(--accent)", color: "#fff", borderRadius: 4, padding: "2px 8px" }}>
+                  Score {activeScoreRange[0]}–{activeScoreRange[1]}
+                  <button
+                    onClick={() => setActiveScoreRange(null)}
+                    style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", padding: 0, lineHeight: 1, fontSize: 14 }}
+                    aria-label="Clear score filter"
+                  >×</button>
                 </span>
               )}
             </div>
@@ -1066,7 +1102,7 @@ export default function Network() {
             <>
               <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10 }}>
                 {planGroups.length} {planGroups.length === 1 ? "company" : "companies"} ·{" "}
-                {planGroups.reduce((n, g) => n + (activeRoles.length > 0 ? g.preferredLeads.length : g.leads.length), 0)} leads
+                {planGroups.reduce((n, g) => n + (activeRoles.length > 0 ? g.preferredLeads.length : g.leads.length), 0)} leads with connections
                 {activeRoles.length > 0 ? " matching selected roles" : ""}
               </div>
 

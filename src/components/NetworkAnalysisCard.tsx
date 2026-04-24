@@ -25,9 +25,18 @@ type Props = {
   rerunLoading?: boolean;
   /** If provided, shows an upload button in the card header (after connections exist) */
   onUpload?: () => void;
+  /** Called once scores are loaded — surfaces scoredLeads to the parent */
+  onScoresLoaded?: (leads: { id: string; score: number }[]) => void;
+  /** If provided, clicking a bar calls this instead of navigating to /leads */
+  onBarClick?: (range: [number, number]) => void;
+  /** Highlights the active bar and dims others */
+  activeScoreRange?: [number, number] | null;
 };
 
-export default function NetworkAnalysisCard({ onboardingCompleted, compact, onRerun, rerunLoading, onUpload }: Props) {
+export default function NetworkAnalysisCard({
+  onboardingCompleted, compact, onRerun, rerunLoading, onUpload,
+  onScoresLoaded, onBarClick, activeScoreRange,
+}: Props) {
   const [data, setData] = useState<ScoreLeadsResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,8 +46,12 @@ export default function NetworkAnalysisCard({ onboardingCompleted, compact, onRe
       return;
     }
     api.scoreLeads.get()
-      .then((res) => setData(res as ScoreLeadsResponse))
-      .catch(() => {}) // fail silently — card stays in blank state
+      .then((res) => {
+        const d = res as ScoreLeadsResponse;
+        setData(d);
+        onScoresLoaded?.(d.scoredLeads);
+      })
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, [onboardingCompleted]);
 
@@ -156,7 +169,12 @@ export default function NetworkAnalysisCard({ onboardingCompleted, compact, onRe
         </div>
       )}
 
-      <BellCurveChart distribution={data.distribution} compact={compact} />
+      <BellCurveChart
+        distribution={data.distribution}
+        compact={compact}
+        onBarClick={onBarClick}
+        activeRange={activeScoreRange}
+      />
 
       <p className="na-footer-note">
         Scored across {totalScored.toLocaleString()} leads using your profile, network, and referrals.

@@ -248,9 +248,6 @@ const Home = () => {
     <div className="container">
       <div className="main">
         <div className="section">
-          <NetworkAnalysisCard onboardingCompleted={onboardingCompleted} />
-        </div>
-        <div className="section">
           <div className="section-header">
             <span>Pipeline <TourTooltip text="Your active lead counts by stage. Click any stage to open your pipeline." align="left" /></span>
             <Link href="/pipeline">view pipeline</Link>
@@ -307,6 +304,10 @@ const Home = () => {
               })}
             </div>
           )}
+        </div>
+
+        <div className="section">
+          <NetworkAnalysisCard onboardingCompleted={onboardingCompleted} />
         </div>
 
         <div className="two-col">
