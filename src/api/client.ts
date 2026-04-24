@@ -295,6 +295,15 @@ export const notificationsAPI = {
     }),
 };
 
+// Send Email API
+export const sendEmailAPI = {
+  send: (data: { to: string; subject: string; message: string }) =>
+    fetchAPI("/send-email", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+};
+
 // Export combined API object
 export const api = {
   leads: leadsAPI,
@@ -307,6 +316,7 @@ export const api = {
   scoreLeads: scoreLeadsAPI,
   profile: profileAPI,
   notifications: notificationsAPI,
+  sendEmail: sendEmailAPI,
 };
 
 export default api;

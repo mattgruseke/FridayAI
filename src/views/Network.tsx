@@ -176,6 +176,7 @@ export default function Network() {
   const [emailDraft, setEmailDraft] = useState<EmailDraft | null>(null);
   const [emailSending, setEmailSending] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
   // lead_id → ISO timestamp of when email was sent this session
   const [sentEmails, setSentEmails] = useState<Record<string, string>>({});
 
@@ -619,6 +620,7 @@ export default function Network() {
     });
     setEmailSending(false);
     setEmailSent(false);
+    setEmailError(null);
   }
 
   function completeOnboarding() {
@@ -629,7 +631,20 @@ export default function Network() {
   async function handleSendEmail() {
     if (!emailDraft) return;
     setEmailSending(true);
-    await sleep(1500);
+    setEmailError(null);
+
+    // Send via SES
+    try {
+      await api.sendEmail.send({
+        to: emailDraft.toEmail,
+        subject: emailDraft.subject,
+        message: emailDraft.body,
+      });
+    } catch (err) {
+      setEmailError(err instanceof Error ? err.message : "Failed to send email. Please try again.");
+      setEmailSending(false);
+      return;
+    }
 
     // Save the lead if not already tracked, advance from Saved → Contacted, then log activity
     const activityNote = `Email sent to ${emailDraft.toName} at ${emailDraft.company}`;
@@ -638,17 +653,14 @@ export default function Network() {
       const userLeadId = existing?._id;
       if (userLeadId) {
         if (existing.currentStatus === "saved") {
-          // Advance to Contacted and use the email note as the history entry
           await api.userLeads.updateStatus(userLeadId, "contacted", activityNote);
         } else {
-          // Already past Saved — just log the activity, don't change status
           await api.userLeads.update(userLeadId, {
             activityNote,
             activityAction: "email_sent",
           });
         }
       } else {
-        // Brand new — save directly as Contacted
         await api.userLeads.save({
           leadId: emailDraft.leadId,
           currentStatus: "contacted",
@@ -857,6 +869,12 @@ export default function Network() {
                     onChange={(e) => setEmailDraft({ ...emailDraft, body: e.target.value })}
                   />
                 </div>
+
+                {emailError && (
+                  <p style={{ color: "#dc2626", fontSize: "0.8125rem", margin: "0 0 10px", textAlign: "center" }}>
+                    {emailError}
+                  </p>
+                )}
 
                 <div className="network-email-actions">
                   <button className="btn btn-secondary" onClick={() => setEmailDraft(null)} disabled={emailSending}>
