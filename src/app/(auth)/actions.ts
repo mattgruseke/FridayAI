@@ -64,12 +64,15 @@ export async function signUp(
     .update({ uses_remaining: codeData.uses_remaining - 1 })
     .eq("id", codeData.id);
 
-  // Update user profile with invite code used
+  // Upsert user profile — use upsert in case the trigger hasn't created the row yet
   if (data.user) {
     await supabase
       .from("user_profiles")
-      .update({ invite_code_used: inviteCode.toUpperCase() })
-      .eq("id", data.user.id);
+      .upsert({
+        id: data.user.id,
+        invite_code_used: inviteCode.toUpperCase(),
+        has_network_access: inviteCode.toUpperCase() === "EA2026!",
+      }, { onConflict: "id" });
 
     // Seed onboarding notification
     await supabase.from("notifications").insert({

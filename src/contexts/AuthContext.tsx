@@ -15,6 +15,8 @@ type UserProfile = {
   preferred_roles?: string[];
   preferred_compensation?: string[];
   tour_completed?: boolean;
+  full_name?: string;
+  has_network_access?: boolean;
   [key: string]: unknown;
 } | null;
 
@@ -29,6 +31,8 @@ type AuthContextValue = {
   preferredRoles: string[];
   preferredCompensation: string[];
   tourCompleted: boolean;
+  hasNetworkAccess: boolean;
+  fullName: string;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -108,6 +112,8 @@ export const AuthProvider = ({
     preferredRoles: (userProfile?.preferred_roles as string[]) ?? [],
     preferredCompensation: (userProfile?.preferred_compensation as string[]) ?? [],
     tourCompleted: userProfile?.tour_completed === true,
+    hasNetworkAccess: userProfile?.has_network_access === true,
+    fullName: (userProfile?.full_name as string) ?? "",
     refreshProfile,
     signOut: signOutAction,
   };

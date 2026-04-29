@@ -417,7 +417,9 @@ body.dark-mode .network-crossref-header h3 {
 
 /* Connection chips — clickable, open LinkedIn */
 .network-conn-chip {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     padding: 2px 8px;
     border-radius: 999px;
     border: 1px solid #cccccc;
@@ -699,6 +701,31 @@ body.dark-mode .network-chip-clear:hover {
     justify-content: flex-end;
     gap: 8px;
     margin-top: 4px;
+}
+
+.network-name-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 0.9375rem;
+    margin-top: 4px;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.network-name-input:focus {
+    border-color: var(--accent);
+}
+
+body.dark-mode .network-name-input {
+    background: #2a2a2a;
+    border-color: #444;
+    color: #f0f0f0;
+}
+
+body.dark-mode .network-name-input:focus {
+    border-color: var(--accent);
 }
 
 /* Email icon button on lead rows */

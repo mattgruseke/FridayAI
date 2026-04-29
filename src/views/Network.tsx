@@ -10,7 +10,6 @@ import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../hooks/useToast";
 import CompanyLogo from "../components/CompanyLogo";
 import api from "../api/client";
-import { canAccessNetwork } from "../lib/beta";
 import NetworkAnalysisCard from "../components/NetworkAnalysisCard";
 
 
@@ -128,13 +127,13 @@ function matchesPreferredRole(title: string, roles: string[]): boolean {
 }
 
 export default function Network() {
-  const { user, preferredRoles, onboardingCompleted } = useAuth();
+  const { user, preferredRoles, onboardingCompleted, hasNetworkAccess, fullName, refreshProfile } = useAuth();
   const { showToast, toastElement } = useToast();
   const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
-    if (user && !canAccessNetwork(user.id)) {
+    if (user && !hasNetworkAccess) {
       router.replace("/leads");
     }
   }, [user, router]);
@@ -181,6 +180,11 @@ export default function Network() {
   // Onboarding modal (first import only)
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(1);
+
+  // Name modal (shown after first upload if full_name not set)
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const [nameSaving, setNameSaving] = useState(false);
 
   // Email compose modal
   const [emailDraft, setEmailDraft] = useState<EmailDraft | null>(null);
@@ -651,6 +655,10 @@ export default function Network() {
           setShowOnboardingModal(true);
         }
       }
+      // Prompt for name if not yet set
+      if (!fullName) {
+        setShowNameModal(true);
+      }
     }
   }
 
@@ -658,7 +666,17 @@ export default function Network() {
     setPreview(null);
   }
 
+  async function handleSaveName() {
+    if (!user || !nameInput.trim()) return;
+    setNameSaving(true);
+    await supabase.from("user_profiles").update({ full_name: nameInput.trim() }).eq("id", user.id);
+    await refreshProfile();
+    setNameSaving(false);
+    setShowNameModal(false);
+  }
+
   const userFirstName =
+    fullName?.split(" ")[0] ||
     (user as any)?.user_metadata?.full_name?.split(" ")[0] ||
     user?.email?.split("@")[0] ||
     "";
@@ -981,6 +999,44 @@ export default function Network() {
         </div>
       )}
 
+      {/* Name prompt modal */}
+      {showNameModal && (
+        <div className="network-crossref-modal-overlay">
+          <div className="network-crossref-modal network-onboarding-modal">
+            <p className="network-onboarding-title">One more thing</p>
+            <p className="network-onboarding-body">
+              Now that you&rsquo;ve uploaded your connections, you&rsquo;re ready to start reaching
+              out to folks in your network. What name should we put at the end of these outreach
+              emails?
+            </p>
+            <input
+              type="text"
+              className="network-name-input"
+              placeholder="Your name"
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleSaveName(); }}
+              autoFocus
+            />
+            <div className="network-onboarding-actions">
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowNameModal(false)}
+              >
+                Skip for now
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleSaveName}
+                disabled={!nameInput.trim() || nameSaving}
+              >
+                {nameSaving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="page-header">
         <h1 className="page-title">Network</h1>
       </div>
@@ -1206,6 +1262,9 @@ export default function Network() {
                                   className="network-conn-chip"
                                   onClick={(e) => e.stopPropagation()}
                                 >
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }}>
+                                    <path d="M19 0h-14c-2.76 0-5 2.24-5 5v14c0 2.76 2.24 5 5 5h14c2.76 0 5-2.24 5-5v-14c0-2.76-2.24-5-5-5zm-11 19h-3v-10h3v10zm-1.5-11.27c-.97 0-1.75-.79-1.75-1.76s.78-1.75 1.75-1.75 1.75.78 1.75 1.75-.78 1.76-1.75 1.76zm13.5 11.27h-3v-5.6c0-1.34-.03-3.07-1.87-3.07-1.87 0-2.16 1.46-2.16 2.97v5.7h-3v-10h2.88v1.36h.04c.4-.76 1.38-1.56 2.84-1.56 3.04 0 3.6 2 3.6 4.59v5.61z"/>
+                                  </svg>
                                   {name}
                                 </a>
                               ) : (
@@ -1306,6 +1365,9 @@ export default function Network() {
                                       rel="noopener noreferrer"
                                       className="network-conn-chip"
                                     >
+                                      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }}>
+                                        <path d="M19 0h-14c-2.76 0-5 2.24-5 5v14c0 2.76 2.24 5 5 5h14c2.76 0 5-2.24 5-5v-14c0-2.76-2.24-5-5-5zm-11 19h-3v-10h3v10zm-1.5-11.27c-.97 0-1.75-.79-1.75-1.76s.78-1.75 1.75-1.75 1.75.78 1.75 1.75-.78 1.76-1.75 1.76zm13.5 11.27h-3v-5.6c0-1.34-.03-3.07-1.87-3.07-1.87 0-2.16 1.46-2.16 2.97v5.7h-3v-10h2.88v1.36h.04c.4-.76 1.38-1.56 2.84-1.56 3.04 0 3.6 2 3.6 4.59v5.61z"/>
+                                      </svg>
                                       {name}
                                     </a>
                                   ) : (

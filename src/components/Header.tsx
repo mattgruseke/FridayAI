@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import frogIcon from "../assets/frog.svg";
-import { canAccessNetwork } from "../lib/beta";
 import api from "../api/client";
 import TourTooltip from "./TourTooltip";
 
@@ -32,7 +31,7 @@ const COLOR_THEMES = [
 ];
 
 const Header = () => {
-  const { user, signOut, isAdmin } = useAuth();
+  const { user, signOut, isAdmin, hasNetworkAccess } = useAuth();
   const router = useRouter();
 
   const [darkMode, setDarkMode] = useState(() => {
@@ -156,7 +155,7 @@ const Header = () => {
               <Link href="/lists">lists</Link>
               <TourTooltip text="Organize leads into named collections like 'Dream companies' or 'Apply this week'." />
             </span>
-            {canAccessNetwork(user?.id) && (
+            {hasNetworkAccess && (
               <span className="nav-item-wrap">
                 <Link href="/network">network</Link>
                 <TourTooltip text="Cross-reference your LinkedIn connections with open leads to find warm intros." />
@@ -361,7 +360,7 @@ const Header = () => {
               <Link href="/lists" onClick={() => setMobileMenuOpen(false)}>
                 Lists
               </Link>
-              {canAccessNetwork(user?.id) && (
+              {hasNetworkAccess && (
                 <Link href="/network" onClick={() => setMobileMenuOpen(false)}>
                   Network
                 </Link>

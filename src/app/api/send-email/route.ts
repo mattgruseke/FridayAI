@@ -31,8 +31,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "to, subject, and message are required" }, { status: 400 });
   }
 
-  // Build a friendly display name from Supabase user metadata or email
+  // Build a friendly display name — user_profiles.full_name takes priority
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("full_name")
+    .eq("id", user.id)
+    .maybeSingle();
+
   const rawName: string =
+    (profile?.full_name as string) ||
     (user.user_metadata?.full_name as string) ||
     (user.user_metadata?.name as string) ||
     user.email?.split("@")[0] ||

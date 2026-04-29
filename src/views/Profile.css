@@ -73,6 +73,48 @@
     font-weight: 500;
 }
 
+.profile-value--editable {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.profile-edit-hint {
+    font-size: 11px;
+    color: #aaa;
+    font-weight: 400;
+}
+
+.profile-value--editable:hover .profile-edit-hint {
+    color: var(--accent);
+}
+
+.profile-name-edit {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.profile-name-input {
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+    width: 180px;
+}
+
+.profile-name-input:focus {
+    border-color: var(--accent);
+}
+
+body.dark-mode .profile-name-input {
+    background: #2a2a2a;
+    border-color: #444;
+    color: #f0f0f0;
+}
+
 .profile-row--roles {
     flex-direction: column;
     gap: 10px;
