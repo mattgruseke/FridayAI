@@ -177,16 +177,9 @@ body.dark-mode .tour-btn-skip:hover {
   cursor: default;
   flex-shrink: 0;
   margin-left: 4px;
-  transition: border-color 0.15s, color 0.15s;
   vertical-align: middle;
 }
 
-.tour-tip-wrap:hover .tour-tip-badge,
-.tour-tip-badge:hover {
-  background: transparent;
-  border-color: var(--accent);
-  color: var(--accent);
-}
 
 .tour-tip-popup {
   position: absolute;
@@ -249,12 +242,6 @@ body.dark-mode .tour-tip-badge {
   color: #555;
 }
 
-body.dark-mode .tour-tip-wrap:hover .tour-tip-badge,
-body.dark-mode .tour-tip-badge:hover {
-  background: transparent;
-  border-color: var(--accent);
-  color: var(--accent);
-}
 
 @media (max-width: 480px) {
   .tour-modal {
