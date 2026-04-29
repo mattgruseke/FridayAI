@@ -51,6 +51,7 @@ type CrossRefMatch = {
   connection_count: number;
   connection_names: string[];
   connection_urls: string[];
+  connection_emails: string[];
   run_at: string;
 };
 
@@ -60,6 +61,7 @@ type PlanGroup = {
   preferredLeads: CrossRefMatch[];
   uniqueNames: string[];
   uniqueUrls: string[];
+  uniqueEmails: string[];
 };
 
 type EmailDraft = {
@@ -67,6 +69,7 @@ type EmailDraft = {
   leadTitle: string;
   company: string;
   toNames: string[];
+  toEmailMap: Record<string, string>;
   toName: string;
   toEmail: string;
   from: string;
@@ -107,18 +110,6 @@ function mapRow(row: Record<string, string>): LinkedInRow {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-function generateDraftEmail(connectionName: string, company: string): string {
-  const namePart = connectionName.split("(")[0].trim();
-  const parts = namePart.split(/\s+/).filter(Boolean);
-  const first = parts[0]?.toLowerCase() || "";
-  const last = parts[1]?.toLowerCase() || "";
-  const co = company
-    .toLowerCase()
-    .replace(/\b(inc|llc|corp|ltd|co|group|holdings|international|technologies|technology|solutions|services|software|systems)\b/gi, "")
-    .replace(/[^a-z0-9]/g, "")
-    .trim();
-  return first && last ? `${first}.${last}@${co}.com` : "";
-}
 
 function matchesPreferredRole(title: string, roles: string[]): boolean {
   if (!roles.length) return false;
@@ -164,6 +155,7 @@ export default function Network() {
 
   // Networking Plan
   const [deselectedRoles, setDeselectedRoles] = useState<Set<string>>(new Set());
+  const [planFilterEmailOnly, setPlanFilterEmailOnly] = useState(true);
   const [expandedCompanies, setExpandedCompanies] = useState<Set<string>>(new Set());
   const [showAllMatches, setShowAllMatches] = useState(false);
 
@@ -180,6 +172,9 @@ export default function Network() {
   // Onboarding modal (first import only)
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(1);
+
+  // Incremented after each successful upload to force NetworkAnalysisCard to re-fetch
+  const [scoreKey, setScoreKey] = useState(0);
 
   // Name modal (shown after first upload if full_name not set)
   const [showNameModal, setShowNameModal] = useState(false);
@@ -234,6 +229,7 @@ export default function Network() {
           preferredLeads: [],
           uniqueNames: [],
           uniqueUrls: [],
+          uniqueEmails: [],
         });
       }
       const g = map.get(m.lead_company)!;
@@ -245,15 +241,20 @@ export default function Network() {
         if (!g.uniqueNames.includes(m.connection_names[i])) {
           g.uniqueNames.push(m.connection_names[i]);
           g.uniqueUrls.push(m.connection_urls?.[i] || "");
+          g.uniqueEmails.push(m.connection_emails?.[i] || "");
         }
       }
     }
 
     const groups = Array.from(map.values());
-    const filtered =
+    let filtered =
       activeRoles.length > 0
         ? groups.filter((g) => g.preferredLeads.length > 0)
         : groups;
+
+    if (planFilterEmailOnly) {
+      filtered = filtered.filter((g) => g.uniqueEmails.some((e) => e));
+    }
 
     return filtered.sort(
       (a, b) =>
@@ -261,7 +262,7 @@ export default function Network() {
         b.leads.length - a.leads.length ||
         b.uniqueNames.length - a.uniqueNames.length
     );
-  }, [crossRefMatches, activeRoles, activeScoreRange, scoreMap]);
+  }, [crossRefMatches, activeRoles, activeScoreRange, scoreMap, planFilterEmailOnly]);
 
   async function fetchStats() {
     if (!user) return;
@@ -294,7 +295,7 @@ export default function Network() {
     if (!user) return;
     const { data, error } = await supabase
       .from("network_lead_matches")
-      .select("lead_id, connection_count, connection_names, connection_urls, run_at, leads(title, company, location)")
+      .select("lead_id, connection_count, connection_names, connection_urls, connection_emails, run_at, leads(title, company, location)")
       .eq("user_id", user.id)
       .order("connection_count", { ascending: false });
 
@@ -307,6 +308,7 @@ export default function Network() {
         connection_count: row.connection_count,
         connection_names: row.connection_names || [],
         connection_urls: row.connection_urls || [],
+        connection_emails: row.connection_emails || [],
         run_at: row.run_at,
       }));
       setCrossRefMatches(mapped);
@@ -320,10 +322,10 @@ export default function Network() {
     setCrossRefStep(1);
     await sleep(1000);
 
-    // 1. Fetch all user connections including linkedin_url
+    // 1. Fetch all user connections including linkedin_url and email
     const { data: connData, error: connError } = await supabase
       .from("linkedin_connections")
-      .select("company_normalized, first_name, last_name, position, linkedin_url")
+      .select("company_normalized, first_name, last_name, position, linkedin_url, email")
       .eq("user_id", user.id)
       .range(0, 9999);
 
@@ -337,8 +339,8 @@ export default function Network() {
     setCrossRefStep(2);
     await sleep(1000);
 
-    // 2. Build a map: company_normalized → { names, urls }
-    const companyMap = new Map<string, { names: string[]; urls: string[] }>();
+    // 2. Build a map: company_normalized → { names, urls, emails }
+    const companyMap = new Map<string, { names: string[]; urls: string[]; emails: string[] }>();
     for (const c of connData) {
       if (!c.company_normalized) continue;
       const label = [
@@ -346,11 +348,12 @@ export default function Network() {
         c.position ? `(${c.position})` : "",
       ].filter(Boolean).join(" ");
       if (!companyMap.has(c.company_normalized)) {
-        companyMap.set(c.company_normalized, { names: [], urls: [] });
+        companyMap.set(c.company_normalized, { names: [], urls: [], emails: [] });
       }
       const entry = companyMap.get(c.company_normalized)!;
       entry.names.push(label);
       entry.urls.push(c.linkedin_url || "");
+      entry.emails.push(c.email || "");
     }
 
     // 3. Fetch all global leads
@@ -376,13 +379,14 @@ export default function Network() {
       connection_count: number;
       connection_names: string[];
       connection_urls: string[];
+      connection_emails: string[];
     }[] = [];
 
     for (const lead of leadsData) {
       const normalized = normalizeCompany(lead.company);
       if (companyMap.has(normalized)) {
-        const { names, urls } = companyMap.get(normalized)!;
-        matches.push({ lead_id: lead.id, connection_count: names.length, connection_names: names, connection_urls: urls });
+        const { names, urls, emails } = companyMap.get(normalized)!;
+        matches.push({ lead_id: lead.id, connection_count: names.length, connection_names: names, connection_urls: urls, connection_emails: emails });
       }
     }
 
@@ -405,6 +409,7 @@ export default function Network() {
       connection_count: m.connection_count,
       connection_names: m.connection_names,
       connection_urls: m.connection_urls,
+      connection_emails: m.connection_emails,
     }));
 
     const { error: insertError } = await supabase.from("network_lead_matches").insert(insertRows);
@@ -645,6 +650,7 @@ export default function Network() {
       setImporting(false);
       fetchConnections(0, "");
       fetchStats();
+      setScoreKey((k) => k + 1);
       // Mark linkedin_upload notification as complete
       api.notifications.completeByType("linkedin_upload").catch(() => { });
       const hadMatches = await runCrossReference();
@@ -696,17 +702,23 @@ export default function Network() {
   }
 
   function openEmailModal(lead: CrossRefMatch, group: PlanGroup) {
-    const firstConnection = group.uniqueNames[0] || "";
+    // Only include connections that have a real email from LinkedIn
+    const withEmail = group.uniqueNames
+      .map((name, i) => ({ name, email: group.uniqueEmails[i] || "" }))
+      .filter((c) => c.email);
+    const first = withEmail[0] || { name: "", email: "" };
+    const toEmailMap = Object.fromEntries(withEmail.map((c) => [c.name, c.email]));
     setEmailDraft({
       leadId: lead.lead_id,
       leadTitle: lead.lead_title,
       company: group.company,
-      toNames: group.uniqueNames,
-      toName: firstConnection,
-      toEmail: generateDraftEmail(firstConnection, group.company),
+      toNames: withEmail.map((c) => c.name),
+      toEmailMap,
+      toName: first.name,
+      toEmail: first.email,
       from: user?.email || "",
       subject: `Quick question about ${group.company}`,
-      body: buildEmailBody(firstConnection, lead.lead_title, group.company),
+      body: buildEmailBody(first.name, lead.lead_title, group.company),
     });
     setEmailSending(false);
     setEmailSent(false);
@@ -924,7 +936,7 @@ export default function Network() {
                               className={`network-conn-chip${isSelected ? "" : " network-conn-chip--no-link"}`}
                               style={isSelected ? { borderColor: "var(--accent)", color: "var(--accent)", fontWeight: "bold" } : {}}
                               onClick={() => {
-                                const newEmail = generateDraftEmail(name, emailDraft.company);
+                                const newEmail = emailDraft.toEmailMap[name] || "";
                                 const newBody = buildEmailBody(name, emailDraft.leadTitle, emailDraft.company);
                                 setEmailDraft({ ...emailDraft, toName: name, toEmail: newEmail, body: newBody });
                               }}
@@ -970,8 +982,8 @@ export default function Network() {
                   <button className="btn btn-secondary" onClick={() => setEmailDraft(null)} disabled={emailSending}>
                     Cancel
                   </button>
-                  <button className="btn btn-primary" onClick={handleSendEmail} disabled={emailSending}>
-                    {emailSending ? "Sending..." : "Send Email"}
+                  <button className="btn btn-primary" disabled title="Send email functionality coming soon!">
+                    Send Email
                   </button>
                 </div>
               </>
@@ -1045,6 +1057,7 @@ export default function Network() {
       {(!stats || stats.total === 0) && (
         <div className="section">
           <NetworkAnalysisCard
+            key={scoreKey}
             onboardingCompleted={onboardingCompleted}
             compact
             onScoresLoaded={(leads) => {
@@ -1140,6 +1153,7 @@ export default function Network() {
           {/* Left: sticky chart */}
           <div className="network-split-col-chart">
             <NetworkAnalysisCard
+              key={scoreKey}
               onboardingCompleted={onboardingCompleted}
               onRerun={crossRefMatches.length > 0 ? runCrossReference : undefined}
               rerunLoading={crossRefLoading}
@@ -1204,28 +1218,33 @@ export default function Network() {
             </div>
           </div>
 
-          {roles.length > 0 && (
-            <div className="network-chips-row" style={{ marginTop: 0, marginBottom: 10 }}>
-              {roles.map((role) => (
-                <button
-                  key={role}
-                  onClick={() => toggleRole(role)}
-                  className={`network-chip${!deselectedRoles.has(role) ? " network-chip--active" : ""}`}
-                  style={{ fontSize: "8pt" }}
-                >
-                  {role}
-                </button>
-              ))}
-              {deselectedRoles.size > 0 && (
-                <button
-                  className="network-chip-clear"
-                  onClick={() => setDeselectedRoles(new Set())}
-                >
-                  Reset
-                </button>
-              )}
-            </div>
-          )}
+          <div className="network-chips-row" style={{ marginTop: 0, marginBottom: 10 }}>
+            <button
+              onClick={() => setPlanFilterEmailOnly((v) => !v)}
+              className={`network-chip${planFilterEmailOnly ? " network-chip--active" : ""}`}
+              style={{ fontSize: "8pt" }}
+            >
+              Has email
+            </button>
+            {roles.map((role) => (
+              <button
+                key={role}
+                onClick={() => toggleRole(role)}
+                className={`network-chip${!deselectedRoles.has(role) ? " network-chip--active" : ""}`}
+                style={{ fontSize: "8pt" }}
+              >
+                {role}
+              </button>
+            ))}
+            {deselectedRoles.size > 0 && (
+              <button
+                className="network-chip-clear"
+                onClick={() => setDeselectedRoles(new Set())}
+              >
+                Reset roles
+              </button>
+            )}
+          </div>
 
           {/* Plan groups */}
           {planGroups.length > 0 && (
@@ -1297,11 +1316,11 @@ export default function Network() {
                                   </svg>
                                   Email sent &middot; {formatSentTime(sentEmails[m.lead_id])}
                                 </span>
-                              ) : (
+                              ) : g.uniqueEmails.some((e) => e) ? (
                                 <button
-                                  className="network-email-icon-btn"
-                                  title={`Email a connection at ${g.company}`}
-                                  onClick={(e) => { e.stopPropagation(); openEmailModal(m, g); }}
+                                  className="network-email-icon-btn network-email-icon-btn--disabled"
+                                  title="Send email functionality coming soon!"
+                                  disabled
                                 >
                                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
@@ -1309,7 +1328,7 @@ export default function Network() {
                                   </svg>
                                   Send email
                                 </button>
-                              )}
+                              ) : null}
                             </div>
                           ))}
                         </div>

@@ -74,6 +74,9 @@ const Leads = () => {
   // Saved filter: 'all' | 'saved' | 'unsaved'
   const [savedFilter, setSavedFilter] = useState<'all' | 'saved' | 'unsaved'>('all');
 
+  // Has email filter
+  const [filterHasEmail, setFilterHasEmail] = useState(false);
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const leadsPerPage = 50;
@@ -238,6 +241,9 @@ const Leads = () => {
         if (!matches) return false;
       }
 
+      // Has email filter
+      if (filterHasEmail && !lead.contactEmail) return false;
+
       // Saved filter
       if (savedFilter === 'saved' && !savedLeads.has(lead._id)) return false;
       if (savedFilter === 'unsaved' && savedLeads.has(lead._id)) return false;
@@ -333,6 +339,13 @@ const Leads = () => {
               {chip}
             </button>
           ))}
+          <button
+            type="button"
+            className={`leads-chip leads-chip--location ${filterHasEmail ? 'leads-chip--active' : ''}`}
+            onClick={() => setFilterHasEmail(v => !v)}
+          >
+            Has email
+          </button>
           {hasPreferred && !isAtPreferred && (
             <button type="button" className="leads-chip-clear" onClick={resetToPreferred}>
               Reset to my roles

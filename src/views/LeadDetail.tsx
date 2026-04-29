@@ -1585,9 +1585,9 @@ const LeadDetail = () => {
                           </svg>
                         </button>
                         <button
-                          onClick={openContactEmailModal}
-                          title="Compose email"
-                          style={{ background: '#e8f5e9', border: '1px solid #a5d6a7', color: '#2e7d32', cursor: 'pointer', padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: 4, borderRadius: 4, fontSize: '8pt', fontFamily: 'Verdana, Geneva, sans-serif' }}
+                          disabled
+                          title="Send email functionality coming soon!"
+                          style={{ background: '#f5f5f5', border: '1px solid #ddd', color: '#aaa', cursor: 'not-allowed', padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: 4, borderRadius: 4, fontSize: '8pt', fontFamily: 'Verdana, Geneva, sans-serif' }}
                         >
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
