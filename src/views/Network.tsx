@@ -155,7 +155,7 @@ export default function Network() {
 
   // Networking Plan
   const [deselectedRoles, setDeselectedRoles] = useState<Set<string>>(new Set());
-  const [planFilterEmailOnly, setPlanFilterEmailOnly] = useState(true);
+  const [planFilterEmailOnly, setPlanFilterEmailOnly] = useState(false);
   const [expandedCompanies, setExpandedCompanies] = useState<Set<string>>(new Set());
   const [showAllMatches, setShowAllMatches] = useState(false);
 
