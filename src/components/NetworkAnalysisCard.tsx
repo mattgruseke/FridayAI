@@ -7,12 +7,14 @@ import BellCurveChart from "./BellCurveChart";
 import TourTooltip from "./TourTooltip";
 import "./BellCurveChart.css";
 import "./NetworkAnalysisCard.css";
+import { buildDistribution } from "@/lib/scoring";
 import type { ScoreBucket } from "@/lib/scoring";
 
 type ScoreLeadsResponse = {
   distribution: ScoreBucket[];
   scoredLeads: { id: string; score: number }[];
   hasConnections: boolean;
+  matchedLeadIds: string[];
   totalLeads: number;
 };
 
@@ -31,11 +33,13 @@ type Props = {
   onBarClick?: (range: [number, number]) => void;
   /** Highlights the active bar and dims others */
   activeScoreRange?: [number, number] | null;
+  /** When provided, rebuilds the chart distribution using only these lead IDs */
+  leadIdFilter?: Set<string>;
 };
 
 export default function NetworkAnalysisCard({
   onboardingCompleted, compact, onRerun, rerunLoading, onUpload,
-  onScoresLoaded, onBarClick, activeScoreRange,
+  onScoresLoaded, onBarClick, activeScoreRange, leadIdFilter,
 }: Props) {
   const [data, setData] = useState<ScoreLeadsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,6 +49,7 @@ export default function NetworkAnalysisCard({
       setLoading(false);
       return;
     }
+    setLoading(true);
     api.scoreLeads.get()
       .then((res) => {
         const d = res as ScoreLeadsResponse;
@@ -55,8 +60,31 @@ export default function NetworkAnalysisCard({
       .finally(() => setLoading(false));
   }, [onboardingCompleted]);
 
-  const totalScored = data?.distribution.reduce((sum, b) => sum + b.count, 0) ?? 0;
-  const strongCount = data?.distribution.find((b) => b.zone === "high")?.count ?? 0;
+  // When an external leadIdFilter is passed (network page), use it.
+  // Otherwise, when connections exist, scope the distribution to matched leads only.
+  const effectiveFilter: Set<string> | null =
+    leadIdFilter && leadIdFilter.size > 0
+      ? leadIdFilter
+      : data?.hasConnections && data.matchedLeadIds?.length > 0
+        ? new Set(data.matchedLeadIds)
+        : null;
+
+  const distribution = data
+    ? effectiveFilter
+      ? buildDistribution(data.scoredLeads.filter((l) => effectiveFilter.has(l.id)).map((l) => l.score))
+      : data.distribution
+    : null;
+
+  const totalScored = distribution?.reduce((sum, b) => sum + b.count, 0) ?? 0;
+  const strongCount = distribution?.find((b) => b.zone === "high")?.count ?? 0;
+
+  const activeBucket = activeScoreRange && activeScoreRange[0] !== -1
+    ? distribution?.find((b) => b.range[0] === activeScoreRange[0])
+    : null;
+  const calloutCount = activeBucket ? activeBucket.count : strongCount;
+  const calloutZone = activeBucket?.zone ?? "high";
+  const calloutLabel = calloutZone === "high" ? "Strong match" : calloutZone === "medium" ? "Moderate match" : "Low match";
+  const calloutLabel2 = `lead${calloutCount !== 1 ? "s" : ""} in your network`;
 
   const cardClass = ["na-card", compact ? "na-card--compact" : ""].filter(Boolean).join(" ");
   const blankCardClass = ["na-card", "na-card--blank", compact ? "na-card--compact" : ""].filter(Boolean).join(" ");
@@ -135,6 +163,14 @@ export default function NetworkAnalysisCard({
           />
         </span>
         <div className="na-card-header-actions">
+          {activeScoreRange && activeScoreRange[0] !== -1 && onBarClick && (
+            <button
+              className="btn btn-secondary na-rerun-btn"
+              onClick={() => onBarClick([-1, -1])}
+            >
+              Clear filter
+            </button>
+          )}
           {onRerun && (
             <button
               className="btn btn-secondary na-rerun-btn"
@@ -163,14 +199,15 @@ export default function NetworkAnalysisCard({
         </div>
       </div>
 
-      {strongCount > 0 && (
-        <div className="na-callout">
-          <strong>{strongCount}</strong> lead{strongCount !== 1 ? "s" : ""} with strong network overlap
+      {calloutCount > 0 && (
+        <div className={`na-callout na-callout--${calloutZone}`}>
+          <span className="na-callout-value">{calloutCount}</span>
+          <span className="na-callout-label">{calloutLabel}<br />{calloutLabel2}</span>
         </div>
       )}
 
       <BellCurveChart
-        distribution={data.distribution}
+        distribution={distribution!}
         compact={compact}
         onBarClick={onBarClick}
         activeRange={activeScoreRange}

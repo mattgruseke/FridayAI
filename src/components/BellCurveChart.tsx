@@ -166,11 +166,11 @@ export default function BellCurveChart({ distribution, compact, onBarClick, acti
         <span className="bell-legend-item bell-legend-low">Low match</span>
         <span className="bell-legend-item bell-legend-medium">Moderate</span>
         <span className="bell-legend-item bell-legend-high">Strong match</span>
-        <span className="bell-legend-hint">
-          {onBarClick
-            ? isFiltering ? "Click bar again to clear filter" : "Click a bar to filter below"
-            : "Click a bar to filter leads"}
-        </span>
+        {!isFiltering && (
+          <span className="bell-legend-hint">
+            {onBarClick ? "Click a bar to filter below" : "Click a bar to filter leads"}
+          </span>
+        )}
       </div>
     </div>
   );

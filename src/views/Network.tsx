@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Papa from "papaparse";
 import "./Network.css";
 import { createClient } from "../lib/supabase/client";
+import { SCORE_BUCKETS } from "../lib/scoring";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../hooks/useToast";
 import CompanyLogo from "../components/CompanyLogo";
@@ -169,9 +170,10 @@ export default function Network() {
     return null;
   });
 
-  // Onboarding modal (first import only)
-  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
-  const [onboardingStep, setOnboardingStep] = useState(1);
+  // First-upload confirmation modal
+  const [showFirstUploadModal, setShowFirstUploadModal] = useState(false);
+  const [firstUploadListName, setFirstUploadListName] = useState("");
+  const [firstUploadMatchCount, setFirstUploadMatchCount] = useState(0);
 
   // Incremented after each successful upload to force NetworkAnalysisCard to re-fetch
   const [scoreKey, setScoreKey] = useState(0);
@@ -209,16 +211,40 @@ export default function Network() {
     });
   }
 
+  // Score-filtered matches — used by both planGroups and the stats row
+  const scoreFilteredMatches = useMemo(() => {
+    if (!activeScoreRange || activeScoreRange[0] === -1) return crossRefMatches;
+    return crossRefMatches.filter((m) => {
+      const score = scoreMap[m.lead_id] ?? -1;
+      return score >= activeScoreRange[0] && score < activeScoreRange[1];
+    });
+  }, [crossRefMatches, activeScoreRange, scoreMap]);
+
+  // Stats derived from the filtered match set so all four cards stay in sync
+  const matchStats = useMemo(() => {
+    const uniqueCompanies = new Set(scoreFilteredMatches.map((m) => m.lead_company)).size;
+    const withEmail = scoreFilteredMatches.filter((m) => m.connection_emails.some((e) => e)).length;
+    const seenUrls = new Set<string>();
+    const seenNames = new Set<string>();
+    for (const m of scoreFilteredMatches) {
+      for (let i = 0; i < m.connection_names.length; i++) {
+        const url = m.connection_urls[i];
+        const name = m.connection_names[i];
+        if (url) seenUrls.add(url);
+        else if (name) seenNames.add(name);
+      }
+    }
+    return {
+      matchCount: scoreFilteredMatches.length,
+      uniqueCompanies,
+      withEmail,
+      totalConnections: seenUrls.size + seenNames.size,
+    };
+  }, [scoreFilteredMatches]);
+
   // Derived: group cross-ref matches by company for Networking Plan
   const planGroups = useMemo<PlanGroup[]>(() => {
-    // Apply score range filter if active
-    const scoredMatches =
-      activeScoreRange && activeScoreRange[0] !== -1
-        ? crossRefMatches.filter((m) => {
-            const score = scoreMap[m.lead_id] ?? -1;
-            return score >= activeScoreRange[0] && score <= activeScoreRange[1];
-          })
-        : crossRefMatches;
+    const scoredMatches = scoreFilteredMatches;
 
     const map = new Map<string, PlanGroup>();
     for (const m of scoredMatches) {
@@ -316,8 +342,8 @@ export default function Network() {
     }
   }
 
-  async function runCrossReference(): Promise<boolean> {
-    if (!user) return false;
+  async function runCrossReference(): Promise<CrossRefMatch[] | null> {
+    if (!user) return null;
     setCrossRefLoading(true);
     setCrossRefStep(1);
     await sleep(1000);
@@ -333,7 +359,7 @@ export default function Network() {
       showToast("Failed to load connections for cross-reference.", "error");
       setCrossRefLoading(false);
       setCrossRefStep(0);
-      return false;
+      return null;
     }
 
     setCrossRefStep(2);
@@ -367,7 +393,7 @@ export default function Network() {
       showToast("Failed to load leads for cross-reference.", "error");
       setCrossRefLoading(false);
       setCrossRefStep(0);
-      return false;
+      return null;
     }
 
     setCrossRefStep(3);
@@ -394,7 +420,7 @@ export default function Network() {
       showToast("No matches found between your connections and public leads.", "success");
       setCrossRefLoading(false);
       setCrossRefStep(0);
-      return false;
+      return null;
     }
 
     setCrossRefStep(4);
@@ -418,10 +444,11 @@ export default function Network() {
       showToast("Failed to save cross-reference results: " + insertError.message, "error");
       setCrossRefLoading(false);
       setCrossRefStep(0);
-      return false;
+      return null;
     }
 
     showToast(`Found ${matches.length} lead${matches.length !== 1 ? "s" : ""} with connections.`, "success");
+
     await fetchCrossRefMatches();
     await fetchStats();
     setActiveView("matches");
@@ -443,7 +470,18 @@ export default function Network() {
       .eq("user_id", user.id)
       .eq("type", "network_rerun_suggested");
 
-    return true;
+    // Return the mapped matches so the caller can use them (e.g. first-upload list creation)
+    return matches.map((m) => ({
+      lead_id: m.lead_id,
+      lead_title: "",
+      lead_company: "",
+      lead_location: null,
+      connection_count: m.connection_count,
+      connection_names: m.connection_names,
+      connection_urls: m.connection_urls,
+      connection_emails: m.connection_emails,
+      run_at: new Date().toISOString(),
+    }));
   }
 
   async function fetchConnections(
@@ -653,13 +691,32 @@ export default function Network() {
       setScoreKey((k) => k + 1);
       // Mark linkedin_upload notification as complete
       api.notifications.completeByType("linkedin_upload").catch(() => { });
-      const hadMatches = await runCrossReference();
-      if (hadMatches) {
-        const seen = localStorage.getItem(`network_onboarded_${user!.id}`);
-        if (!seen) {
-          setOnboardingStep(1);
-          setShowOnboardingModal(true);
-        }
+      const matchedLeads = await runCrossReference();
+      const isFirstUpload = !localStorage.getItem(`network_onboarded_${user!.id}`);
+      if (matchedLeads && matchedLeads.length > 0 && isFirstUpload) {
+        const runNow = new Date();
+        const runName = `${runNow.getMonth() + 1}-${runNow.getDate()}-${runNow.getFullYear()} ${runNow.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).toLowerCase()}`;
+        const runMetadata = {
+          type: "network_run",
+          run_at: runNow.toISOString(),
+          matches: Object.fromEntries(
+            matchedLeads.map((m) => [m.lead_id, {
+              connection_count: m.connection_count,
+              connection_names: m.connection_names,
+              connection_urls: m.connection_urls,
+              connection_emails: m.connection_emails,
+            }])
+          ),
+        };
+        await api.userLists.create({
+          name: runName,
+          leadIds: matchedLeads.map((m) => m.lead_id),
+          metadata: runMetadata,
+        }).catch(() => {});
+        localStorage.setItem(`network_onboarded_${user!.id}`, "1");
+        setFirstUploadListName(runName);
+        setFirstUploadMatchCount(matchedLeads.length);
+        setShowFirstUploadModal(true);
       }
       // Prompt for name if not yet set
       if (!fullName) {
@@ -725,9 +782,33 @@ export default function Network() {
     setEmailError(null);
   }
 
-  function completeOnboarding() {
-    if (user) localStorage.setItem(`network_onboarded_${user.id}`, "1");
-    setShowOnboardingModal(false);
+  function dismissFirstUploadModal() {
+    setShowFirstUploadModal(false);
+  }
+
+  async function handleCreateList() {
+    const source = scoreFilteredMatches.length > 0 ? scoreFilteredMatches : crossRefMatches;
+    if (!source.length) return;
+    const runNow = new Date();
+    const runName = `${runNow.getMonth() + 1}-${runNow.getDate()}-${runNow.getFullYear()} ${runNow.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).toLowerCase()}`;
+    const runMetadata = {
+      type: "network_run",
+      run_at: runNow.toISOString(),
+      matches: Object.fromEntries(
+        source.map((m) => [m.lead_id, {
+          connection_count: m.connection_count,
+          connection_names: m.connection_names,
+          connection_urls: m.connection_urls,
+          connection_emails: m.connection_emails,
+        }])
+      ),
+    };
+    await api.userLists.create({
+      name: runName,
+      leadIds: source.map((m) => m.lead_id),
+      metadata: runMetadata,
+    }).catch(() => {});
+    showToast(`List "${runName}" saved to your Lists.`, "success");
   }
 
   async function handleSendEmail() {
@@ -800,96 +881,25 @@ export default function Network() {
     <div className="page-container">
       {toastElement}
 
-      {/* Onboarding modal — first import only */}
-      {showOnboardingModal && (() => {
-        const sampleGroup = planGroups[0];
-        const sampleLead = sampleGroup?.preferredLeads[0] || sampleGroup?.leads[0];
-        const sampleName = sampleGroup?.uniqueNames[0]?.split(/[\s(]/)[0] || "Alex";
-        const sampleRole = sampleLead?.lead_title || "Software Engineer";
-        const sampleCompany = sampleGroup?.company || "your target company";
-        const sampleBody = [
-          `Hi ${sampleName},`,
-          "",
-          "I hope all is well!",
-          "",
-          `I'm currently looking for my next gig and saw a ${sampleRole} opening at ${sampleCompany}. How has your experience there been so far?`,
-          "",
-          "Best,",
-          userFirstName || "you",
-        ].join("\n");
-
-        return (
-          <div className="network-crossref-modal-overlay">
-            <div className="network-crossref-modal network-onboarding-modal">
-              {/* Step dots */}
-              <div className="network-onboarding-step-dots">
-                {[1, 2, 3].map((s) => (
-                  <div
-                    key={s}
-                    className={`network-onboarding-step-dot${onboardingStep === s ? " network-onboarding-step-dot--active" : ""}`}
-                  />
-                ))}
-              </div>
-
-              {onboardingStep === 1 && (
-                <>
-                  <p className="network-onboarding-title">Your Networking Plan is Ready</p>
-                  <p className="network-onboarding-body">
-                    The next step is to send emails to one person (or more) for each company that has
-                    an opening you&rsquo;re interested in. We&rsquo;ve already built out the email
-                    templates and grabbed all the email addresses. Simply click on the{" "}
-                    <strong>Email icon</strong> next to the role you want and you can preview the
-                    email before hitting send.
-                  </p>
-                  <div className="network-onboarding-actions">
-                    <button className="btn btn-primary" onClick={() => setOnboardingStep(2)}>
-                      Next &rarr;
-                    </button>
-                  </div>
-                </>
-              )}
-
-              {onboardingStep === 2 && (
-                <>
-                  <p className="network-onboarding-title">Your Default Email Template</p>
-                  <p className="network-onboarding-email-note">
-                    You can edit the message any way you like before hitting send. The email will be
-                    sent from the email you signed up with &mdash; any replies go directly to your
-                    inbox.
-                  </p>
-                  <div className="network-onboarding-email-preview">{sampleBody}</div>
-                  <div className="network-onboarding-actions">
-                    <button className="btn btn-secondary" onClick={() => setOnboardingStep(1)}>
-                      &larr; Back
-                    </button>
-                    <button className="btn btn-primary" onClick={() => setOnboardingStep(3)}>
-                      Next &rarr;
-                    </button>
-                  </div>
-                </>
-              )}
-
-              {onboardingStep === 3 && (
-                <>
-                  <p className="network-onboarding-title">You&rsquo;re All Set!</p>
-                  <p className="network-onboarding-body">
-                    Great! Go ahead and review your matches and get those emails sent so we can get
-                    referrals and interviews going!
-                  </p>
-                  <div className="network-onboarding-actions">
-                    <button className="btn btn-secondary" onClick={() => setOnboardingStep(2)}>
-                      &larr; Back
-                    </button>
-                    <button className="btn btn-primary" onClick={completeOnboarding}>
-                      View My Matches
-                    </button>
-                  </div>
-                </>
-              )}
+      {/* First-upload confirmation modal */}
+      {showFirstUploadModal && (
+        <div className="network-crossref-modal-overlay">
+          <div className="network-crossref-modal network-onboarding-modal">
+            <p className="network-onboarding-title">Nice!</p>
+            <p className="network-onboarding-body">
+              We have your LinkedIn connections and created a list of all{" "}
+              <strong>{firstUploadMatchCount}</strong> lead match{firstUploadMatchCount !== 1 ? "es" : ""} called{" "}
+              <strong>&ldquo;{firstUploadListName}&rdquo;</strong>.
+              You can create new lists by clicking <strong>Create List</strong> under the lead stats section.
+            </p>
+            <div className="network-onboarding-actions">
+              <button className="btn btn-primary" onClick={dismissFirstUploadModal}>
+                View My Matches
+              </button>
             </div>
           </div>
-        );
-      })()}
+        </div>
+      )}
 
       {/* Email compose modal */}
       {emailDraft && (
@@ -1165,41 +1175,56 @@ export default function Network() {
               }}
               onBarClick={(range) => setActiveScoreRange(range[0] === -1 ? null : range)}
               activeScoreRange={activeScoreRange}
+              leadIdFilter={crossRefMatches.length > 0 ? new Set(crossRefMatches.map((m) => m.lead_id)) : undefined}
             />
           </div>
 
           {/* Right: stats + analysis */}
           <div className="network-split-col-results">
             <div className="network-stats-row">
-              <div className="network-stat-card">
-                <div className="network-stat-value">{stats.total.toLocaleString()}</div>
-                <div className="network-stat-label">Connections</div>
-              </div>
-              <div className="network-stat-card">
-                <div className="network-stat-value">{stats.withEmail.toLocaleString()}</div>
-                <div className="network-stat-label">Have Email</div>
-              </div>
-              <div className="network-stat-card">
-                <div className="network-stat-value">
-                  {activeScoreRange ? planGroups.length.toLocaleString() : stats.uniqueCompanies.toLocaleString()}
+              <div className="network-stat-card network-stat-card--accent" style={{ cursor: "pointer" }} onClick={() => setActiveView("matches")}>
+                <div className="network-stat-value">{matchStats.matchCount.toLocaleString()}</div>
+                <div className="network-stat-label">
+                  {activeScoreRange ? (() => {
+                    const zone = SCORE_BUCKETS.find((b) => b.range[0] === activeScoreRange[0])?.zone;
+                    const label = zone === "high" ? "Strong" : zone === "medium" ? "Moderate" : "Low";
+                    return `${label} Lead Matches`;
+                  })() : "Lead Matches"}
                 </div>
+              </div>
+              <div className="network-stat-card" style={{ cursor: "pointer" }} onClick={() => setActiveView("matches")}>
+                <div className="network-stat-value">{matchStats.uniqueCompanies.toLocaleString()}</div>
                 <div className="network-stat-label">{activeScoreRange ? "Matched Co." : "Companies"}</div>
               </div>
-              <div className="network-stat-card network-stat-card--accent">
-                <div className="network-stat-value">
-                  {activeScoreRange
-                    ? planGroups.reduce((n, g) => n + (activeRoles.length > 0 ? g.preferredLeads.length : g.leads.length), 0).toLocaleString()
-                    : stats.matchCount.toLocaleString()}
-                </div>
-                <div className="network-stat-label">{activeScoreRange ? "Filtered Matches" : "Lead Matches"}</div>
+              <div className="network-stat-card" style={{ cursor: "pointer" }} onClick={() => { setActiveView("network"); setFilterHasEmail(true); }}>
+                <div className="network-stat-value">{matchStats.withEmail.toLocaleString()}</div>
+                <div className="network-stat-label">Have Email</div>
               </div>
+              <div className="network-stat-card" style={{ cursor: "pointer" }} onClick={() => setActiveView("network")}>
+                <div className="network-stat-value">{matchStats.totalConnections.toLocaleString()}</div>
+                <div className="network-stat-label">Connections</div>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+              <button
+                className="btn"
+                onClick={handleCreateList}
+                disabled={!crossRefMatches.length}
+                style={{ fontSize: 12 }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 5 }}>
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                {activeScoreRange ? `Create List (${matchStats.matchCount})` : "Create List"}
+              </button>
             </div>
 
         <div className="network-crossref-section">
           {/* Header */}
           <div className="network-crossref-header">
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <strong>LinkedIn Analysis</strong>
+              <strong>LinkedIn Lead Analysis</strong>
               {crossRefRunAt && (
                 <span style={{ color: "var(--text-muted)", fontSize: 12 }}>
                   Last run {new Date(crossRefRunAt).toLocaleDateString()}
@@ -1236,12 +1261,12 @@ export default function Network() {
                 {role}
               </button>
             ))}
-            {deselectedRoles.size > 0 && (
+            {(deselectedRoles.size > 0 || planFilterEmailOnly) && (
               <button
                 className="network-chip-clear"
-                onClick={() => setDeselectedRoles(new Set())}
+                onClick={() => { setDeselectedRoles(new Set()); setPlanFilterEmailOnly(false); }}
               >
-                Reset roles
+                Clear
               </button>
             )}
           </div>
@@ -1497,7 +1522,7 @@ export default function Network() {
                 </button>
                 {hasActiveFilters && (
                   <button className="network-chip-clear" onClick={handleResetFilters}>
-                    Reset
+                    Clear
                   </button>
                 )}
               </div>

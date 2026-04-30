@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import api from "../api/client";
-import NetworkAnalysisCard from "../components/NetworkAnalysisCard";
 import TourTooltip from "../components/TourTooltip";
 
 type StatusHistoryEntry = {
@@ -32,6 +31,13 @@ type PipelineStage = {
   leads?: PipelineLeadItem[];
 };
 
+type UserList = {
+  _id: string;
+  name: string;
+  leadIds: string[];
+  createdAt: string;
+};
+
 type AttentionItem = {
   leadId: string;
   company: string;
@@ -51,11 +57,12 @@ type ActivityItem = {
 const Home = () => {
   const pathname = usePathname();
   const router = useRouter();
-  const { isAuthenticated, preferredRoles, onboardingCompleted } = useAuth();
+  const { isAuthenticated, preferredRoles } = useAuth();
   const [pipeline, setPipeline] = useState<PipelineStage[]>([]);
   const [recentLeads, setRecentLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [recentLists, setRecentLists] = useState<UserList[]>([]);
 
   useEffect(() => {
     // Only fetch data if user is authenticated
@@ -71,13 +78,14 @@ const Home = () => {
       setLoading(true);
 
       // Fetch pipeline and recent leads in parallel
-      const [pipelineResult, leadsResult] = await Promise.allSettled([
+      const [pipelineResult, leadsResult, listsResult] = await Promise.allSettled([
         api.userLeads.getPipeline() as Promise<PipelineStage[]>,
         api.leads.getAll({
           page: 1,
           limit: 200,
           sort: "-created_at",
         }) as Promise<{ leads?: any[] }>,
+        api.userLists.getAll() as Promise<UserList[]>,
       ]);
 
       if (pipelineResult.status === "fulfilled") {
@@ -91,6 +99,14 @@ const Home = () => {
         setRecentLeads(leadsResult.value?.leads || []);
       } else {
         console.error("Error fetching recent leads:", leadsResult.reason);
+      }
+
+      if (listsResult.status === "fulfilled") {
+        const all = Array.isArray(listsResult.value) ? listsResult.value : [];
+        const sorted = [...all].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        setRecentLists(sorted.slice(0, 5));
       }
     } finally {
       setLoading(false);
@@ -307,7 +323,29 @@ const Home = () => {
         </div>
 
         <div className="section">
-          <NetworkAnalysisCard onboardingCompleted={onboardingCompleted} />
+          <div className="section-header">
+            <span>Your Lists</span>
+            <Link href="/lists">view all</Link>
+          </div>
+          {recentLists.length > 0 ? (
+            recentLists.map((list) => (
+              <Link key={list._id} href={`/lists/${list._id}`} className="list-item" style={{ display: "flex", textDecoration: "none", color: "inherit" }}>
+                <div className="item-content">
+                  <div className="item-title">{list.name}</div>
+                  <div className="item-meta">
+                    {list.leadIds?.length ?? 0} lead{(list.leadIds?.length ?? 0) !== 1 ? "s" : ""} · {new Date(list.createdAt).toLocaleDateString()}
+                  </div>
+                </div>
+              </Link>
+            ))
+          ) : (
+            <div className="list-item">
+              <div className="item-content">
+                <div className="item-title" style={{ color: "#828282", fontStyle: "italic" }}>No lists yet</div>
+                <div className="item-meta">Save leads to a list from the Leads page</div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="two-col">

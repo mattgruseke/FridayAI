@@ -65,6 +65,7 @@ export const mapUserList = (row: AnyRecord | null) => {
     name: row.name,
     description: row.description,
     leadIds: row.lead_ids ?? row.leadIds ?? [],
+    metadata: row.metadata ?? null,
     createdAt: row.created_at ?? row.createdAt,
     updatedAt: row.updated_at ?? row.updatedAt,
   };

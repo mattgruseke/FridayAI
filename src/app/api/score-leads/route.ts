@@ -109,10 +109,13 @@ export async function GET() {
 
   const distribution = buildDistribution(scoredLeads.map((l) => l.score));
 
+  const matchedLeadIds = Array.from(networkMatchMap.keys());
+
   return jsonResponse({
     distribution,
     scoredLeads,
     hasConnections: networkMatchMap.size > 0,
+    matchedLeadIds,
     totalLeads: leads.length,
   });
 }

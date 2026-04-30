@@ -77,6 +77,9 @@ const Leads = () => {
   // Has email filter
   const [filterHasEmail, setFilterHasEmail] = useState(false);
 
+  // LinkedIn connections filter
+  const [filterHasConnection, setFilterHasConnection] = useState(false);
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const leadsPerPage = 50;
@@ -188,8 +191,8 @@ const Leads = () => {
     });
   };
 
-  const clearChips = () => setSelectedChips(new Set());
-  const resetToPreferred = () => setSelectedChips(new Set(preferredChips));
+  const clearChips = () => { setSelectedChips(new Set()); setFilterHasEmail(false); setFilterHasConnection(false); };
+  const resetToPreferred = () => { setSelectedChips(new Set(preferredChips)); setFilterHasEmail(false); setFilterHasConnection(false); };
 
   if (loading) {
     return (
@@ -243,6 +246,9 @@ const Leads = () => {
 
       // Has email filter
       if (filterHasEmail && !lead.contactEmail) return false;
+
+      // LinkedIn connections filter
+      if (filterHasConnection && !networkMatchMap.has(lead._id)) return false;
 
       // Saved filter
       if (savedFilter === 'saved' && !savedLeads.has(lead._id)) return false;
@@ -346,12 +352,35 @@ const Leads = () => {
           >
             Has email
           </button>
+          {networkMatchMap.size > 0 ? (
+            <button
+              type="button"
+              className={`leads-chip leads-chip--location ${filterHasConnection ? 'leads-chip--active' : ''}`}
+              onClick={() => setFilterHasConnection(v => !v)}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 4, flexShrink: 0 }}>
+                <path d="M19 0h-14c-2.76 0-5 2.24-5 5v14c0 2.76 2.24 5 5 5h14c2.76 0 5-2.24 5-5v-14c0-2.76-2.24-5-5-5zm-11 19h-3v-10h3v10zm-1.5-11.27c-.97 0-1.75-.79-1.75-1.76s.78-1.75 1.75-1.75 1.75.78 1.75 1.75-.78 1.76-1.75 1.76zm13.5 11.27h-3v-5.6c0-1.34-.03-3.07-1.87-3.07-1.87 0-2.16 1.46-2.16 2.97v5.7h-3v-10h2.88v1.36h.04c.4-.76 1.38-1.56 2.84-1.56 3.04 0 3.6 2 3.6 4.59v5.61z"/>
+              </svg>
+              LinkedIn Connections
+            </button>
+          ) : (
+            <Link
+              href="/network"
+              className="leads-chip leads-chip--location"
+              style={{ textDecoration: 'none' }}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 4, flexShrink: 0 }}>
+                <path d="M19 0h-14c-2.76 0-5 2.24-5 5v14c0 2.76 2.24 5 5 5h14c2.76 0 5-2.24 5-5v-14c0-2.76-2.24-5-5-5zm-11 19h-3v-10h3v10zm-1.5-11.27c-.97 0-1.75-.79-1.75-1.76s.78-1.75 1.75-1.75 1.75.78 1.75 1.75-.78 1.76-1.75 1.76zm13.5 11.27h-3v-5.6c0-1.34-.03-3.07-1.87-3.07-1.87 0-2.16 1.46-2.16 2.97v5.7h-3v-10h2.88v1.36h.04c.4-.76 1.38-1.56 2.84-1.56 3.04 0 3.6 2 3.6 4.59v5.61z"/>
+              </svg>
+              Upload LinkedIn Connections
+            </Link>
+          )}
           {hasPreferred && !isAtPreferred && (
             <button type="button" className="leads-chip-clear" onClick={resetToPreferred}>
               Reset to my roles
             </button>
           )}
-          {!hasPreferred && selectedChips.size > 0 && (
+          {(selectedChips.size > 0 || filterHasEmail || filterHasConnection) && (
             <button type="button" className="leads-chip-clear" onClick={clearChips}>
               Clear
             </button>

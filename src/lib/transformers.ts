@@ -40,6 +40,7 @@ export const userListToDb = (payload: AnyRecord) => ({
   name: payload.name,
   description: payload.description,
   lead_ids: payload.leadIds ?? payload.lead_ids ?? [],
+  metadata: payload.metadata ?? null,
 });
 
 export const referralToDb = (payload: AnyRecord) => ({
