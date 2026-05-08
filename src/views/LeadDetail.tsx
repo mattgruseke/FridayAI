@@ -13,6 +13,7 @@ import type { PublishLeadMode } from '../components/PublishLeadModal';
 import { getErrorMessage } from '../lib/errors';
 import NoteEditor from '../components/NoteEditor';
 import CompanyLogo from '../components/CompanyLogo';
+import OutreachTemplateModal from '../components/OutreachTemplateModal';
 
 type Lead = {
   _id?: string;
@@ -59,6 +60,23 @@ type NoteEntry = {
   id: string;
   text: string;
   createdAt: string;
+};
+
+type Todo = {
+  id: string;
+  text: string;
+  completed: boolean;
+  createdAt: string;
+  completedAt?: string;
+  suggested?: boolean;
+};
+
+const SUGGESTED_TODOS: Record<string, string[]> = {
+  saved:        ["Research the company", "Find a contact", "Send email using outreach template"],
+  contacted:    ["Follow up if no reply in 5 days", "Connect on LinkedIn"],
+  applied:      ["Send a thank-you note", "Prep for a potential screen"],
+  interviewing: ["Send thank-you email after each round", "Research your interviewers"],
+  offer:        ["Review compensation details", "Negotiate if needed"],
 };
 
 const parseNotes = (raw: string): NoteEntry[] => {
@@ -135,10 +153,14 @@ const LeadDetail = () => {
   const [selectedReferralId, setSelectedReferralId] = useState('');
   const [referralSearchQuery, setReferralSearchQuery] = useState('');
 
-  // Contact email compose modal
-  const [contactEmailDraft, setContactEmailDraft] = useState<{ to: string; subject: string; body: string } | null>(null);
-  const [contactEmailSending, setContactEmailSending] = useState(false);
-  const [contactEmailSent, setContactEmailSent] = useState(false);
+  // Outreach template modal
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
+
+  // Todos
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const [showDone, setShowDone] = useState(false);
+  const [addingTodo, setAddingTodo] = useState(false);
+  const [newTodoText, setNewTodoText] = useState("");
 
   // Network connections (LinkedIn matches)
   type NetworkConnection = { name: string; linkedinUrl: string | null; email: string | null };
@@ -521,6 +543,27 @@ const LeadDetail = () => {
         setStatus(userLeadData.currentStatus ?? null); // ✅ This now gets the correct status!
         setNoteEntries(parseNotes(userLeadData.notes || ''));
 
+        // Seed todos from customFields, or generate suggested todos on first load
+        const existingTodos: Todo[] = (userLeadData as any).customFields?.todos ?? [];
+        if (existingTodos.length > 0) {
+          setTodos(existingTodos);
+        } else {
+          const currentStatus = userLeadData.currentStatus ?? 'saved';
+          const suggestions = SUGGESTED_TODOS[currentStatus] ?? SUGGESTED_TODOS['saved'];
+          const seeded: Todo[] = suggestions.map((text) => ({
+            id: crypto.randomUUID(),
+            text,
+            completed: false,
+            createdAt: new Date().toISOString(),
+            suggested: true,
+          }));
+          setTodos(seeded);
+          // Persist seeds so they don't regenerate on next open
+          api.userLeads.update(userLeadData._id, {
+            customFields: { ...((userLeadData as any).customFields ?? {}), todos: seeded },
+          }).catch(() => {});
+        }
+
         // Capture initial values for change detection
         setInitialValues({
           lead: { ...leadData },
@@ -791,7 +834,7 @@ const LeadDetail = () => {
       });
 
       // Update initial values to reflect the saved priority
-      setInitialValues((prev) =>
+      setInitialValues((prev: any) =>
         prev
           ? {
             ...prev,
@@ -962,49 +1005,72 @@ const LeadDetail = () => {
     }
   };
 
-  function openContactEmailModal() {
-    const name = userLead?.userContactName || '';
-    const firstName = name.split(/[\s(]/)[0] || 'there';
-    setContactEmailDraft({
-      to: userLead?.userContactEmail || '',
-      subject: `Following up on ${lead?.title || 'the role'} at ${lead?.company || 'your company'}`,
-      body: [
-        `Hi ${firstName},`,
-        '',
-        `I wanted to follow up regarding the ${lead?.title || 'role'} opening at ${lead?.company}. I'm very interested and wanted to reach out directly.`,
-        '',
-        'Looking forward to hearing from you!',
-        '',
-        'Best,',
-      ].join('\n'),
-    });
-    setContactEmailSending(false);
-    setContactEmailSent(false);
+  function openTemplateModal() {
+    setTemplateModalOpen(true);
   }
 
-  async function handleSendContactEmail() {
-    if (!contactEmailDraft || !userLead?._id) return;
-    setContactEmailSending(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    const activityNote = `Email sent to ${contactEmailDraft.to}`;
+  async function handleTemplateCopied() {
+    if (!userLead?._id) return;
     try {
-      if (userLead.currentStatus === 'saved') {
-        // Advance to Contacted; use email note as the history entry
-        await api.userLeads.updateStatus(userLead._id, 'contacted', activityNote);
-        setUserLead((prev) => prev ? { ...prev, currentStatus: 'contacted' } : prev);
-        setStatus('contacted');
-      } else {
-        // Already past Saved — just log the activity, don't change status
-        await api.userLeads.update(userLead._id, {
-          activityNote,
-          activityAction: 'email_sent',
-        });
-      }
+      await api.userLeads.update(userLead._id, {
+        activityNote: `Outreach template copied for ${lead?.company || 'lead'}`,
+        activityAction: 'template_copied',
+      });
       const activityData = (await api.userLeads.getActivity(userLead._id)) as any[];
       setActivity(activityData || []);
     } catch {}
-    setContactEmailSending(false);
-    setContactEmailSent(true);
+  }
+
+  async function saveTodos(updated: Todo[]) {
+    setTodos(updated);
+    if (!userLead?._id) return;
+    await api.userLeads.update(userLead._id, {
+      customFields: { ...((userLead as any).customFields ?? {}), todos: updated },
+    }).catch(() => {});
+  }
+
+  async function toggleTodo(id: string) {
+    const todo = todos.find((t) => t.id === id);
+    if (!todo) return;
+    const updated = todos.map((t) =>
+      t.id === id
+        ? { ...t, completed: !t.completed, completedAt: !t.completed ? new Date().toISOString() : undefined }
+        : t
+    );
+    await saveTodos(updated);
+    if (!todo.completed && userLead?._id) {
+      try {
+        await api.userLeads.update(userLead._id, {
+          activityNote: `Completed todo: "${todo.text}"`,
+          activityAction: 'todo_completed',
+        });
+        const activityData = (await api.userLeads.getActivity(userLead._id)) as any[];
+        setActivity(activityData || []);
+      } catch {}
+    }
+  }
+
+  async function addTodo() {
+    const text = newTodoText.trim();
+    if (!text) return;
+    const newTodo: Todo = { id: crypto.randomUUID(), text, completed: false, createdAt: new Date().toISOString() };
+    const updated = [...todos, newTodo];
+    await saveTodos(updated);
+    if (userLead?._id) {
+      api.userLeads.update(userLead._id, { activityNote: `Added todo: "${text}"`, activityAction: 'todo_added' }).catch(() => {});
+    }
+    setNewTodoText("");
+    setAddingTodo(false);
+  }
+
+  async function deleteTodo(id: string) {
+    const todo = todos.find((t) => t.id === id);
+    if (!todo) return;
+    const updated = todos.filter((t) => t.id !== id);
+    await saveTodos(updated);
+    if (userLead?._id) {
+      api.userLeads.update(userLead._id, { activityNote: `Removed todo: "${todo.text}"`, activityAction: 'todo_deleted' }).catch(() => {});
+    }
   }
 
   const filteredReferrals = availableReferrals.filter(ref => {
@@ -1053,53 +1119,25 @@ const LeadDetail = () => {
         </div>
       </div>
 
-      {/* Contact Email Compose Modal */}
-      {contactEmailDraft && (
-        <div className="modal-overlay" onClick={() => !contactEmailSending && setContactEmailDraft(null)}>
-          <div className="modal-content" style={{ width: 520, maxWidth: '96vw' }} onClick={(e) => e.stopPropagation()}>
-            {contactEmailSent ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '24px 0' }}>
-                <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2e7d32' }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                </div>
-                <p style={{ fontWeight: 600, fontSize: '1.05rem', margin: 0 }}>Email Sent!</p>
-                <p style={{ color: '#666', fontSize: 13, margin: 0 }}>Your message is on its way.</p>
-                <button className="btn btn-primary" style={{ marginTop: 8 }} onClick={() => setContactEmailDraft(null)}>Done</button>
-              </div>
-            ) : (
-              <>
-                <div className="modal-header">
-                  <h3>Send Email</h3>
-                  <button className="modal-close" onClick={() => setContactEmailDraft(null)}>×</button>
-                </div>
-                <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #eee', padding: '8px 0' }}>
-                    <span style={{ width: 54, flexShrink: 0, color: '#888', fontSize: 13 }}>To</span>
-                    <input type="email" value={contactEmailDraft.to} onChange={(e) => setContactEmailDraft({ ...contactEmailDraft, to: e.target.value })} style={{ flex: 1, border: 'none', outline: 'none', fontSize: 13 }} />
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #eee', padding: '8px 0' }}>
-                    <span style={{ width: 54, flexShrink: 0, color: '#888', fontSize: 13 }}>Subject</span>
-                    <input type="text" value={contactEmailDraft.subject} onChange={(e) => setContactEmailDraft({ ...contactEmailDraft, subject: e.target.value })} style={{ flex: 1, border: 'none', outline: 'none', fontSize: 13 }} />
-                  </div>
-                  <textarea
-                    value={contactEmailDraft.body}
-                    onChange={(e) => setContactEmailDraft({ ...contactEmailDraft, body: e.target.value })}
-                    style={{ width: '100%', boxSizing: 'border-box', minHeight: 160, border: 'none', outline: 'none', fontSize: 13, resize: 'vertical', marginTop: 8, fontFamily: 'inherit' }}
-                  />
-                </div>
-                <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                  <button className="btn" onClick={() => setContactEmailDraft(null)} disabled={contactEmailSending}>Cancel</button>
-                  <button className="btn btn-primary" onClick={handleSendContactEmail} disabled={contactEmailSending}>
-                    {contactEmailSending ? 'Sending...' : 'Send Email'}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Outreach Template Modal */}
+      <OutreachTemplateModal
+        open={templateModalOpen}
+        onClose={() => setTemplateModalOpen(false)}
+        initialSubject={`Following up on ${lead?.title || 'the role'} at ${lead?.company || 'your company'}`}
+        initialBody={(() => {
+          const firstName = (userLead?.userContactName || '').split(/[\s(]/)[0] || 'there';
+          return [
+            `Hi ${firstName},`,
+            '',
+            `I wanted to follow up regarding the ${lead?.title || 'role'} opening at ${lead?.company}. I'm very interested and wanted to reach out directly.`,
+            '',
+            'Looking forward to hearing from you!',
+            '',
+            'Best,',
+          ].join('\n');
+        })()}
+        onCopied={handleTemplateCopied}
+      />
 
       {/* Import Modal */}
       {showImportModal && (
@@ -1511,6 +1549,70 @@ const LeadDetail = () => {
             </div>
           )}
 
+          {!isNewLead && userLead && (
+            <div className="section">
+              <div className="section-title">
+                Todos
+                <span style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "8pt", color: "#888", fontWeight: "normal", cursor: "pointer" }}>
+                    <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} style={{ margin: 0 }} />
+                    Show done
+                  </label>
+                  <button className="edit-icon-btn" title="Add todo" onClick={() => setAddingTodo(true)}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                  </button>
+                </span>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 6 }}>
+                {todos.filter((t) => showDone || !t.completed).map((todo) => (
+                  <div key={todo.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", opacity: todo.completed ? 0.5 : 1 }}>
+                    <input
+                      type="checkbox"
+                      checked={todo.completed}
+                      onChange={() => toggleTodo(todo.id)}
+                      style={{ flexShrink: 0, cursor: "pointer" }}
+                    />
+                    <span style={{ flex: 1, fontSize: "0.875rem", textDecoration: todo.completed ? "line-through" : "none", color: "inherit" }}>
+                      {todo.text}
+                    </span>
+                    <button
+                      onClick={() => deleteTodo(todo.id)}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "#bbb", padding: "2px", display: "flex", alignItems: "center" }}
+                      title="Delete"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+
+                {todos.filter((t) => showDone || !t.completed).length === 0 && !addingTodo && (
+                  <p style={{ fontSize: "0.8125rem", color: "#aaa", margin: "4px 0" }}>No open todos.</p>
+                )}
+
+                {addingTodo && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder="Add a todo..."
+                      value={newTodoText}
+                      onChange={(e) => setNewTodoText(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") addTodo(); if (e.key === "Escape") { setAddingTodo(false); setNewTodoText(""); } }}
+                      style={{ flex: 1, fontSize: "0.875rem" }}
+                    />
+                    <button className="btn btn-primary btn-sm" onClick={addTodo}>Add</button>
+                    <button className="btn btn-sm" onClick={() => { setAddingTodo(false); setNewTodoText(""); }}>Cancel</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="section">
             {isNewLead ? (
               /* ── Add New form: contact fields ── */
@@ -1585,15 +1687,14 @@ const LeadDetail = () => {
                           </svg>
                         </button>
                         <button
-                          disabled
-                          title="Send email functionality coming soon!"
-                          style={{ background: '#f5f5f5', border: '1px solid #ddd', color: '#aaa', cursor: 'not-allowed', padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: 4, borderRadius: 4, fontSize: '8pt', fontFamily: 'Verdana, Geneva, sans-serif' }}
+                          onClick={openTemplateModal}
+                          style={{ background: '#f5f5f5', border: '1px solid #ddd', color: '#555', cursor: 'pointer', padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: 4, borderRadius: 4, fontSize: '8pt', fontFamily: 'Verdana, Geneva, sans-serif' }}
                         >
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                            <polyline points="22,6 12,13 2,6"/>
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                           </svg>
-                          Send email
+                          Use email template
                         </button>
                       </div>
                     ) : (
@@ -1633,6 +1734,16 @@ const LeadDetail = () => {
                               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                             </svg>
+                          </button>
+                          <button
+                            onClick={openTemplateModal}
+                            style={{ background: '#f5f5f5', border: '1px solid #ddd', color: '#555', cursor: 'pointer', padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: 4, borderRadius: 4, fontSize: '8pt', fontFamily: 'Verdana, Geneva, sans-serif' }}
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                            </svg>
+                            Use email template
                           </button>
                         </div>
                       ) : (

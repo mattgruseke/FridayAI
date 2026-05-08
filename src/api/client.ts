@@ -295,13 +295,15 @@ export const notificationsAPI = {
     }),
 };
 
-// Send Email API
-export const sendEmailAPI = {
-  send: (data: { to: string; subject: string; message: string }) =>
-    fetchAPI("/send-email", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
+// User Templates API
+export const userTemplatesAPI = {
+  getAll: () => fetchAPI("/user-templates"),
+
+  create: (data: { name: string; subject: string; body: string }) =>
+    fetchAPI("/user-templates", { method: "POST", body: JSON.stringify(data) }),
+
+  delete: (id: string) =>
+    fetchAPI(`/user-templates?id=${id}`, { method: "DELETE" }),
 };
 
 // Export combined API object
@@ -316,7 +318,7 @@ export const api = {
   scoreLeads: scoreLeadsAPI,
   profile: profileAPI,
   notifications: notificationsAPI,
-  sendEmail: sendEmailAPI,
+  userTemplates: userTemplatesAPI,
 };
 
 export default api;

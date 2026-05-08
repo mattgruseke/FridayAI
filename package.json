@@ -13,8 +13,7 @@
     "preview:vite": "vite preview"
   },
   "dependencies": {
-    "@aws-sdk/client-ses": "^3.1032.0",
-    "@supabase/ssr": "^0.8.0",
+"@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.90.1",
     "@tiptap/extension-placeholder": "^3.19.0",
     "@tiptap/extension-underline": "^3.20.0",

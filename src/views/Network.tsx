@@ -12,6 +12,7 @@ import { useToast } from "../hooks/useToast";
 import CompanyLogo from "../components/CompanyLogo";
 import api from "../api/client";
 import NetworkAnalysisCard from "../components/NetworkAnalysisCard";
+import OutreachTemplateModal from "../components/OutreachTemplateModal";
 
 
 type LinkedInRow = {
@@ -63,19 +64,6 @@ type PlanGroup = {
   uniqueNames: string[];
   uniqueUrls: string[];
   uniqueEmails: string[];
-};
-
-type EmailDraft = {
-  leadId: string;
-  leadTitle: string;
-  company: string;
-  toNames: string[];
-  toEmailMap: Record<string, string>;
-  toName: string;
-  toEmail: string;
-  from: string;
-  subject: string;
-  body: string;
 };
 
 // Strips common legal suffixes for normalization
@@ -183,13 +171,8 @@ export default function Network() {
   const [nameInput, setNameInput] = useState("");
   const [nameSaving, setNameSaving] = useState(false);
 
-  // Email compose modal
-  const [emailDraft, setEmailDraft] = useState<EmailDraft | null>(null);
-  const [emailSending, setEmailSending] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
-  const [emailError, setEmailError] = useState<string | null>(null);
-  // lead_id → ISO timestamp of when email was sent this session
-  const [sentEmails, setSentEmails] = useState<Record<string, string>>({});
+  // Outreach template modal
+  const [templateModal, setTemplateModal] = useState<{ subject: string; body: string; leadId: string; company: string } | null>(null);
 
   // CSV preview state
   const [preview, setPreview] = useState<LinkedInRow[] | null>(null);
@@ -565,10 +548,6 @@ export default function Network() {
     fetchConnections(0, "");
     fetchStats();
     fetchCrossRefMatches();
-    try {
-      const stored = localStorage.getItem(`network_emailed_${user.id}`);
-      if (stored) setSentEmails(JSON.parse(stored));
-    } catch { }
   }, [user]);
 
   function handleSearchChange(value: string) {
@@ -758,28 +737,27 @@ export default function Network() {
     ].join("\n");
   }
 
-  function openEmailModal(lead: CrossRefMatch, group: PlanGroup) {
-    // Only include connections that have a real email from LinkedIn
-    const withEmail = group.uniqueNames
-      .map((name, i) => ({ name, email: group.uniqueEmails[i] || "" }))
-      .filter((c) => c.email);
-    const first = withEmail[0] || { name: "", email: "" };
-    const toEmailMap = Object.fromEntries(withEmail.map((c) => [c.name, c.email]));
-    setEmailDraft({
-      leadId: lead.lead_id,
-      leadTitle: lead.lead_title,
-      company: group.company,
-      toNames: withEmail.map((c) => c.name),
-      toEmailMap,
-      toName: first.name,
-      toEmail: first.email,
-      from: user?.email || "",
+  function openTemplateModal(lead: CrossRefMatch, group: PlanGroup) {
+    const firstName = group.uniqueNames[0] || "";
+    setTemplateModal({
       subject: `Quick question about ${group.company}`,
-      body: buildEmailBody(first.name, lead.lead_title, group.company),
+      body: buildEmailBody(firstName, lead.lead_title, group.company),
+      leadId: lead.lead_id,
+      company: group.company,
     });
-    setEmailSending(false);
-    setEmailSent(false);
-    setEmailError(null);
+  }
+
+  async function handleNetworkTemplateCopied(leadId: string, company: string) {
+    try {
+      const existing = (await api.userLeads.getByLeadId(leadId)) as any;
+      const userLeadId = existing?._id;
+      if (userLeadId) {
+        await api.userLeads.update(userLeadId, {
+          activityNote: `Outreach template copied for ${company}`,
+          activityAction: "template_copied",
+        });
+      }
+    } catch { }
   }
 
   function dismissFirstUploadModal() {
@@ -811,64 +789,6 @@ export default function Network() {
     showToast(`List "${runName}" saved to your Lists.`, "success");
   }
 
-  async function handleSendEmail() {
-    if (!emailDraft) return;
-    setEmailSending(true);
-    setEmailError(null);
-
-    // Send via SES
-    try {
-      await api.sendEmail.send({
-        to: emailDraft.toEmail,
-        subject: emailDraft.subject,
-        message: emailDraft.body,
-      });
-    } catch (err) {
-      setEmailError(err instanceof Error ? err.message : "Failed to send email. Please try again.");
-      setEmailSending(false);
-      return;
-    }
-
-    // Save the lead if not already tracked, advance from Saved → Contacted, then log activity
-    const activityNote = `Email sent to ${emailDraft.toName} at ${emailDraft.company}`;
-    try {
-      const existing = (await api.userLeads.getByLeadId(emailDraft.leadId)) as any;
-      const userLeadId = existing?._id;
-      if (userLeadId) {
-        if (existing.currentStatus === "saved") {
-          await api.userLeads.updateStatus(userLeadId, "contacted", activityNote);
-        } else {
-          await api.userLeads.update(userLeadId, {
-            activityNote,
-            activityAction: "email_sent",
-          });
-        }
-      } else {
-        await api.userLeads.save({
-          leadId: emailDraft.leadId,
-          currentStatus: "contacted",
-          activityNote,
-          activityAction: "email_sent",
-        });
-      }
-    } catch {
-      // Activity logging is best-effort — don't block the UI
-    }
-
-    const sentAt = new Date().toISOString();
-    setSentEmails((prev) => {
-      const updated = { ...prev, [emailDraft.leadId]: sentAt };
-      try { localStorage.setItem(`network_emailed_${user!.id}`, JSON.stringify(updated)); } catch { }
-      return updated;
-    });
-    setEmailSending(false);
-    setEmailSent(true);
-  }
-
-  function formatSentTime(iso: string): string {
-    return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-  }
-
   const CROSSREF_STEPS = [
     "",
     "Loading your LinkedIn connections...",
@@ -880,6 +800,15 @@ export default function Network() {
   return (
     <div className="page-container">
       {toastElement}
+
+      {/* Outreach Template Modal */}
+      <OutreachTemplateModal
+        open={!!templateModal}
+        onClose={() => setTemplateModal(null)}
+        initialSubject={templateModal?.subject ?? ""}
+        initialBody={templateModal?.body ?? ""}
+        onCopied={() => templateModal && handleNetworkTemplateCopied(templateModal.leadId, templateModal.company)}
+      />
 
       {/* First-upload confirmation modal */}
       {showFirstUploadModal && (
@@ -897,107 +826,6 @@ export default function Network() {
                 View My Matches
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Email compose modal */}
-      {emailDraft && (
-        <div className="network-crossref-modal-overlay" onClick={() => !emailSending && !emailSent && setEmailDraft(null)}>
-          <div className="network-crossref-modal network-email-modal" onClick={(e) => e.stopPropagation()}>
-            {emailSent ? (
-              <div className="network-email-sent-state">
-                <div className="network-email-sent-icon">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                </div>
-                <p className="network-email-sent-title">Email Sent!</p>
-                <p className="network-email-sent-sub">Your message is on its way to {emailDraft.toName.split(/[\s(]/)[0] || "your connection"}.</p>
-                <button className="btn btn-primary" style={{ marginTop: 8 }} onClick={() => setEmailDraft(null)}>
-                  Done
-                </button>
-              </div>
-            ) : (
-              <>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
-                  <CompanyLogo company={emailDraft.company} size={32} className="network-plan-logo" />
-                  <p className="network-email-modal-header" style={{ margin: 0 }}>
-                    Send Email &mdash; {emailDraft.company}
-                  </p>
-                </div>
-
-                <div className="network-email-field">
-                  <span className="network-email-field-label">From</span>
-                  <span className="network-email-field-value">{emailDraft.from}</span>
-                </div>
-
-                <div className="network-email-field">
-                  <span className="network-email-field-label">To</span>
-                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
-                    {emailDraft.toNames.length > 0 && (
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                        {emailDraft.toNames.map((name, i) => {
-                          const isSelected = emailDraft.toName === name;
-                          return (
-                            <button
-                              key={i}
-                              type="button"
-                              className={`network-conn-chip${isSelected ? "" : " network-conn-chip--no-link"}`}
-                              style={isSelected ? { borderColor: "var(--accent)", color: "var(--accent)", fontWeight: "bold" } : {}}
-                              onClick={() => {
-                                const newEmail = emailDraft.toEmailMap[name] || "";
-                                const newBody = buildEmailBody(name, emailDraft.leadTitle, emailDraft.company);
-                                setEmailDraft({ ...emailDraft, toName: name, toEmail: newEmail, body: newBody });
-                              }}
-                            >
-                              {name}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                    <input
-                      type="email"
-                      placeholder="Email address"
-                      value={emailDraft.toEmail}
-                      onChange={(e) => setEmailDraft({ ...emailDraft, toEmail: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="network-email-field">
-                  <span className="network-email-field-label">Subject</span>
-                  <input
-                    type="text"
-                    value={emailDraft.subject}
-                    onChange={(e) => setEmailDraft({ ...emailDraft, subject: e.target.value })}
-                  />
-                </div>
-
-                <div className="network-email-field network-email-body-field">
-                  <textarea
-                    value={emailDraft.body}
-                    onChange={(e) => setEmailDraft({ ...emailDraft, body: e.target.value })}
-                  />
-                </div>
-
-                {emailError && (
-                  <p style={{ color: "#dc2626", fontSize: "0.8125rem", margin: "0 0 10px", textAlign: "center" }}>
-                    {emailError}
-                  </p>
-                )}
-
-                <div className="network-email-actions">
-                  <button className="btn btn-secondary" onClick={() => setEmailDraft(null)} disabled={emailSending}>
-                    Cancel
-                  </button>
-                  <button className="btn btn-primary" disabled title="Send email functionality coming soon!">
-                    Send Email
-                  </button>
-                </div>
-              </>
-            )}
           </div>
         </div>
       )}
@@ -1319,7 +1147,7 @@ export default function Network() {
                             ))}
                           </div>
                         </div>
-                        <span className="network-plan-chevron">{isExpanded ? "▲" : "▼"}</span>
+                        <span className="network-plan-chevron">{isExpanded ? "Hide Leads ▲" : "Show Leads ▼"}</span>
                       </div>
 
                       {isExpanded && (
@@ -1334,26 +1162,18 @@ export default function Network() {
                                   {m.lead_location}
                                 </span>
                               )}
-                              {sentEmails[m.lead_id] ? (
-                                <span className="network-email-icon-btn network-email-icon-btn--sent">
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="20 6 9 17 4 12" />
-                                  </svg>
-                                  Email sent &middot; {formatSentTime(sentEmails[m.lead_id])}
-                                </span>
-                              ) : g.uniqueEmails.some((e) => e) ? (
+                              {g.uniqueEmails.some((e) => e) && (
                                 <button
-                                  className="network-email-icon-btn network-email-icon-btn--disabled"
-                                  title="Send email functionality coming soon!"
-                                  disabled
+                                  className="network-email-icon-btn"
+                                  onClick={() => openTemplateModal(m, g)}
                                 >
                                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                                    <polyline points="22,6 12,13 2,6" />
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                                   </svg>
-                                  Send email
+                                  Send email using outreach template
                                 </button>
-                              ) : null}
+                              )}
                             </div>
                           ))}
                         </div>
