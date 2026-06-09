@@ -7,7 +7,6 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import frogIcon from "../assets/frog.svg";
 import api from "../api/client";
-import TourTooltip from "./TourTooltip";
 
 type Notification = {
   id: string;
@@ -31,7 +30,7 @@ const COLOR_THEMES = [
 ];
 
 const Header = () => {
-  const { user, signOut, isAdmin, hasNetworkAccess } = useAuth();
+  const { user, signOut, isAdmin, hasNetworkAccess, onboardingCompleted, onboardingSkipped } = useAuth();
   const router = useRouter();
 
   const [darkMode, setDarkMode] = useState(() => {
@@ -46,6 +45,8 @@ const Header = () => {
   });
 
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
+  const navHoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [hoveredNav, setHoveredNav] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -112,6 +113,22 @@ const Header = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    return () => { if (navHoverTimerRef.current) clearTimeout(navHoverTimerRef.current); };
+  }, []);
+
+  const showNavTips = onboardingCompleted || onboardingSkipped;
+
+  function handleNavEnter(key: string) {
+    if (navHoverTimerRef.current) clearTimeout(navHoverTimerRef.current);
+    navHoverTimerRef.current = setTimeout(() => setHoveredNav(key), 750);
+  }
+
+  function handleNavLeave() {
+    if (navHoverTimerRef.current) clearTimeout(navHoverTimerRef.current);
+    setHoveredNav(null);
+  }
+
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
   };
@@ -143,27 +160,37 @@ const Header = () => {
 
           {/* Desktop nav */}
           <nav className="nav desktop-nav">
-            <span className="nav-item-wrap">
+            <span className="nav-item-wrap tour-tip-wrap tour-tip-wrap--left" onMouseEnter={() => handleNavEnter('pipeline')} onMouseLeave={handleNavLeave}>
               <Link href="/pipeline">pipeline</Link>
-              <TourTooltip text="Track every lead by stage — Saved, Contacted, Applied, Interviewing, Offer." align="left" />
+              {showNavTips && hoveredNav === 'pipeline' && (
+                <span className="tour-tip-popup" role="tooltip">Track every lead by stage — Saved, Contacted, Applied, Interviewing, Offer.</span>
+              )}
             </span>
-            <span className="nav-item-wrap">
+            <span className="nav-item-wrap tour-tip-wrap" onMouseEnter={() => handleNavEnter('leads')} onMouseLeave={handleNavLeave}>
               <Link href="/leads">leads</Link>
-              <TourTooltip text="Browse and filter all available job leads matching your preferences." />
+              {showNavTips && hoveredNav === 'leads' && (
+                <span className="tour-tip-popup" role="tooltip">Browse and filter all available job leads matching your preferences.</span>
+              )}
             </span>
-            <span className="nav-item-wrap">
+            <span className="nav-item-wrap tour-tip-wrap" onMouseEnter={() => handleNavEnter('lists')} onMouseLeave={handleNavLeave}>
               <Link href="/lists">lists</Link>
-              <TourTooltip text="Organize leads into named collections like 'Dream companies' or 'Apply this week'." />
+              {showNavTips && hoveredNav === 'lists' && (
+                <span className="tour-tip-popup" role="tooltip">Organize leads into named collections like 'Dream companies' or 'Apply this week'.</span>
+              )}
             </span>
             {hasNetworkAccess && (
-              <span className="nav-item-wrap">
+              <span className="nav-item-wrap tour-tip-wrap" onMouseEnter={() => handleNavEnter('network')} onMouseLeave={handleNavLeave}>
                 <Link href="/network">network</Link>
-                <TourTooltip text="Cross-reference your LinkedIn connections with open leads to find warm intros." />
+                {showNavTips && hoveredNav === 'network' && (
+                  <span className="tour-tip-popup" role="tooltip">Cross-reference your LinkedIn connections with open leads to find warm intros.</span>
+                )}
               </span>
             )}
-            <span className="nav-item-wrap">
+            <span className="nav-item-wrap tour-tip-wrap tour-tip-wrap--right" onMouseEnter={() => handleNavEnter('referrals')} onMouseLeave={handleNavLeave}>
               <Link href="/referrals">referrals</Link>
-              <TourTooltip text="Track people who can refer you at specific companies and link them to leads." align="right" />
+              {showNavTips && hoveredNav === 'referrals' && (
+                <span className="tour-tip-popup" role="tooltip">Track people who can refer you at specific companies and link them to leads.</span>
+              )}
             </span>
           </nav>
 
