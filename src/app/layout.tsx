@@ -6,11 +6,11 @@ import { createClient } from "@/lib/supabase/server";
 export const metadata = {
   title: "Skip the wait. Jump into your next role with GigFrog.",
   description: "Everything you need for your job search, all in one place. Leads, notes, and tips and tricks to help you land your next gig faster.",
-  metadataBase: new URL("https://gigfrog.io"),
+  metadataBase: new URL("https://app.gigfrog.io"),
   openGraph: {
     title: "Skip the wait. Jump into your next role with GigFrog.",
     description: "Everything you need for your job search, all in one place. Leads, notes, and tips and tricks to help you land your next gig faster.",
-    url: "https://gigfrog.io",
+    url: "https://app.gigfrog.io",
     siteName: "Skip the wait. Jump into your next role with GigFrog.",
     images: [
       {

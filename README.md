@@ -1,4 +1,4 @@
-# JobFinder (title is a work in progress)
+# GigFrog - Application repo
 
 Find you next gig faster.
 
