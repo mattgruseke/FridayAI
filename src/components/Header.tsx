@@ -34,9 +34,9 @@ const Header = () => {
   const router = useRouter();
 
   const [darkMode, setDarkMode] = useState(() => {
-    if (typeof window === 'undefined') return false;
+    if (typeof window === 'undefined') return true;
     const saved = localStorage.getItem("darkMode");
-    return saved === "true";
+    return saved !== "false";
   });
 
   const [colorTheme, setColorTheme] = useState(() => {
