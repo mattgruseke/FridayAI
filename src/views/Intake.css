@@ -81,6 +81,41 @@
   resize: vertical;
 }
 
+/* Address: street on its own row, then city / state / ZIP */
+.address-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px 12px;
+  margin-top: 4px;
+}
+
+.address-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.address-field--address_street {
+  grid-column: 1 / -1;
+}
+
+.address-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* .input is flex: 1 by default, which stretches it inside the column. */
+.address-field .input {
+  flex: none;
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  padding: 0 14px;
+  font-size: 16px;
+}
+
 /* Bubbles: single-choice answers */
 .bubbles {
   display: flex;
@@ -209,6 +244,14 @@
 
   .step-question {
     font-size: 20px;
+  }
+
+  .address-fields {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .address-field--address_city {
+    grid-column: 1 / -1;
   }
 
   .provider-row {

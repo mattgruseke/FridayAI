@@ -8,6 +8,7 @@ import { useToast } from "../hooks/useToast";
 import { getErrorMessage } from "../lib/errors";
 import {
   HOME_MANAGER_AGENT as AGENT,
+  isAnswered,
   PROVIDER_CATEGORIES,
   TIER_A,
   TIER_B,
@@ -119,10 +120,10 @@ const Intake = () => {
 
   // Part 7 completeness. known_providers counts as a Tier A field.
   const tierAMissing =
-    TIER_A.filter((q) => !filled(answers[q.field])).length + (hasProvider ? 0 : 1);
+    TIER_A.filter((q) => !isAnswered(q, answers)).length + (hasProvider ? 0 : 1);
   const tierBTotal = TIER_B.reduce((sum, q) => sum + (q.weight ?? 0), 0);
   const tierBDone = TIER_B.reduce(
-    (sum, q) => sum + (filled(answers[q.field]) ? q.weight ?? 0 : 0),
+    (sum, q) => sum + (isAnswered(q, answers) ? q.weight ?? 0 : 0),
     0
   );
 
@@ -139,7 +140,7 @@ const Intake = () => {
 
   const canAdvance =
     step.kind === "question"
-      ? !step.required || filled(answers[step.q.field])
+      ? !step.required || isAnswered(step.q, answers)
       : step.kind === "providers"
         ? hasProvider
         : true;
@@ -186,6 +187,28 @@ const Intake = () => {
             >
               {o}
             </button>
+          ))}
+        </div>
+      );
+    }
+    if (q.type === "address") {
+      return (
+        <div className="address-fields">
+          {q.parts!.map((p, i) => (
+            <label key={p.field} className={`address-field address-field--${p.field}`}>
+              <span className="address-label">{p.label}</span>
+              <input
+                id={i === 0 ? q.field : p.field}
+                className="input"
+                value={answers[p.field] ?? ""}
+                placeholder={p.placeholder}
+                autoComplete={p.autoComplete}
+                inputMode={p.inputMode}
+                autoFocus={i === 0}
+                onChange={(e) => set(p.field, e.target.value)}
+                onKeyDown={handleKeyDown}
+              />
+            </label>
           ))}
         </div>
       );
@@ -312,7 +335,7 @@ const Intake = () => {
             <p className="step-hint">
               {tierAMissing > 0
                 ? "Go back and fill in the basics to switch it on."
-                : `You answered ${TIER_B.filter((q) => filled(answers[q.field])).length} of ${TIER_B.length} follow-up questions. You can come back to the rest any time.`}
+                : `You answered ${TIER_B.filter((q) => isAnswered(q, answers)).length} of ${TIER_B.length} follow-up questions. You can come back to the rest any time.`}
             </p>
             <div className="step-choices">
               <button type="button" className="btn" onClick={handleSave}>

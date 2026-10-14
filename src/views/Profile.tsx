@@ -5,11 +5,8 @@ import Link from 'next/link';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../api/client';
 import type { Intake } from '../api/client';
-import { HOME_MANAGER_AGENT, TIER_A, TIER_B } from '@/config/homeManagerIntake';
+import { formatAnswer, HOME_MANAGER_AGENT, isAnswered, TIER_A, TIER_B } from '@/config/homeManagerIntake';
 import type { Question } from '@/config/homeManagerIntake';
-
-const formatAnswer = (q: Question, value: string) =>
-    q.type === 'date' ? new Date(`${value}T00:00:00`).toLocaleDateString() : value;
 
 const Profile = () => {
     const { user, userProfile, isAdmin, fullName, refreshProfile } = useAuth();
@@ -22,7 +19,7 @@ const Profile = () => {
         api.intake.get(HOME_MANAGER_AGENT).then(setHomeIntake).catch(() => setHomeIntake(null));
     }, []);
 
-    const answered = (q: Question) => !!homeIntake?.answers?.[q.field]?.trim();
+    const answered = (q: Question) => isAnswered(q, homeIntake?.answers);
 
     const displayName = fullName || user?.email?.split('@')[0] || 'user';
     const initials = displayName.slice(0, 2).toUpperCase();
@@ -118,7 +115,7 @@ const Profile = () => {
                             <div key={q.field} className="profile-row">
                                 <span className="profile-label">{q.short}</span>
                                 <span className="profile-value">
-                                    {formatAnswer(q, homeIntake.answers[q.field])}
+                                    {formatAnswer(q, homeIntake.answers)}
                                 </span>
                             </div>
                         ))}
@@ -139,7 +136,7 @@ const Profile = () => {
                             <div key={q.field} className="profile-row">
                                 <span className="profile-label">{q.short}</span>
                                 <span className="profile-value">
-                                    {formatAnswer(q, homeIntake.answers[q.field])}
+                                    {formatAnswer(q, homeIntake.answers)}
                                 </span>
                             </div>
                         ))}

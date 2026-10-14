@@ -3,15 +3,42 @@
 
 export const HOME_MANAGER_AGENT = "home_manager";
 
+// One input within a multi-input question (e.g. the parts of an address).
+// Each part is saved as its own answer field.
+export type QuestionPart = {
+  field: string;
+  label: string;
+  placeholder?: string;
+  autoComplete?: string;
+  inputMode?: "text" | "numeric";
+};
+
 export type Question = {
   field: string;
   short: string; // label used when listing answers (e.g. on the profile page)
   label: string;
   hint?: string;
-  type: "text" | "textarea" | "date" | "select";
+  type: "text" | "textarea" | "date" | "select" | "address";
   options?: string[];
+  parts?: QuestionPart[]; // "address" only; all parts are required to count as answered
   placeholder?: string;
   weight?: number; // Tier B only: findings unlocked, 1–5
+};
+
+const filled = (v: string | undefined) => !!v && v.trim() !== "";
+
+// Whether a question has an answer. Multi-part questions need every part.
+export const isAnswered = (q: Question, answers: Record<string, string> | undefined) =>
+  q.parts ? q.parts.every((p) => filled(answers?.[p.field])) : filled(answers?.[q.field]);
+
+// An answer as display text (e.g. "123 Main St, Darien, CT 06820").
+export const formatAnswer = (q: Question, answers: Record<string, string>) => {
+  if (q.type === "address") {
+    const [street, city, state, zip] = q.parts!.map((p) => answers[p.field]?.trim() ?? "");
+    return [street, city, [state, zip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  }
+  const value = answers[q.field];
+  return q.type === "date" ? new Date(`${value}T00:00:00`).toLocaleDateString() : value;
 };
 
 // Tier A — all required before the agent is Active.
@@ -21,8 +48,13 @@ export const TIER_A: Question[] = [
     short: "Address",
     label: "What's the address?",
     hint: "I can pull year built, square footage, and lot size from public records, so this saves you five questions.",
-    type: "text",
-    placeholder: "123 Main St, Darien, CT",
+    type: "address",
+    parts: [
+      { field: "address_street", label: "Street address", placeholder: "123 Main St", autoComplete: "street-address" },
+      { field: "address_city", label: "City", placeholder: "Darien", autoComplete: "address-level2" },
+      { field: "address_state", label: "State", placeholder: "CT", autoComplete: "address-level1" },
+      { field: "address_zip", label: "ZIP", placeholder: "06820", autoComplete: "postal-code", inputMode: "numeric" },
+    ],
   },
   {
     field: "own_or_rent",
