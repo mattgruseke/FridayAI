@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { isLocalMode } from "@/lib/local";
 import {
   signOut as signOutAction,
   updatePassword as updatePasswordAction,
@@ -73,6 +74,7 @@ export const AuthProvider = ({
   };
 
   useEffect(() => {
+    if (isLocalMode) return;
     const supabase = createClient();
 
     const {

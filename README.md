@@ -7,6 +7,10 @@ A Next.js 15 + Supabase starter with:
 - **Notifications**: a header bell backed by a `notifications` table. New users get a welcome notification.
 - **Theming**: light/dark mode and a user-pickable accent colour, driven by CSS tokens.
 
+## Local mode (no Supabase)
+
+Run `yarn && yarn dev` with no `.env.local`. With `NEXT_PUBLIC_SUPABASE_URL` unset, you're always signed in as `dev@localhost`, and items, profile and notifications are kept in memory, so they reset on restart. See [`src/lib/local.ts`](src/lib/local.ts). Follow the steps below to switch to Supabase.
+
 ## Quick start
 
 1. **Install**
@@ -41,7 +45,8 @@ A Next.js 15 + Supabase starter with:
 | App name, description, footer, nav links, default dark mode, accent palette | [`src/config/site.ts`](src/config/site.ts) |
 | Colours, fonts, spacing tokens | [`src/app/theme.css`](src/app/theme.css) |
 | Favicon | [`src/app/icon.svg`](src/app/icon.svg) |
-| Signed-in home page | [`src/views/Home.tsx`](src/views/Home.tsx) |
+| Overview at `/` (every item, tagged by area) | [`src/views/Overview.tsx`](src/views/Overview.tsx) |
+| Home, entertainment and food pages (each lists its own category of items, with a list/calendar toggle) | [`src/views/Items.tsx`](src/views/Items.tsx), [`src/components/Calendar.tsx`](src/components/Calendar.tsx), `src/app/(app)/` |
 | Profile columns | `user_profiles` in the schema, [`AuthContext.tsx`](src/contexts/AuthContext.tsx), [`/api/profile`](src/app/api/profile/route.ts) |
 
 ### Turning off invite codes
@@ -65,14 +70,14 @@ Follow the items example:
 4. Add a page in `src/app/(app)/<name>/page.tsx`. Everything under `(app)` is behind login and gets the header/footer.
 5. Add it to `nav` in `src/config/site.ts`.
 
-Then delete the items sample when you no longer need it: the `items` block in the schema, `src/app/api/items`, `src/app/(app)/items`, `src/views/Items.tsx`, `itemsAPI`, and the card on Home.
+Items have a `category` (`home`, `entertainment` or `food`). To add a category, add it to `ITEM_CATEGORIES` in `src/api/client.ts` and to the `category` check in the schema, then add a page and nav link.
 
 ### Sending notifications
 
 Insert rows from SQL, a trigger, or server code using the service role key:
 ```sql
 insert into public.notifications (user_id, type, message, action_url)
-values ('<user uuid>', 'reminder', 'Something needs your attention', '/items');
+values ('<user uuid>', 'reminder', 'Something needs your attention', '/');
 ```
 Call `api.notifications.completeByType('<type>')` once the user has done the thing. See `Profile.tsx` for an example.
 

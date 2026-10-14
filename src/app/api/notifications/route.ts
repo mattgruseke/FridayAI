@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { isLocalMode, localStore } from "@/lib/local";
 
 const jsonResponse = (data: unknown, status = 200) =>
   NextResponse.json(data, { status });
@@ -10,6 +11,9 @@ export async function GET() {
   const supabase = await createClient();
   const { user, errorResponse } = await requireUser();
   if (errorResponse) return errorResponse;
+  if (isLocalMode) {
+    return jsonResponse(localStore.notifications.filter((n) => !n.is_completed));
+  }
 
   const { data, error } = await supabase
     .from("notifications")
@@ -43,6 +47,12 @@ export async function PUT(request: Request) {
       ? { is_completed: true }
       : { is_dismissed: true, dismissed_at: new Date().toISOString() };
 
+  if (isLocalMode) {
+    const n = localStore.notifications.find((n) => n.id === id);
+    if (n) Object.assign(n, update);
+    return jsonResponse({ ok: true });
+  }
+
   const { error } = await supabase
     .from("notifications")
     .update(update)
@@ -63,6 +73,13 @@ export async function PATCH(request: Request) {
 
   const { type } = await request.json();
   if (!type) return jsonResponse({ error: "Missing type" }, 400);
+
+  if (isLocalMode) {
+    localStore.notifications
+      .filter((n) => n.type === type)
+      .forEach((n) => (n.is_completed = true));
+    return jsonResponse({ ok: true });
+  }
 
   const { error } = await supabase
     .from("notifications")

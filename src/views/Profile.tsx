@@ -1,14 +1,28 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../api/client';
+import type { Intake } from '../api/client';
+import { HOME_MANAGER_AGENT, TIER_A, TIER_B } from '@/config/homeManagerIntake';
+import type { Question } from '@/config/homeManagerIntake';
+
+const formatAnswer = (q: Question, value: string) =>
+    q.type === 'date' ? new Date(`${value}T00:00:00`).toLocaleDateString() : value;
 
 const Profile = () => {
     const { user, userProfile, isAdmin, fullName, refreshProfile } = useAuth();
     const [editingName, setEditingName] = useState(false);
     const [nameInput, setNameInput] = useState(fullName);
     const [nameSaving, setNameSaving] = useState(false);
+    const [homeIntake, setHomeIntake] = useState<Intake | null | undefined>(undefined);
+
+    useEffect(() => {
+        api.intake.get(HOME_MANAGER_AGENT).then(setHomeIntake).catch(() => setHomeIntake(null));
+    }, []);
+
+    const answered = (q: Question) => !!homeIntake?.answers?.[q.field]?.trim();
 
     const displayName = fullName || user?.email?.split('@')[0] || 'user';
     const initials = displayName.slice(0, 2).toUpperCase();
@@ -82,6 +96,58 @@ const Profile = () => {
                         </div>
                     )}
                 </div>
+            </div>
+
+            <div className="profile-card profile-card--wide">
+                <div className="profile-section-header">
+                    <h2 className="profile-section-title">Home</h2>
+                    <Link href="/intake" className="profile-configure-btn">
+                        {homeIntake ? 'Edit answers' : 'Start intake'}
+                    </Link>
+                </div>
+
+                {homeIntake === undefined ? (
+                    <p className="profile-empty">Loading…</p>
+                ) : homeIntake === null ? (
+                    <p className="profile-empty">
+                        You haven&apos;t filled in the Home Manager intake yet.
+                    </p>
+                ) : (
+                    <div className="profile-info">
+                        {TIER_A.slice(0, 5).filter(answered).map((q) => (
+                            <div key={q.field} className="profile-row">
+                                <span className="profile-label">{q.short}</span>
+                                <span className="profile-value">
+                                    {formatAnswer(q, homeIntake.answers[q.field])}
+                                </span>
+                            </div>
+                        ))}
+                        {homeIntake.known_providers.length > 0 && (
+                            <div className="profile-row">
+                                <span className="profile-label">Providers</span>
+                                <span className="profile-value profile-value--list">
+                                    {homeIntake.known_providers.map((p, i) => (
+                                        <span key={i}>
+                                            {p.name}
+                                            {p.category && <span className="profile-sub"> · {p.category}</span>}
+                                        </span>
+                                    ))}
+                                </span>
+                            </div>
+                        )}
+                        {[...TIER_A.slice(5), ...TIER_B].filter(answered).map((q) => (
+                            <div key={q.field} className="profile-row">
+                                <span className="profile-label">{q.short}</span>
+                                <span className="profile-value">
+                                    {formatAnswer(q, homeIntake.answers[q.field])}
+                                </span>
+                            </div>
+                        ))}
+                        <p className="profile-footnote">
+                            Last updated {new Date(homeIntake.updated_at).toLocaleString()}
+                        </p>
+                    </div>
+                )}
             </div>
         </div>
     );

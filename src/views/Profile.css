@@ -1,13 +1,15 @@
 .profile-page {
     padding: 40px 20px;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
 }
 
 .profile-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius);
     padding: 32px;
     max-width: 400px;
     width: 100%;
@@ -18,8 +20,10 @@
     width: 80px;
     height: 80px;
     border-radius: 50%;
-    background: var(--accent);
-    color: #ffffff;
+    background: var(--surface-2);
+    color: var(--accent-text);
+    border: 1px solid var(--accent);
+    font-family: var(--font-serif);
     font-size: 28px;
     font-weight: bold;
     display: flex;
@@ -29,6 +33,7 @@
 }
 
 .profile-name {
+    font-family: var(--font-serif);
     font-size: 24px;
     margin: 0 0 8px;
     color: var(--text);
@@ -37,7 +42,7 @@
 .profile-admin-badge {
     display: inline-block;
     background: #000000;
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 12px;
     padding: 4px 12px;
     border-radius: 4px;
@@ -87,7 +92,7 @@
 }
 
 .profile-value--editable:hover .profile-edit-hint {
-    color: var(--accent);
+    color: var(--accent-text);
 }
 
 .profile-name-edit {
@@ -119,7 +124,7 @@ body.dark-mode .profile-name-input {
 .profile-configure-btn {
     background: none;
     border: none;
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
@@ -134,10 +139,65 @@ body.dark-mode .profile-name-input {
 
 
 
-/* Dark mode */
-body.dark-mode .profile-card {
-    background: var(--bg);
-    border-color: var(--border);
+/* Saved intake answers */
+.profile-card--wide {
+    max-width: 640px;
+    text-align: left;
 }
+
+.profile-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 16px;
+}
+
+.profile-section-title {
+    font-family: var(--font-serif);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.profile-card--wide .profile-info {
+    padding-top: 8px;
+}
+
+.profile-card--wide .profile-row {
+    gap: 24px;
+}
+
+.profile-card--wide .profile-label {
+    flex-shrink: 0;
+}
+
+.profile-card--wide .profile-value {
+    text-align: right;
+    white-space: pre-wrap;
+}
+
+.profile-value--list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.profile-sub {
+    color: var(--muted);
+    font-weight: 400;
+}
+
+.profile-empty,
+.profile-footnote {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.profile-footnote {
+    padding-top: 12px;
+}
+
+/* Dark mode */
+
 
 

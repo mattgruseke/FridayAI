@@ -62,20 +62,26 @@ const toQueryString = (params: QueryParams) =>
   ).toString();
 
 // Items API — the sample feature. Copy this shape for your own resources.
+export const ITEM_CATEGORIES = ["home", "entertainment", "food"] as const;
+export type ItemCategory = (typeof ITEM_CATEGORIES)[number];
+
 export type Item = {
   id: string;
   title: string;
+  category: ItemCategory;
   done: boolean;
   created_at: string;
 };
 
 export const itemsAPI = {
-  getAll: () => fetchAPI<Item[]>("/items"),
+  // Omit category to get every item.
+  getAll: (category?: ItemCategory) =>
+    fetchAPI<Item[]>(category ? `/items?${toQueryString({ category })}` : "/items"),
 
-  create: (title: string) =>
+  create: (title: string, category: ItemCategory) =>
     fetchAPI<Item>("/items", {
       method: "POST",
-      body: JSON.stringify({ title }),
+      body: JSON.stringify({ title, category }),
     }),
 
   update: (id: string, data: Partial<Pick<Item, "title" | "done">>) =>
@@ -87,6 +93,27 @@ export const itemsAPI = {
   delete: (id: string) =>
     fetchAPI(`/items?id=${encodeURIComponent(id)}`, {
       method: "DELETE",
+    }),
+};
+
+// Intake API — answers to an agent's intake form
+export type IntakeProvider = { name: string; category: string; contact: string };
+
+export type Intake = {
+  agent: string;
+  answers: Record<string, string>;
+  known_providers: IntakeProvider[];
+  updated_at: string;
+};
+
+export const intakeAPI = {
+  get: (agent: string) =>
+    fetchAPI<Intake | null>(`/intake?${toQueryString({ agent })}`),
+
+  save: (agent: string, data: Pick<Intake, "answers" | "known_providers">) =>
+    fetchAPI<{ ok: true; updated_at: string }>(`/intake?${toQueryString({ agent })}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
     }),
 };
 
@@ -119,6 +146,7 @@ export const notificationsAPI = {
 // Export combined API object
 export const api = {
   items: itemsAPI,
+  intake: intakeAPI,
   profile: profileAPI,
   notifications: notificationsAPI,
 };

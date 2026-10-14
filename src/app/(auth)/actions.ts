@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { headers } from "next/headers";
 import { siteConfig } from "@/config/site";
+import { isLocalMode } from "@/lib/local";
 
 export async function signIn(email: string, password: string) {
   const supabase = await createClient();
@@ -69,6 +70,7 @@ export async function validateInviteCode(code: string) {
 }
 
 export async function signOut() {
+  if (isLocalMode) return;
   const supabase = await createClient();
   await supabase.auth.signOut();
   revalidatePath("/", "layout");

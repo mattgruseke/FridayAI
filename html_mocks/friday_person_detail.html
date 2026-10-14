@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Friday — Georgia</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --navy: #0F1830; --navy-side: #131F3B; --navy-surface: #182A4E; --navy-surface-2: #1D3157;
+  --cream: #F1EBDD; --mute: #93A2BE; --mute-dim: #6D7C9C;
+  --brass: #C4A063; --brass-bright: #D8B67D; --line: rgba(241,235,221,0.10); --rust: #C97A6B;
+}
+body { font-family: 'Inter', sans-serif; background: var(--navy); color: var(--cream); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+.topbar { height: 56px; flex-shrink: 0; display: flex; align-items: center; padding: 0 22px; gap: 16px; border-bottom: 1px solid var(--line); }
+.logo { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; letter-spacing: 0.3px; }
+.logo em { color: var(--brass); font-style: normal; }
+.top-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+.top-date { font-size: 12px; color: var(--mute-dim); }
+.top-score { background: var(--navy-surface); border: 1px solid var(--line); color: var(--brass); font-size: 12px; font-weight: 700; padding: 4px 11px; border-radius: 20px; }
+.top-notif { width: 30px; height: 30px; border-radius: 8px; background: var(--navy-surface); display: flex; align-items: center; justify-content: center; font-size: 13px; cursor: pointer; position: relative; }
+.notif-dot { width: 6px; height: 6px; background: var(--rust); border-radius: 50%; position: absolute; top: 6px; right: 6px; }
+.top-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--navy-surface-2); border: 1px solid var(--brass); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--brass); cursor: pointer; }
+
+a.top-avatar { text-decoration: none; }
+.body { display: grid; grid-template-columns: 232px 1fr; flex: 1; overflow: hidden; }
+
+.sidebar { background: var(--navy-side); border-right: 1px solid var(--line); overflow-y: auto; padding: 18px 0; }
+.score-card { margin: 0 14px 20px; padding: 15px; background: var(--navy-surface); border: 1px solid var(--line); border-radius: 6px; }
+.score-label { font-size: 9.5px; letter-spacing: 1.3px; text-transform: uppercase; color: var(--mute-dim); margin-bottom: 8px; }
+.score-num { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 700; line-height: 1; color: var(--cream); font-variant-numeric: tabular-nums; }
+.score-sub { font-size: 11px; color: var(--brass); margin: 4px 0 12px; }
+.score-bars { display: flex; flex-direction: column; gap: 6px; }
+.sb-row { display: flex; align-items: center; gap: 7px; }
+.sb-label { font-size: 9.5px; color: var(--mute-dim); width: 62px; flex-shrink: 0; }
+.sb-track { flex: 1; height: 2px; background: var(--line); }
+.sb-fill { height: 100%; background: var(--brass); }
+.sb-val { font-size: 9.5px; color: var(--mute); width: 16px; text-align: right; font-variant-numeric: tabular-nums; }
+.nav-group { margin-bottom: 18px; padding: 0 8px; }
+.nav-group-label { font-size: 9px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; color: var(--mute-dim); padding: 0 12px; margin-bottom: 6px; }
+.nav-item { display: flex; align-items: center; gap: 9px; padding: 7px 12px; border-left: 2px solid transparent; font-size: 13px; color: var(--mute); cursor: pointer; text-decoration: none; }
+.nav-item:hover { color: var(--cream); }
+.nav-item.active { color: var(--cream); border-left-color: var(--brass); background: rgba(196,160,99,0.07); font-weight: 600; }
+.nav-item .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--mute-dim); flex-shrink: 0; }
+.nav-item.active .dot { background: var(--brass); }
+.nav-divider { height: 1px; background: var(--line); margin: 4px 20px 14px; }
+
+.main { overflow-y: auto; display: flex; justify-content: center; }
+.main-inner { width: 100%; max-width: 720px; padding: 28px 24px 60px; }
+
+.back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--mute); text-decoration: none; margin-bottom: 20px; }
+.back-link:hover { color: var(--brass); }
+
+.profile-head { display: flex; gap: 18px; align-items: center; margin-bottom: 24px; }
+.profile-av { width: 68px; height: 68px; border-radius: 50%; background: var(--navy-surface-2); border: 1.5px solid var(--brass); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; color: var(--brass); flex-shrink: 0; }
+.profile-name { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 600; margin-bottom: 4px; }
+.profile-rel { font-size: 13px; color: var(--mute); }
+
+.summary-banner { background: linear-gradient(150deg, var(--navy-surface) 0%, var(--navy-surface-2) 100%); border: 1px solid var(--line); border-top: 2px solid var(--brass); border-radius: 6px; padding: 20px 24px; margin-bottom: 22px; }
+.summary-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.summary-label { display: flex; align-items: center; gap: 7px; font-size: 10.5px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--brass); }
+.summary-label .dot-live { width: 5px; height: 5px; border-radius: 50%; background: var(--brass); }
+.summary-text { font-size: 14.5px; line-height: 1.65; color: var(--cream); }
+.summary-text strong { color: var(--brass); font-weight: 600; }
+
+.card { background: var(--navy-surface); border: 1px solid var(--line); border-radius: 6px; padding: 18px 20px; margin-bottom: 16px; }
+.card-title { font-size: 10.5px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--mute-dim); margin-bottom: 14px; }
+
+.fact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.fact-label { font-size: 10px; color: var(--mute-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+.fact-val { font-size: 13.5px; color: var(--cream); }
+
+.tag-row { display: flex; flex-wrap: wrap; gap: 7px; }
+.tag { font-size: 11.5px; color: var(--mute); border: 1px solid var(--line); border-radius: 14px; padding: 5px 12px; }
+
+.note-text { font-size: 13px; color: var(--mute); line-height: 1.65; }
+
+.history-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.history-item:last-child { border-bottom: none; }
+.history-date { font-size: 10.5px; color: var(--mute-dim); width: 70px; flex-shrink: 0; padding-top: 1px; }
+.history-text { font-size: 12.5px; color: var(--cream); line-height: 1.5; }
+
+.gift-item { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.gift-item:last-child { border-bottom: none; }
+.gift-name { font-size: 12.5px; color: var(--cream); }
+.gift-status { font-size: 10.5px; color: var(--mute-dim); text-transform: uppercase; letter-spacing: 0.4px; }
+.gift-status.done { color: var(--brass); }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--navy-surface-2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="logo">Fri<em>day</em></div>
+  <div class="top-right">
+    <span class="top-date">Tuesday, August 11</span>
+    <a class="top-score" href="friday_life_score.html">62</a>
+    <a class="top-notif" href="friday_notifications.html">🔔<div class="notif-dot"></div></a>
+    <a class="top-avatar" href="friday_settings.html">MG</a>
+  </div>
+</nav>
+
+<div class="body">
+
+  <aside class="sidebar">
+    <div class="score-card">
+      <div class="score-label">Life Health Score</div>
+      <div class="score-num">62</div>
+      <div class="score-sub">↑ Getting there</div>
+      <div class="score-bars">
+        <div class="sb-row"><span class="sb-label">Relationship</span><div class="sb-track"><div class="sb-fill" style="width:45%"></div></div><span class="sb-val">45</span></div>
+        <div class="sb-row"><span class="sb-label">Family</span><div class="sb-track"><div class="sb-fill" style="width:78%"></div></div><span class="sb-val">78</span></div>
+        <div class="sb-row"><span class="sb-label">Health</span><div class="sb-track"><div class="sb-fill" style="width:55%"></div></div><span class="sb-val">55</span></div>
+        <div class="sb-row"><span class="sb-label">Household</span><div class="sb-track"><div class="sb-fill" style="width:38%"></div></div><span class="sb-val">38</span></div>
+        <div class="sb-row"><span class="sb-label">Personal</span><div class="sb-track"><div class="sb-fill" style="width:68%"></div></div><span class="sb-val">68</span></div>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Main</div>
+      <a class="nav-item" href="friday_home.html"><span class="dot"></span> Home</a>
+      <a class="nav-item" href="friday_life_dashboard.html"><span class="dot"></span> Dashboard</a>
+      <a class="nav-item" href="friday_your_team.html"><span class="dot"></span> Your Team</a>
+      <a class="nav-item" href="friday_calendar.html"><span class="dot"></span> Calendar</a>
+      <a class="nav-item" href="friday_tasks.html"><span class="dot"></span> Tasks</a>
+      <a class="nav-item" href="friday_weekly_planner.html"><span class="dot"></span> Weekly Planner</a>
+      <a class="nav-item" href="friday_email.html"><span class="dot"></span> Email <span class="new-tag">New</span></a>
+      <a class="nav-item" href="friday_news.html"><span class="dot"></span> News <span class="new-tag">New</span></a>
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Life</div>
+      <a class="nav-item active" href="friday_people.html"><span class="dot"></span> People</a>
+      <a class="nav-item" href="friday_restaurants.html"><span class="dot"></span> Restaurants</a>
+      <a class="nav-item" href="friday_family_activities.html"><span class="dot"></span> Family Activities</a>
+      <a class="nav-item" href="friday_travel.html"><span class="dot"></span> Travel & Trips</a>
+      <a class="nav-item" href="friday_goals.html"><span class="dot"></span> Goals</a>
+      <a class="nav-item" href="friday_finances.html"><span class="dot"></span> Finances</a>
+      <a class="nav-item" href="friday_media.html"><span class="dot"></span> Media</a>
+      <a class="nav-item" href="friday_health.html"><span class="dot"></span> Health</a>
+      <a class="nav-item" href="friday_fitness.html"><span class="dot"></span> Fitness</a>
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Home</div>
+      <div class="nav-item"><span class="dot"></span> Service Providers</div>
+      <div class="nav-item"><span class="dot"></span> Kitchen & Pantry</div>
+      <div class="nav-item"><span class="dot"></span> Household Tasks</div>
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <div class="nav-group">
+      <a class="nav-item" href="friday_life_score.html"><span class="dot"></span> Life Health Score</a>
+      <a class="nav-item" href="friday_notifications.html"><span class="dot"></span> Notifications</a>
+      <a class="nav-item" href="friday_settings.html"><span class="dot"></span> Settings</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="main-inner">
+      <a class="back-link" href="friday_people.html">← Back to People</a>
+
+      <div class="profile-head">
+        <div class="profile-av">G</div>
+        <div>
+          <div class="profile-name">Georgia</div>
+          <div class="profile-rel">Wife · Married · Darien, CT</div>
+        </div>
+      </div>
+
+      <div class="summary-banner">
+        <div class="summary-head"><span class="summary-label"><span class="dot-live"></span> Friday's Take</span></div>
+        <p class="summary-text">It's been <strong>two weeks since your last date night</strong> — the longest gap in a while. She's carrying most of the household load right now while working half days around Miles. The Whelk still has a Saturday table open, and it's on her list of places she's wanted to try.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Key Facts</div>
+        <div class="fact-grid">
+          <div><div class="fact-label">Birthday</div><div class="fact-val">March 18</div></div>
+          <div><div class="fact-label">Age</div><div class="fact-val">31</div></div>
+          <div><div class="fact-label">Work</div><div class="fact-val">Nonprofit — remote, tracks fishing vessels</div></div>
+          <div><div class="fact-label">Background</div><div class="fact-val">Marine biology</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Interests & Preferences</div>
+        <div class="tag-row">
+          <span class="tag">Ocean</span>
+          <span class="tag">Hyacinths</span>
+          <span class="tag">Cooking</span>
+          <span class="tag">Plants</span>
+          <span class="tag">Seafood restaurants</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Notes</div>
+        <p class="note-text">Works half days to cover Miles while balancing her own career. Carries most of the household mental load right now — Friday should proactively look for ways to lighten that, not just track dates. Loves the ocean and hands-on hobbies like gardening and cooking.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Recent History</div>
+        <div class="history-item"><div class="history-date">Jun 2026</div><div class="history-text">Dinner at Elm, New Canaan — her pick, said she'd go back</div></div>
+        <div class="history-item"><div class="history-date">Mar 2026</div><div class="history-text">Birthday — flowers + weekend in Mystic, CT</div></div>
+        <div class="history-item"><div class="history-date">Jan 2026</div><div class="history-text">Started new plant collection — three orchids on the windowsill</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Gift Log</div>
+        <div class="gift-item"><span class="gift-name">Birthday 2026 — orchid + weekend trip</span><span class="gift-status done">Given</span></div>
+        <div class="gift-item"><span class="gift-name">Anniversary 2026</span><span class="gift-status">Not started</span></div>
+        <div class="gift-item"><span class="gift-name">Idea: tide-chart clock, saw her mention one</span><span class="gift-status">Saved</span></div>
+      </div>
+
+    </div>
+  </main>
+
+</div>
+</body>
+</html>

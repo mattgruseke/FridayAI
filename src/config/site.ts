@@ -12,20 +12,46 @@ export type NavItem = {
   label: string;
 };
 
+export type NavGroup = {
+  label?: string;
+  items: NavItem[];
+};
+
 export const siteConfig = {
-  name: "My App",
-  description: "A Next.js + Supabase starter with auth, a sample feature, and theming.",
+  name: "Friday",
+  description: "Your personal life-management system.",
   url: "http://localhost:3000",
-  footer: "© My App",
 
   // Signup requires a code from the `invite_codes` table when true.
   inviteOnly: true,
 
-  // Links shown in the header once signed in.
+  // Sidebar nav (and the mobile menu) once signed in.
   nav: [
-    { href: "/", label: "home" },
-    { href: "/items", label: "items" },
-  ] satisfies NavItem[],
+    {
+      label: "Main",
+      items: [
+        { href: "/", label: "Home" },
+        { href: "/all", label: "All items" },
+      ],
+    },
+    {
+      label: "Life",
+      items: [
+        { href: "/entertainment", label: "Entertainment" },
+        { href: "/food", label: "Food" },
+      ],
+    },
+    {
+      label: "Home",
+      items: [
+        { href: "/home", label: "Household tasks" },
+        { href: "/intake", label: "Home intake" },
+      ],
+    },
+    {
+      items: [{ href: "/profile", label: "Profile" }],
+    },
+  ] satisfies NavGroup[],
 
   // Dark mode is on for new visitors when true.
   defaultDarkMode: true,
@@ -33,6 +59,7 @@ export const siteConfig = {
   // Accent colors offered by the header color picker. The first entry is the
   // default and must match `--accent` in src/app/theme.css.
   accentThemes: [
+    { id: "brass", label: "Brass", hex: "#C4A063" },
     { id: "orange", label: "Orange", hex: "#ff6600" },
     { id: "blue", label: "Blue", hex: "#2563eb" },
     { id: "indigo", label: "Indigo", hex: "#4f46e5" },

@@ -88,17 +88,18 @@ revoke insert, update, delete on public.notifications from anon, authenticated;
 grant update (is_dismissed, dismissed_at, is_completed) on public.notifications to authenticated;
 
 -- ─── Items (sample feature) ─────────────────────────────────────────────────
--- A per-user resource used by /items and /api/items. Copy this block for your
--- own tables, or drop it once you've replaced the sample.
+-- Per-user items, split by category: each of the home, entertainment and food
+-- pages shows its own category (/api/items?category=...).
 create table if not exists public.items (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null default auth.uid() references auth.users (id) on delete cascade,
   title      text not null check (char_length(title) between 1 and 500),
+  category   text not null default 'home' check (category in ('home', 'entertainment', 'food')),
   done       boolean not null default false,
   created_at timestamptz not null default now()
 );
 
-create index if not exists items_user_id_idx on public.items (user_id);
+create index if not exists items_user_id_category_idx on public.items (user_id, category);
 
 alter table public.items enable row level security;
 
@@ -110,6 +111,26 @@ create policy "Users update own items" on public.items
   for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "Users delete own items" on public.items
   for delete using (auth.uid() = user_id);
+
+-- ─── Agent intake ────────────────────────────────────────────────────────────
+-- Answers to an agent's intake form (/intake), one row per user per agent.
+-- `answers` holds { answers: {field: value}, known_providers: [...] }.
+create table if not exists public.intake_responses (
+  user_id    uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  agent      text not null check (agent in ('home_manager')),
+  answers    jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, agent)
+);
+
+alter table public.intake_responses enable row level security;
+
+create policy "Users read own intake" on public.intake_responses
+  for select using (auth.uid() = user_id);
+create policy "Users create own intake" on public.intake_responses
+  for insert with check (auth.uid() = user_id);
+create policy "Users update own intake" on public.intake_responses
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- ─── Signup trigger ─────────────────────────────────────────────────────────
 -- On every new auth user: redeem the invite code passed in signup metadata,

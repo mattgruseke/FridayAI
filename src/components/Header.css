@@ -1,43 +1,37 @@
-/* Header */
+/* Header (top bar) */
 .header {
-  background: var(--accent);
-  padding: 2px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
 }
 
-
 .header-inner {
-  background: var(--accent);
-  padding: 4px;
+  height: 56px;
+  padding: 0 22px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .logo {
-  font-weight: bold;
-  color: #ffffff;
-  font-size: 11pt;
-  padding: 0 4px;
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.nav {
-  display: flex;
-  gap: 12px;
-  font-size: 10pt;
-}
-
-
-.nav a {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
   color: var(--text);
   text-decoration: none;
 }
 
-.nav a:hover {
-  text-decoration: underline;
+.logo em {
+  font-style: normal;
+  color: var(--accent-text);
+}
+
+.top-date {
+  font-size: 12px;
+  color: var(--muted-dim);
 }
 
 .spacer {
@@ -46,8 +40,8 @@
 
 .admin-badge {
   background: #000000;
-  color: var(--accent);
-  font-size: 8pt;
+  color: var(--accent-text);
+  font-size: 12px;
   padding: 1px 4px;
   border-radius: 3px;
   margin-left: 4px;
@@ -62,14 +56,14 @@
 }
 
 .avatar-btn {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  background: #000000;
-  color: var(--accent);
-  border: none;
+  background: var(--surface-2);
+  color: var(--accent-text);
+  border: 1px solid var(--accent);
   font-size: 11px;
-  font-weight: bold;
+  font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -89,7 +83,7 @@
   height: 10px;
   background: #00ff00;
   border-radius: 50%;
-  border: 2px solid var(--accent);
+  border: 2px solid var(--surface);
 }
 
 /* Sidebar Dropdown */
@@ -169,7 +163,7 @@
 .hamburger span {
   display: block;
   height: 2px;
-  background: #000000;
+  background: var(--text);
   transition: all 0.3s ease;
 }
 
@@ -237,11 +231,17 @@
   padding: 12px 20px;
   color: var(--text);
   text-decoration: none;
+  text-transform: capitalize;
   font-size: 16px;
 }
 
 .mobile-nav a:hover {
   background: var(--hover);
+}
+
+.mobile-nav a.mobile-nav--active {
+  color: var(--accent-text);
+  font-weight: 600;
 }
 
 .mobile-menu-item {
@@ -277,7 +277,7 @@
   display: none;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 900px) {
   .desktop-only {
     display: none;
   }
@@ -286,9 +286,8 @@
     display: flex;
   }
 
-  .desktop-nav,
-  .nav.desktop-nav {
-    display: none !important;
+  .header-inner {
+    padding: 0 16px;
   }
 }
 
@@ -322,16 +321,14 @@ body.dark-mode .mobile-logout:hover {
   background: #3a2020;
 }
 
-body.dark-mode .hamburger span {
-  background: #ffffff;
-}
+
 
 /* ── iOS-style dark mode toggle ─────────────────────────────────────────── */
 .theme-toggle {
   width: 42px;
   height: 24px;
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--border);
   border: none;
   cursor: pointer;
   padding: 0;
@@ -341,7 +338,7 @@ body.dark-mode .hamburger span {
 }
 
 .theme-toggle--on {
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--border);
 }
 
 .theme-toggle__thumb {
@@ -379,14 +376,13 @@ body.dark-mode .hamburger span {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
-  opacity: 0.85;
+  color: var(--muted);
   border-radius: 4px;
   transition: opacity 0.15s;
 }
 
 .color-picker-btn:hover {
-  opacity: 1;
+  color: var(--text);
 }
 
 .color-picker-dropdown {
@@ -447,22 +443,21 @@ body.dark-mode .color-swatch--active {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
-  opacity: 0.85;
+  color: var(--muted);
   border-radius: 4px;
   transition: opacity 0.15s;
   position: relative;
 }
 
 .notif-btn:hover {
-  opacity: 1;
+  color: var(--text);
 }
 
 .notif-badge {
   position: absolute;
   top: 0;
   right: 0;
-  background: #ee0000;
+  background: var(--danger);
   color: #ffffff;
   font-size: 8px;
   font-weight: bold;
@@ -491,7 +486,7 @@ body.dark-mode .color-swatch--active {
 
 .notif-dropdown-header {
   padding: 10px 14px;
-  font-size: 9pt;
+  font-size: 13px;
   font-weight: bold;
   color: var(--text);
   border-bottom: 1px solid var(--border);
@@ -500,7 +495,7 @@ body.dark-mode .color-swatch--active {
 
 .notif-empty {
   padding: 16px 14px;
-  font-size: 9pt;
+  font-size: 13px;
   color: var(--muted);
   font-family: var(--font);
 }
@@ -533,7 +528,7 @@ body.dark-mode .color-swatch--active {
 }
 
 .notif-item-msg {
-  font-size: 8.5pt;
+  font-size: 13px;
   color: var(--text);
   font-family: var(--font);
   line-height: 1.4;
@@ -542,7 +537,7 @@ body.dark-mode .color-swatch--active {
 }
 
 a.notif-item-msg:hover {
-  color: var(--accent);
+  color: var(--accent-text);
   text-decoration: underline;
 }
 

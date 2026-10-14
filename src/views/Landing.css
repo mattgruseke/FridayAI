@@ -1,0 +1,203 @@
+/* ── Landing (see src/views/Landing.tsx) ──────────────────────────────── */
+.landing {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 64px 24px 80px;
+}
+
+.greeting {
+  font-family: var(--font-serif);
+  font-size: 28px;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.greeting-sub {
+  font-size: 13.5px;
+  color: var(--muted);
+  text-align: center;
+  margin-bottom: 36px;
+}
+
+.ask-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 6px 22px;
+  margin-bottom: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 30px;
+  box-shadow: var(--shadow);
+}
+
+.ask-bar:focus-within {
+  border-color: var(--accent);
+}
+
+.ask-bar input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14.5px;
+}
+
+.ask-bar input::placeholder {
+  color: var(--muted-dim);
+}
+
+.ask-btn {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  color: var(--on-accent);
+  background: var(--accent);
+  cursor: pointer;
+}
+
+.ask-btn:hover {
+  background: var(--accent-hover);
+}
+
+.chip-row {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 48px;
+}
+
+.chip {
+  padding: 6px 14px;
+  font-family: var(--font);
+  font-size: 12px;
+  color: var(--muted);
+  text-decoration: none;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.chip:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.radar-label {
+  margin-bottom: 14px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--muted-dim);
+}
+
+.radar-empty {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.radar-empty a {
+  color: var(--accent-text);
+  text-decoration: none;
+}
+
+.feed {
+  display: flex;
+  flex-direction: column;
+}
+
+.feed-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 4px;
+  border-bottom: 1px solid var(--border);
+  color: inherit;
+  text-decoration: none;
+}
+
+.feed-item:last-child {
+  border-bottom: none;
+}
+
+.feed-item:hover .feed-title {
+  color: var(--accent-hover);
+}
+
+.feed-marker {
+  width: 6px;
+  height: 6px;
+  margin-top: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--muted-dim);
+}
+
+.feed-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.feed-agent {
+  margin-bottom: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+
+.feed-title {
+  margin-bottom: 3px;
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  transition: color 0.15s;
+}
+
+.feed-sub {
+  margin-bottom: 8px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.feed-cta {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-text);
+}
+
+.radar-more {
+  display: block;
+  margin-top: 22px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--muted-dim);
+  text-decoration: none;
+}
+
+.radar-more:hover {
+  color: var(--accent-text);
+}
+
+@media (max-width: 600px) {
+  .landing {
+    padding: 40px 16px 64px;
+  }
+}

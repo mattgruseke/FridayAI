@@ -23,9 +23,10 @@
 
 .auth-logo {
   display: inline-block;
-  font-size: 18pt;
-  font-weight: bold;
-  color: var(--accent);
+  font-family: var(--font-serif);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
   text-decoration: none;
   margin-bottom: 16px;
 }
@@ -35,7 +36,7 @@
 }
 
 .auth-header h1 {
-  font-size: 14pt;
+  font-size: 20px;
   font-weight: bold;
   color: var(--text);
   margin: 0 0 8px 0;
@@ -46,7 +47,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  font-size: 9pt;
+  font-size: 13px;
   color: var(--muted);
   margin-top: 12px;
 }
@@ -57,7 +58,7 @@
 }
 
 .auth-steps .step.active {
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: bold;
 }
 
@@ -70,7 +71,7 @@
   border: 1px solid #cc0000;
   color: #cc0000;
   padding: 12px;
-  font-size: 9pt;
+  font-size: 13px;
   margin-bottom: 16px;
 }
 
@@ -79,7 +80,7 @@
   border: 1px solid #00a000;
   color: #00a000;
   padding: 12px;
-  font-size: 9pt;
+  font-size: 13px;
   margin-bottom: 16px;
 }
 
@@ -103,7 +104,7 @@
 }
 
 .auth-success-message p {
-  font-size: 10pt;
+  font-size: 14px;
   color: var(--text);
   margin: 8px 0;
 }
@@ -119,7 +120,7 @@
 
 .form-group label {
   display: block;
-  font-size: 9pt;
+  font-size: 13px;
   font-weight: bold;
   color: var(--text);
   margin-bottom: 4px;
@@ -129,7 +130,7 @@
   width: 100%;
   padding: 10px;
   font-family: var(--font);
-  font-size: 10pt;
+  font-size: 14px;
   border: 1px solid var(--border);
   background: var(--surface);
   box-sizing: border-box;
@@ -141,7 +142,7 @@
 }
 
 .form-hint {
-  font-size: 8pt;
+  font-size: 12px;
   color: var(--muted);
   margin-top: 4px;
 }
@@ -150,7 +151,7 @@
   width: 100%;
   padding: 12px;
   font-family: var(--font);
-  font-size: 10pt;
+  font-size: 14px;
   font-weight: bold;
   background: var(--accent);
   color: #ffffff;
@@ -173,9 +174,9 @@
   width: 100%;
   padding: 8px;
   font-family: var(--font);
-  font-size: 9pt;
+  font-size: 13px;
   background: none;
-  color: var(--accent);
+  color: var(--accent-text);
   border: none;
   cursor: pointer;
   margin-top: 8px;
@@ -190,12 +191,12 @@
   margin-top: 24px;
   padding-top: 16px;
   border-top: 1px solid var(--border);
-  font-size: 9pt;
+  font-size: 13px;
   color: var(--muted);
 }
 
 .auth-footer a {
-  color: var(--accent);
+  color: var(--accent-text);
   text-decoration: none;
 }
 
@@ -207,7 +208,7 @@
   background: color-mix(in srgb, var(--accent) 8%, var(--surface));
   border: 1px solid var(--accent);
   padding: 8px 12px;
-  font-size: 9pt;
+  font-size: 13px;
   color: var(--text);
   margin-bottom: 16px;
   display: flex;
@@ -216,20 +217,20 @@
 }
 
 .invite-badge strong {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .change-code-btn {
   background: none;
   border: none;
   color: var(--muted);
-  font-size: 8pt;
+  font-size: 12px;
   cursor: pointer;
   text-decoration: underline;
 }
 
 .change-code-btn:hover {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 /* Loading state */
@@ -259,7 +260,7 @@
 
 .auth-loading p {
   margin-top: 16px;
-  font-size: 10pt;
+  font-size: 14px;
   color: var(--muted);
 }
 

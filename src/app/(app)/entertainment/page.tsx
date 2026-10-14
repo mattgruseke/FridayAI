@@ -1,5 +1,5 @@
 import Items from "@/views/Items";
 
 export default function Page() {
-  return <Items />;
+  return <Items category="entertainment" heading="Entertainment" />;
 }

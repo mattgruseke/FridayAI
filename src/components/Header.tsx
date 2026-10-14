@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../api/client";
@@ -21,6 +21,7 @@ type Notification = {
 const Header = () => {
   const { user, signOut, isAdmin } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   const { darkMode, setDarkMode, accent, setAccent, accents } = useTheme();
 
@@ -98,18 +99,21 @@ const Header = () => {
     <>
       <div className="header">
         <div className="header-inner">
-          <Link href="/" className="logo active">
-            {siteConfig.name}
+          <Link href="/" className="logo">
+            {/* Second half of the name in the accent color: Fri·day */}
+            {siteConfig.name.slice(0, 3)}
+            <em>{siteConfig.name.slice(3)}</em>
           </Link>
 
-          {/* Desktop nav */}
-          <nav className="nav desktop-nav">
-            {siteConfig.nav.map((item) => (
-              <Link key={item.href} href={item.href}>{item.label}</Link>
-            ))}
-          </nav>
-
           <div className="spacer"></div>
+
+          <span className="top-date desktop-only">
+            {new Date().toLocaleDateString(undefined, {
+              weekday: "long",
+              month: "long",
+              day: "numeric",
+            })}
+          </span>
 
           {/* Notifications bell */}
           {user && (
@@ -293,8 +297,13 @@ const Header = () => {
             </div>
             <div className="mobile-menu-divider"></div>
             <nav className="mobile-nav">
-              {siteConfig.nav.map((item) => (
-                <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)}>
+              {siteConfig.nav.flatMap((group) => group.items).map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={pathname === item.href ? "mobile-nav--active" : undefined}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
                   {item.label}
                 </Link>
               ))}

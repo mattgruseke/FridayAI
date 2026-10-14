@@ -31,5 +31,8 @@ dist-ssr
 tsconfig.tsbuildinfo
 .env.production
 
+# Local-mode data (src/app/api/intake)
+.local-data
+
 # Keep the example env file
 !.env.example

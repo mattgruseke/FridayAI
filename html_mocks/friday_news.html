@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Friday — News</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --navy: #0F1830; --navy-side: #131F3B; --navy-surface: #182A4E; --navy-surface-2: #1D3157;
+  --cream: #F1EBDD; --mute: #93A2BE; --mute-dim: #6D7C9C;
+  --brass: #C4A063; --brass-bright: #D8B67D; --line: rgba(241,235,221,0.10); --rust: #C97A6B;
+}
+body { font-family: 'Inter', sans-serif; background: var(--navy); color: var(--cream); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+.topbar { height: 56px; flex-shrink: 0; display: flex; align-items: center; padding: 0 22px; gap: 16px; border-bottom: 1px solid var(--line); }
+.logo { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; letter-spacing: 0.3px; }
+.logo em { color: var(--brass); font-style: normal; }
+.top-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+.top-date { font-size: 12px; color: var(--mute-dim); }
+.top-score { background: var(--navy-surface); border: 1px solid var(--line); color: var(--brass); font-size: 12px; font-weight: 700; padding: 4px 11px; border-radius: 20px; }
+.top-notif { width: 30px; height: 30px; border-radius: 8px; background: var(--navy-surface); display: flex; align-items: center; justify-content: center; font-size: 13px; cursor: pointer; position: relative; }
+.notif-dot { width: 6px; height: 6px; background: var(--rust); border-radius: 50%; position: absolute; top: 6px; right: 6px; }
+.top-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--navy-surface-2); border: 1px solid var(--brass); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--brass); cursor: pointer; }
+
+a.top-avatar { text-decoration: none; }
+.body { display: grid; grid-template-columns: 232px 1fr; flex: 1; overflow: hidden; }
+
+.sidebar { background: var(--navy-side); border-right: 1px solid var(--line); overflow-y: auto; padding: 18px 0; }
+.score-card { margin: 0 14px 20px; padding: 15px; background: var(--navy-surface); border: 1px solid var(--line); border-radius: 6px; }
+.score-label { font-size: 9.5px; letter-spacing: 1.3px; text-transform: uppercase; color: var(--mute-dim); margin-bottom: 8px; }
+.score-num { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 700; line-height: 1; color: var(--cream); font-variant-numeric: tabular-nums; }
+.score-sub { font-size: 11px; color: var(--brass); margin: 4px 0 12px; }
+.score-bars { display: flex; flex-direction: column; gap: 6px; }
+.sb-row { display: flex; align-items: center; gap: 7px; }
+.sb-label { font-size: 9.5px; color: var(--mute-dim); width: 62px; flex-shrink: 0; }
+.sb-track { flex: 1; height: 2px; background: var(--line); }
+.sb-fill { height: 100%; background: var(--brass); }
+.sb-val { font-size: 9.5px; color: var(--mute); width: 16px; text-align: right; font-variant-numeric: tabular-nums; }
+.nav-group { margin-bottom: 18px; padding: 0 8px; }
+.nav-group-label { font-size: 9px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; color: var(--mute-dim); padding: 0 12px; margin-bottom: 6px; }
+.nav-item { display: flex; align-items: center; gap: 9px; padding: 7px 12px; border-left: 2px solid transparent; font-size: 13px; color: var(--mute); cursor: pointer; text-decoration: none; }
+.nav-item:hover { color: var(--cream); }
+.nav-item.active { color: var(--cream); border-left-color: var(--brass); background: rgba(196,160,99,0.07); font-weight: 600; }
+.nav-item .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--mute-dim); flex-shrink: 0; }
+.nav-item.active .dot { background: var(--brass); }
+.nav-item .new-tag { margin-left: auto; font-size: 8.5px; font-weight: 700; letter-spacing: 0.4px; color: var(--brass); border: 1px solid var(--brass); border-radius: 8px; padding: 1px 5px; }
+.nav-divider { height: 1px; background: var(--line); margin: 4px 20px 14px; }
+
+.main { overflow-y: auto; display: flex; justify-content: center; }
+.main-inner { width: 100%; max-width: 660px; padding: 28px 24px 60px; }
+.page-head { margin-bottom: 22px; }
+.page-title { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 600; margin-bottom: 4px; }
+.page-sub { font-size: 12.5px; color: var(--mute); }
+
+.summary-banner { background: linear-gradient(150deg, var(--navy-surface) 0%, var(--navy-surface-2) 100%); border: 1px solid var(--line); border-top: 2px solid var(--brass); border-radius: 6px; padding: 20px 24px; margin-bottom: 22px; }
+.summary-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.summary-label { display: flex; align-items: center; gap: 7px; font-size: 10.5px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--brass); }
+.summary-label .dot-live { width: 5px; height: 5px; border-radius: 50%; background: var(--brass); }
+.summary-text { font-size: 15px; line-height: 1.65; color: var(--cream); }
+.summary-text strong { color: var(--brass); font-weight: 600; }
+
+.source-note { font-size: 11.5px; color: var(--mute-dim); margin-bottom: 16px; line-height: 1.5; }
+.source-note strong { color: var(--mute); }
+
+.news-filter { display: flex; gap: 8px; margin-bottom: 22px; flex-wrap: wrap; }
+.src-chip { font-size: 11.5px; font-weight: 600; border: 1px solid var(--line); color: var(--mute); border-radius: 16px; padding: 0 13px; height: 34px; display: flex; align-items: center; cursor: pointer; user-select: none; transition: all 0.15s; }
+.src-chip.on { color: var(--brass); border-color: var(--brass); background: rgba(196,160,99,0.08); }
+
+.news-card { border: 1px solid var(--line); border-radius: 6px; padding: 18px; margin-bottom: 12px; background: var(--navy-surface); }
+.news-card.hidden { display: none; }
+.news-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.news-src { font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--brass); }
+.news-time { font-size: 10.5px; color: var(--mute-dim); }
+.news-headline { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 600; line-height: 1.35; margin-bottom: 8px; }
+.news-why { font-size: 12.5px; color: var(--mute); line-height: 1.6; margin-bottom: 10px; }
+.news-why strong { color: var(--cream); font-weight: 600; }
+.news-read { font-size: 11.5px; color: var(--brass); font-weight: 600; }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--navy-surface-2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="logo">Fri<em>day</em></div>
+  <div class="top-right">
+    <span class="top-date">Tuesday, August 11</span>
+    <a class="top-score" href="friday_life_score.html">62</a>
+    <a class="top-notif" href="friday_notifications.html">🔔<div class="notif-dot"></div></a>
+    <a class="top-avatar" href="friday_settings.html">MG</a>
+  </div>
+</nav>
+
+<div class="body">
+
+  <aside class="sidebar">
+    <div class="score-card">
+      <div class="score-label">Life Health Score</div>
+      <div class="score-num">62</div>
+      <div class="score-sub">↑ Getting there</div>
+      <div class="score-bars">
+        <div class="sb-row"><span class="sb-label">Relationship</span><div class="sb-track"><div class="sb-fill" style="width:45%"></div></div><span class="sb-val">45</span></div>
+        <div class="sb-row"><span class="sb-label">Family</span><div class="sb-track"><div class="sb-fill" style="width:78%"></div></div><span class="sb-val">78</span></div>
+        <div class="sb-row"><span class="sb-label">Health</span><div class="sb-track"><div class="sb-fill" style="width:55%"></div></div><span class="sb-val">55</span></div>
+        <div class="sb-row"><span class="sb-label">Household</span><div class="sb-track"><div class="sb-fill" style="width:38%"></div></div><span class="sb-val">38</span></div>
+        <div class="sb-row"><span class="sb-label">Personal</span><div class="sb-track"><div class="sb-fill" style="width:68%"></div></div><span class="sb-val">68</span></div>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Main</div>
+      <a class="nav-item" href="friday_home.html"><span class="dot"></span> Home</a>
+      <a class="nav-item" href="friday_life_dashboard.html"><span class="dot"></span> Dashboard</a>
+      <a class="nav-item" href="friday_your_team.html"><span class="dot"></span> Your Team</a>
+      <a class="nav-item" href="friday_calendar.html"><span class="dot"></span> Calendar</a>
+      <a class="nav-item" href="friday_tasks.html"><span class="dot"></span> Tasks</a>
+      <a class="nav-item" href="friday_weekly_planner.html"><span class="dot"></span> Weekly Planner</a>
+      <a class="nav-item" href="friday_email.html"><span class="dot"></span> Email</a>
+      <a class="nav-item active" href="friday_news.html"><span class="dot"></span> News <span class="new-tag">New</span></a>
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Life</div>
+      <a class="nav-item" href="friday_people.html"><span class="dot"></span> People</a>
+      <a class="nav-item" href="friday_date_night.html"><span class="dot"></span> Date Night</a>
+      <a class="nav-item" href="friday_restaurants.html"><span class="dot"></span> Restaurants</a>
+      <a class="nav-item" href="friday_family_activities.html"><span class="dot"></span> Family Activities</a>
+      <a class="nav-item" href="friday_travel.html"><span class="dot"></span> Travel & Trips</a>
+      <a class="nav-item" href="friday_goals.html"><span class="dot"></span> Goals</a>
+      <a class="nav-item" href="friday_finances.html"><span class="dot"></span> Finances</a>
+      <a class="nav-item" href="friday_media.html"><span class="dot"></span> Media</a>
+      <a class="nav-item" href="friday_health.html"><span class="dot"></span> Health</a>
+      <a class="nav-item" href="friday_fitness.html"><span class="dot"></span> Fitness</a>
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Home</div>
+      <div class="nav-item"><span class="dot"></span> Service Providers</div>
+      <div class="nav-item"><span class="dot"></span> Kitchen & Pantry</div>
+      <div class="nav-item"><span class="dot"></span> Household Tasks</div>
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <div class="nav-group">
+      <a class="nav-item" href="friday_life_score.html"><span class="dot"></span> Life Health Score</a>
+      <a class="nav-item" href="friday_notifications.html"><span class="dot"></span> Notifications</a>
+      <a class="nav-item" href="friday_settings.html"><span class="dot"></span> Settings</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="main-inner">
+      <div class="page-head">
+        <div class="page-title">News</div>
+        <div class="page-sub">Your subscriptions and newsletters, in one feed.</div>
+      </div>
+
+      <div class="summary-banner">
+        <div class="summary-head"><span class="summary-label"><span class="dot-live"></span> Friday's Take</span></div>
+        <p class="summary-text">Five things worth your five minutes. The <strong>Fed's rate-cut signal</strong> is the one most relevant to your book of business right now — worth reading before client calls today.</p>
+      </div>
+
+      <div class="source-note"><strong>Headlines and summaries only.</strong> Friday links you to the article on the publisher's own site — full paywalled text isn't pulled in here. That's a deliberate boundary, not a limitation we're trying to hide.</div>
+
+      <div class="news-filter">
+        <div class="src-chip on" data-src="wsj">WSJ</div>
+        <div class="src-chip on" data-src="economist">The Economist</div>
+        <div class="src-chip on" data-src="nyt">NYT</div>
+        <div class="src-chip on" data-src="markets">Markets — CNBC / ZeroHedge / BI</div>
+        <div class="src-chip on" data-src="newsletters">Newsletters</div>
+      </div>
+
+      <div class="news-card" data-src="wsj">
+        <div class="news-top"><span class="news-src">Wall Street Journal</span><span class="news-time">2 hours ago</span></div>
+        <div class="news-headline">Fed signals rate cut timeline amid cooling inflation data</div>
+        <div class="news-why"><strong>Why this matters to you:</strong> directly relevant to client portfolio conversations this week.</div>
+        <div class="news-read">Read on WSJ →</div>
+      </div>
+
+      <div class="news-card" data-src="economist">
+        <div class="news-top"><span class="news-src">The Economist</span><span class="news-time">4 hours ago</span></div>
+        <div class="news-headline">RIA consolidation accelerates — what it means for independent advisors</div>
+        <div class="news-why"><strong>Why this matters to you:</strong> your own industry, and a live question given Rockefeller's positioning.</div>
+        <div class="news-read">Read on The Economist →</div>
+      </div>
+
+      <div class="news-card" data-src="nyt">
+        <div class="news-top"><span class="news-src">New York Times</span><span class="news-time">6 hours ago</span></div>
+        <div class="news-headline">Congress advances changes to retirement account contribution rules</div>
+        <div class="news-why"><strong>Why this matters to you:</strong> could affect client-facing guidance before year-end planning season.</div>
+        <div class="news-read">Read on NYT →</div>
+      </div>
+
+      <div class="news-card" data-src="markets">
+        <div class="news-top"><span class="news-src">CNBC</span><span class="news-time">Yesterday</span></div>
+        <div class="news-headline">Regional bank stocks rally on rate-cut optimism</div>
+        <div class="news-why"><strong>Why this matters to you:</strong> sector move worth knowing before today's calls.</div>
+        <div class="news-read">Read on CNBC →</div>
+      </div>
+
+      <div class="news-card" data-src="newsletters">
+        <div class="news-top"><span class="news-src">Your Newsletters</span><span class="news-time">This morning</span></div>
+        <div class="news-headline">TLDR: 3 things from your inbox digests</div>
+        <div class="news-why">Pulled straight from the newsletters already landing in your inbox — no separate app, no separate login.</div>
+        <div class="news-read">Open in Email →</div>
+      </div>
+
+    </div>
+  </main>
+
+</div>
+
+<script>
+  document.querySelectorAll('.src-chip[data-src]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      chip.classList.toggle('on');
+      const src = chip.dataset.src;
+      const on = chip.classList.contains('on');
+      document.querySelectorAll(`.news-card[data-src="${src}"]`).forEach(card => {
+        card.classList.toggle('hidden', !on);
+      });
+    });
+  });
+</script>
+</body>
+</html>

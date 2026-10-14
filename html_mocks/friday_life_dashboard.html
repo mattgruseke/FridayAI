@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Friday — Dashboard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --navy: #0F1830;
+  --navy-side: #131F3B;
+  --navy-surface: #182A4E;
+  --navy-surface-2: #1D3157;
+  --cream: #F1EBDD;
+  --mute: #93A2BE;
+  --mute-dim: #6D7C9C;
+  --brass: #C4A063;
+  --brass-bright: #D8B67D;
+  --line: rgba(241,235,221,0.10);
+  --rust: #C97A6B;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--navy);
+  color: var(--cream);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── TOP BAR (shared with Home) ── */
+.topbar { height: 56px; flex-shrink: 0; display: flex; align-items: center; padding: 0 22px; gap: 16px; border-bottom: 1px solid var(--line); }
+.logo { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; letter-spacing: 0.3px; }
+.logo em { color: var(--brass); font-style: normal; }
+.top-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+.top-date { font-size: 12px; color: var(--mute-dim); }
+.top-score { background: var(--navy-surface); border: 1px solid var(--line); color: var(--brass); font-size: 12px; font-weight: 700; padding: 4px 11px; border-radius: 20px; }
+.top-notif { width: 30px; height: 30px; border-radius: 8px; background: var(--navy-surface); display: flex; align-items: center; justify-content: center; font-size: 13px; cursor: pointer; position: relative; }
+.notif-dot { width: 6px; height: 6px; background: var(--rust); border-radius: 50%; position: absolute; top: 6px; right: 6px; }
+.top-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--navy-surface-2); border: 1px solid var(--brass); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--brass); cursor: pointer; }
+
+/* ── LAYOUT ── */
+a.top-avatar { text-decoration: none; }
+.body { display: grid; grid-template-columns: 232px 1fr; flex: 1; overflow: hidden; }
+
+/* ── SIDEBAR (shared with Home) ── */
+.sidebar { background: var(--navy-side); border-right: 1px solid var(--line); overflow-y: auto; padding: 18px 0; }
+.score-card { margin: 0 14px 20px; padding: 15px; background: var(--navy-surface); border: 1px solid var(--line); border-radius: 6px; }
+.score-label { font-size: 9.5px; letter-spacing: 1.3px; text-transform: uppercase; color: var(--mute-dim); margin-bottom: 8px; }
+.score-num { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 700; line-height: 1; color: var(--cream); font-variant-numeric: tabular-nums; }
+.score-sub { font-size: 11px; color: var(--brass); margin: 4px 0 12px; }
+.score-bars { display: flex; flex-direction: column; gap: 6px; }
+.sb-row { display: flex; align-items: center; gap: 7px; }
+.sb-label { font-size: 9.5px; color: var(--mute-dim); width: 62px; flex-shrink: 0; }
+.sb-track { flex: 1; height: 2px; background: var(--line); }
+.sb-fill { height: 100%; background: var(--brass); }
+.sb-val { font-size: 9.5px; color: var(--mute); width: 16px; text-align: right; font-variant-numeric: tabular-nums; }
+.nav-group { margin-bottom: 18px; padding: 0 8px; }
+.nav-group-label { font-size: 9px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; color: var(--mute-dim); padding: 0 12px; margin-bottom: 6px; }
+.nav-item { display: flex; align-items: center; gap: 9px; padding: 7px 12px; border-left: 2px solid transparent; font-size: 13px; color: var(--mute); cursor: pointer; }
+.nav-item:hover { color: var(--cream); }
+.nav-item.active { color: var(--cream); border-left-color: var(--brass); background: rgba(196,160,99,0.07); font-weight: 600; }
+.nav-item .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--mute-dim); flex-shrink: 0; }
+.nav-item.active .dot { background: var(--brass); }
+.nav-item .new-tag { margin-left: auto; font-size: 8.5px; font-weight: 700; letter-spacing: 0.4px; color: var(--brass); border: 1px solid var(--brass); border-radius: 8px; padding: 1px 5px; }
+a.nav-item, a.card-link, a.p-chip { text-decoration: none; }
+.nav-divider { height: 1px; background: var(--line); margin: 4px 20px 14px; }
+
+/* ── MAIN ── */
+.main { overflow-y: auto; padding: 28px 28px 60px; }
+.page-head { margin-bottom: 24px; }
+.page-title { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 600; margin-bottom: 4px; }
+.page-sub { font-size: 12.5px; color: var(--mute); }
+
+.summary-banner {
+  background: linear-gradient(150deg, var(--navy-surface) 0%, var(--navy-surface-2) 100%);
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--brass);
+  border-radius: 6px;
+  padding: 20px 24px;
+  margin-bottom: 22px;
+}
+.summary-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.summary-label { display: flex; align-items: center; gap: 7px; font-size: 10.5px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--brass); }
+.summary-label .dot-live { width: 5px; height: 5px; border-radius: 50%; background: var(--brass); }
+.summary-refresh { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--mute); cursor: pointer; border: 1px solid var(--line); border-radius: 14px; padding: 4px 10px; }
+.summary-refresh:hover { color: var(--brass); border-color: var(--brass); }
+.summary-text { font-size: 15px; line-height: 1.65; color: var(--cream); margin-bottom: 16px; max-width: 74ch; }
+.summary-text strong { color: var(--brass); font-weight: 600; }
+.summary-ask { display: flex; align-items: center; gap: 9px; background: var(--navy); border: 1px solid var(--line); border-radius: 22px; padding: 8px 8px 8px 16px; max-width: 480px; }
+.summary-ask input { flex: 1; background: transparent; border: none; outline: none; color: var(--cream); font-family: 'Inter', sans-serif; font-size: 12.5px; }
+.summary-ask input::placeholder { color: var(--mute-dim); }
+.summary-ask button { width: 28px; height: 28px; border-radius: 50%; background: var(--brass); border: none; color: #201705; font-size: 12px; cursor: pointer; flex-shrink: 0; }
+
+.grid { display: grid; grid-template-columns: 1.7fr 1fr; gap: 20px; align-items: start; }
+@media (max-width: 1150px) { .grid { grid-template-columns: 1fr; } }
+.col { display: flex; flex-direction: column; gap: 18px; }
+
+.card { background: var(--navy-surface); border: 1px solid var(--line); border-radius: 6px; padding: 18px 20px; }
+.card-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
+.card-title { font-size: 10.5px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--mute-dim); }
+.card-link { font-size: 11.5px; color: var(--brass); cursor: pointer; }
+
+/* Commute strip */
+.commute-row { display: flex; gap: 10px; margin-bottom: 16px; }
+.commute-box { flex: 1; border: 1px solid var(--line); border-radius: 5px; padding: 10px 12px; }
+.commute-box.primary { border-color: var(--brass); background: rgba(196,160,99,0.06); }
+.commute-tag { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--mute-dim); margin-bottom: 5px; }
+.commute-box.primary .commute-tag { color: var(--brass); }
+.commute-val { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; margin-bottom: 2px; }
+.commute-sub { font-size: 11px; color: var(--mute); }
+
+/* Agenda / calendar */
+.agenda-item { display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.agenda-item:last-child { border-bottom: none; }
+.agenda-time { font-size: 11px; font-weight: 700; color: var(--mute); width: 58px; flex-shrink: 0; padding-top: 1px; font-variant-numeric: tabular-nums; }
+.agenda-bar { width: 2px; background: var(--brass); border-radius: 1px; align-self: stretch; flex-shrink: 0; opacity: 0.5; }
+.agenda-info { flex: 1; }
+.agenda-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.agenda-cal { font-size: 10.5px; color: var(--mute-dim); text-transform: uppercase; letter-spacing: 0.4px; }
+
+/* Task quadrants */
+.quad-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.quad {
+  border: 1px solid var(--line); border-radius: 5px; padding: 12px 13px; min-height: 92px;
+}
+.quad.q1 { border-color: var(--rust); background: rgba(201,122,107,0.06); }
+.quad-label { font-size: 9.5px; font-weight: 700; letter-spacing: 0.7px; text-transform: uppercase; color: var(--mute-dim); margin-bottom: 8px; }
+.quad.q1 .quad-label { color: var(--rust); }
+.quad-item { font-size: 12px; color: var(--cream); margin-bottom: 5px; line-height: 1.4; }
+.quad-count { font-family: 'Playfair Display', serif; font-size: 22px; color: var(--mute); }
+.quad-more { font-size: 10.5px; color: var(--mute-dim); }
+
+/* People chips */
+.people-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px; }
+.p-chip { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; }
+.p-av { width: 38px; height: 38px; border-radius: 50%; background: var(--navy-surface-2); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--cream); position: relative; }
+.p-av.nudge { border-color: var(--brass); }
+.p-av.nudge::after { content: ''; width: 7px; height: 7px; background: var(--brass); border-radius: 50%; position: absolute; top: -1px; right: -1px; border: 2px solid var(--navy-surface); }
+.p-name { font-size: 10px; color: var(--mute); }
+.nudge-banner { font-size: 11.5px; color: var(--mute); border-top: 1px solid var(--line); padding-top: 10px; line-height: 1.5; }
+.nudge-banner strong { color: var(--brass); font-weight: 600; }
+
+/* Restaurant / list items */
+.list-item { display: flex; align-items: center; gap: 11px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.list-item:last-child { border-bottom: none; }
+.li-info { flex: 1; min-width: 0; }
+.li-name { font-size: 12.5px; font-weight: 600; margin-bottom: 1px; }
+.li-meta { font-size: 11px; color: var(--mute-dim); }
+.li-val { font-size: 11.5px; color: var(--mute); flex-shrink: 0; }
+
+/* Goals */
+.goal-item { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.goal-item:last-child { border-bottom: none; }
+.goal-top { display: flex; justify-content: space-between; margin-bottom: 5px; }
+.goal-name { font-size: 12.5px; font-weight: 600; }
+.goal-pct { font-size: 11px; color: var(--mute); }
+.goal-track { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.goal-fill { height: 100%; background: var(--brass); }
+
+/* Streaks */
+.streak-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.streak-box { background: var(--navy-surface-2); border-radius: 5px; padding: 10px 8px; text-align: center; }
+.streak-num { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: var(--brass); }
+.streak-lbl { font-size: 9.5px; color: var(--mute-dim); margin-top: 1px; }
+
+/* Financial */
+.fin-item { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+.fin-item:last-child { border-bottom: none; }
+.fin-label { color: var(--mute); }
+.fin-val { font-weight: 700; font-variant-numeric: tabular-nums; }
+.fin-val.due { color: var(--rust); }
+.fin-connect { font-size: 11px; color: var(--mute-dim); text-align: center; margin-top: 10px; line-height: 1.5; }
+
+/* Digest items (inbox, reading) */
+.digest-item { padding: 9px 0; border-bottom: 1px solid var(--line); }
+.digest-item:last-child { border-bottom: none; }
+.digest-src { font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--brass); margin-bottom: 3px; }
+.digest-text { font-size: 12px; color: var(--cream); line-height: 1.5; }
+.digest-tag { display: inline-block; font-size: 9.5px; color: var(--rust); font-weight: 600; margin-top: 3px; }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--navy-surface-2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="logo">Fri<em>day</em></div>
+  <div class="top-right">
+    <span class="top-date">Tuesday, August 11</span>
+    <a class="top-score" href="friday_life_score.html">62</a>
+    <a class="top-notif" href="friday_notifications.html">🔔<div class="notif-dot"></div></a>
+    <a class="top-avatar" href="friday_settings.html">MG</a>
+  </div>
+</nav>
+
+<div class="body">
+
+  <aside class="sidebar">
+    <div class="score-card">
+      <div class="score-label">Life Health Score</div>
+      <div class="score-num">62</div>
+      <div class="score-sub">↑ Getting there</div>
+      <div class="score-bars">
+        <div class="sb-row"><span class="sb-label">Relationship</span><div class="sb-track"><div class="sb-fill" style="width:45%"></div></div><span class="sb-val">45</span></div>
+        <div class="sb-row"><span class="sb-label">Family</span><div class="sb-track"><div class="sb-fill" style="width:78%"></div></div><span class="sb-val">78</span></div>
+        <div class="sb-row"><span class="sb-label">Health</span><div class="sb-track"><div class="sb-fill" style="width:55%"></div></div><span class="sb-val">55</span></div>
+        <div class="sb-row"><span class="sb-label">Household</span><div class="sb-track"><div class="sb-fill" style="width:38%"></div></div><span class="sb-val">38</span></div>
+        <div class="sb-row"><span class="sb-label">Personal</span><div class="sb-track"><div class="sb-fill" style="width:68%"></div></div><span class="sb-val">68</span></div>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Main</div>
+      <a class="nav-item" href="friday_home.html"><span class="dot"></span> Home</a>
+      <a class="nav-item active" href="friday_life_dashboard.html"><span class="dot"></span> Dashboard</a>
+      <a class="nav-item" href="friday_your_team.html"><span class="dot"></span> Your Team <span class="new-tag">New</span></a>
+      <a class="nav-item" href="friday_calendar.html"><span class="dot"></span> Calendar</a>
+      <a class="nav-item" href="friday_tasks.html"><span class="dot"></span> Tasks</a>
+      <a class="nav-item" href="friday_weekly_planner.html"><span class="dot"></span> Weekly Planner</a>
+      <a class="nav-item" href="friday_email.html"><span class="dot"></span> Email <span class="new-tag">New</span></a>
+      <a class="nav-item" href="friday_news.html"><span class="dot"></span> News <span class="new-tag">New</span></a>
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Life</div>
+      <a class="nav-item" href="friday_people.html"><span class="dot"></span> People</a>
+      <a class="nav-item" href="friday_date_night.html"><span class="dot"></span> Date Night</a>
+      <a class="nav-item" href="friday_restaurants.html"><span class="dot"></span> Restaurants</a>
+      <a class="nav-item" href="friday_family_activities.html"><span class="dot"></span> Family Activities</a>
+      <a class="nav-item" href="friday_travel.html"><span class="dot"></span> Travel & Trips</a>
+      <a class="nav-item" href="friday_goals.html"><span class="dot"></span> Goals</a>
+      <a class="nav-item" href="friday_finances.html"><span class="dot"></span> Finances</a>
+      <a class="nav-item" href="friday_media.html"><span class="dot"></span> Media</a>
+      <a class="nav-item" href="friday_health.html"><span class="dot"></span> Health</a>
+      <a class="nav-item" href="friday_fitness.html"><span class="dot"></span> Fitness</a>
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Home</div>
+      <div class="nav-item"><span class="dot"></span> Service Providers</div>
+      <div class="nav-item"><span class="dot"></span> Kitchen & Pantry</div>
+      <div class="nav-item"><span class="dot"></span> Household Tasks</div>
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <div class="nav-group">
+      <a class="nav-item" href="friday_life_score.html"><span class="dot"></span> Life Health Score</a>
+      <a class="nav-item" href="friday_notifications.html"><span class="dot"></span> Notifications</a>
+      <a class="nav-item" href="friday_settings.html"><span class="dot"></span> Settings</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="page-head">
+      <div class="page-title">Dashboard</div>
+      <div class="page-sub">Friday's read on today, then everything else to browse.</div>
+    </div>
+
+    <div class="summary-banner">
+      <div class="summary-head">
+        <span class="summary-label"><span class="dot-live"></span> Friday's Take</span>
+        <span class="summary-refresh">↻ Refresh</span>
+      </div>
+      <p class="summary-text">It's Tuesday, and rain is expected after lunch — worth grabbing an umbrella on the way out. Your <strong>7:14 train</strong> is on time; driving would cost you an extra nine minutes today. The one thing that actually has to happen: the <strong>sump pump registration is due tomorrow</strong>. Two inbox items are worth a real look — Mitchell Oil's invoice and the landscaper's unanswered follow-up. And don't forget, you'll need <strong>cash for the nanny</strong> this week.</p>
+      <div class="summary-ask">
+        <input type="text" placeholder="Ask Friday about today, or tell her something to remember..." />
+        <button>→</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- LEFT COLUMN -->
+      <div class="col">
+
+        <div class="card">
+          <div class="card-head"><span class="card-title">Today's Agenda</span><span class="card-link">Full calendar →</span></div>
+          <div class="commute-row">
+            <div class="commute-box primary">
+              <div class="commute-tag">Train</div>
+              <div class="commute-val">7:14 AM</div>
+              <div class="commute-sub">42 min · on time</div>
+            </div>
+            <div class="commute-box">
+              <div class="commute-tag">Drive</div>
+              <div class="commute-val">51 min</div>
+              <div class="commute-sub">Current traffic</div>
+            </div>
+          </div>
+          <div class="agenda-item">
+            <span class="agenda-time">7:14 AM</span><div class="agenda-bar"></div>
+            <div class="agenda-info"><div class="agenda-title">Train to Stamford</div><div class="agenda-cal">Personal · Commute</div></div>
+          </div>
+          <div class="agenda-item">
+            <span class="agenda-time">9:00 AM</span><div class="agenda-bar"></div>
+            <div class="agenda-info"><div class="agenda-title">Miles' 15-month checkup — Dr. Coursen Schneider</div><div class="agenda-cal">Miles · Childcare</div></div>
+          </div>
+          <div class="agenda-item">
+            <span class="agenda-time">6:00 PM</span><div class="agenda-bar"></div>
+            <div class="agenda-info"><div class="agenda-title">Train home</div><div class="agenda-cal">Personal · Commute</div></div>
+          </div>
+          <div class="agenda-item">
+            <span class="agenda-time">7:30 PM</span><div class="agenda-bar"></div>
+            <div class="agenda-info"><div class="agenda-title">Family dinner & bedtime routine</div><div class="agenda-cal">Family</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><span class="card-title">Tasks — By Priority</span><span class="card-link">View all →</span></div>
+          <div class="quad-grid">
+            <div class="quad q1">
+              <div class="quad-label">Urgent & Important</div>
+              <div class="quad-item">Sump pump registration — due tomorrow</div>
+              <div class="quad-item">Call dentist — 4 months overdue</div>
+            </div>
+            <div class="quad">
+              <div class="quad-label">Important, Not Urgent</div>
+              <div class="quad-count">3</div>
+              <div class="quad-more">Life insurance, date night, goal check-in</div>
+            </div>
+            <div class="quad">
+              <div class="quad-label">Urgent, Not Important</div>
+              <div class="quad-count">1</div>
+              <div class="quad-more">Register for golf event</div>
+            </div>
+            <div class="quad">
+              <div class="quad-label">Backlog</div>
+              <div class="quad-count">6</div>
+              <div class="quad-more">Not competing for attention</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><span class="card-title">Relationships</span><a class="card-link" href="friday_people.html">All people →</a></div>
+          <div class="people-row">
+            <a class="p-chip" href="friday_person_detail.html"><div class="p-av">G</div><div class="p-name">Georgia</div></a>
+            <div class="p-chip"><div class="p-av">M</div><div class="p-name">Miles</div></div>
+            <div class="p-chip"><div class="p-av nudge">A</div><div class="p-name">Andrew</div></div>
+            <div class="p-chip"><div class="p-av nudge">W</div><div class="p-name">Will O</div></div>
+            <div class="p-chip"><div class="p-av nudge">D</div><div class="p-name">Dan D</div></div>
+            <div class="p-chip"><div class="p-av">B</div><div class="p-name">Brendan</div></div>
+          </div>
+          <div class="nudge-banner"><strong>3 people to reach out to</strong> — Dan Dietrich, Will O, Brendan Smith, no contact logged recently.</div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><span class="card-title">Date Night Picks</span><a class="card-link" href="friday_date_night.html">Plan one →</a></div>
+          <div class="list-item"><div class="li-info"><div class="li-name">The Whelk — Westport</div><div class="li-meta">Seafood · 20 min · Georgia would love</div></div><div class="li-val">$$$</div></div>
+          <div class="list-item"><div class="li-info"><div class="li-name">Barcelona Wine Bar — Stamford</div><div class="li-meta">Tapas · 15 min · New experience</div></div><div class="li-val">$$$</div></div>
+          <div class="list-item"><div class="li-info"><div class="li-name">Leyla — Stamford</div><div class="li-meta">Mediterranean · 15 min · Intimate</div></div><div class="li-val">$$</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><span class="card-title">Goals</span><span class="card-link">All goals →</span></div>
+          <div class="goal-item"><div class="goal-top"><span class="goal-name">Pass CFP Exam</span><span class="goal-pct">Nov '26</span></div><div class="goal-track"><div class="goal-fill" style="width:40%"></div></div></div>
+          <div class="goal-item"><div class="goal-top"><span class="goal-name">Work Out 3x/Week</span><span class="goal-pct">Active</span></div><div class="goal-track"><div class="goal-fill" style="width:60%"></div></div></div>
+          <div class="goal-item"><div class="goal-top"><span class="goal-name">Become 10 Handicap</span><span class="goal-pct">No baseline</span></div><div class="goal-track"><div class="goal-fill" style="width:25%"></div></div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><span class="card-title">Streaks</span></div>
+          <div class="streak-grid">
+            <div class="streak-box"><div class="streak-num">0</div><div class="streak-lbl">Date Nights</div></div>
+            <div class="streak-box"><div class="streak-num">—</div><div class="streak-lbl">Workouts</div></div>
+            <div class="streak-box"><div class="streak-num">—</div><div class="streak-lbl">Friend Reach</div></div>
+            <div class="streak-box"><div class="streak-num">40</div><div class="streak-lbl">People Filed</div></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div class="col">
+
+        <div class="card">
+          <div class="card-head"><span class="card-title">Financial Snapshot</span><a class="card-link" href="friday_finances.html">Open →</a></div>
+          <div class="fin-item"><span class="fin-label">Nanny — this week</span><span class="fin-val due">$400</span></div>
+          <div class="fin-item"><span class="fin-label">Mitchell Oil invoice</span><span class="fin-val due">$340</span></div>
+          <div class="fin-item"><span class="fin-label">Landscaper invoice</span><span class="fin-val due">$375</span></div>
+          <div class="fin-item"><span class="fin-label">Checking</span><span class="fin-val" style="color:var(--mute-dim);">Connect →</span></div>
+          <div class="fin-connect">Connect Plaid to see balances and net worth here.</div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><span class="card-title">Inbox — Personal Only</span><span class="card-link">Open inbox →</span></div>
+          <div class="digest-item">
+            <div class="digest-src">Ed's Garage Doors</div>
+            <div class="digest-text">Replied to your quote — can come Thursday 8–10am, spring replacement $285.</div>
+          </div>
+          <div class="digest-item">
+            <div class="digest-src">Mitchell Oil</div>
+            <div class="digest-text">Invoice #4821 for July delivery.</div>
+            <div class="digest-tag">Needs payment</div>
+          </div>
+          <div class="digest-item">
+            <div class="digest-src">Lawn Care of Darien</div>
+            <div class="digest-text">Following up on last week's invoice — no reply yet.</div>
+            <div class="digest-tag">3 days unanswered</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><span class="card-title">Reading Digest</span><span class="card-link">See all →</span></div>
+          <div class="digest-item">
+            <div class="digest-src">Wall Street Journal</div>
+            <div class="digest-text">Fed signals rate cut timeline amid cooling inflation data.</div>
+          </div>
+          <div class="digest-item">
+            <div class="digest-src">The Economist</div>
+            <div class="digest-text">RIA consolidation accelerates — what it means for independent advisors.</div>
+          </div>
+          <div class="digest-item">
+            <div class="digest-src">Barron's</div>
+            <div class="digest-text">Where wealth managers are putting client cash this quarter.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+</div>
+</body>
+</html>

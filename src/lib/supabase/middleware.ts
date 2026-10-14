@@ -1,7 +1,16 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isLocalMode } from "@/lib/local";
 
 export async function updateSession(request: NextRequest) {
+  if (isLocalMode) {
+    // Always signed in, so the auth pages just bounce home.
+    if (request.nextUrl.pathname.match(/^\/(login|signup)$/)) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });

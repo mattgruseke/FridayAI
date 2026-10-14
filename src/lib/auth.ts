@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { isLocalMode, LOCAL_USER, localStore } from "@/lib/local";
 
 type AuthResult = {
   user: { id: string } | null;
@@ -12,6 +13,7 @@ const unauthorized = () =>
   });
 
 export async function requireUser(): Promise<AuthResult> {
+  if (isLocalMode) return { user: { id: LOCAL_USER.id }, errorResponse: null };
   const supabase = await createClient();
   const {
     data: { user },
@@ -26,6 +28,7 @@ export async function requireUser(): Promise<AuthResult> {
 }
 
 export async function optionalUser(): Promise<AuthResult> {
+  if (isLocalMode) return { user: { id: LOCAL_USER.id }, errorResponse: null };
   const supabase = await createClient();
   const {
     data: { user },
@@ -39,6 +42,7 @@ export async function optionalUser(): Promise<AuthResult> {
 }
 
 export async function isAdminUser(userId: string) {
+  if (isLocalMode) return localStore.profile.role === "admin";
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("user_profiles")

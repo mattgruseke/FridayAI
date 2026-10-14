@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Friday — Life Health Score</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --navy: #0F1830; --navy-side: #131F3B; --navy-surface: #182A4E; --navy-surface-2: #1D3157;
+  --cream: #F1EBDD; --mute: #93A2BE; --mute-dim: #6D7C9C;
+  --brass: #C4A063; --brass-bright: #D8B67D; --line: rgba(241,235,221,0.10); --rust: #C97A6B; --green: #8FB89A;
+}
+a.top-avatar, a.top-score, a.top-notif { text-decoration: none; }
+body { font-family: 'Inter', sans-serif; background: var(--navy); color: var(--cream); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+.topbar { height: 56px; flex-shrink: 0; display: flex; align-items: center; padding: 0 22px; gap: 16px; border-bottom: 1px solid var(--line); }
+.logo { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; letter-spacing: 0.3px; }
+.logo em { color: var(--brass); font-style: normal; }
+.top-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+.top-date { font-size: 12px; color: var(--mute-dim); }
+.top-score { background: var(--navy-surface); border: 1px solid var(--brass); color: var(--brass); font-size: 12px; font-weight: 700; padding: 4px 11px; border-radius: 20px; cursor: pointer; }
+.top-notif { width: 30px; height: 30px; border-radius: 8px; background: var(--navy-surface); display: flex; align-items: center; justify-content: center; font-size: 13px; cursor: pointer; position: relative; }
+.notif-dot { width: 6px; height: 6px; background: var(--rust); border-radius: 50%; position: absolute; top: 6px; right: 6px; }
+.top-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--navy-surface-2); border: 1px solid var(--brass); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--brass); cursor: pointer; }
+
+.body { display: grid; grid-template-columns: 232px 1fr; flex: 1; overflow: hidden; }
+
+.sidebar { background: var(--navy-side); border-right: 1px solid var(--line); overflow-y: auto; padding: 18px 0; }
+.score-card { margin: 0 14px 20px; padding: 15px; background: var(--navy-surface); border: 1px solid var(--brass); border-radius: 6px; }
+.score-label { font-size: 9.5px; letter-spacing: 1.3px; text-transform: uppercase; color: var(--mute-dim); margin-bottom: 8px; }
+.score-num { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 700; line-height: 1; color: var(--cream); font-variant-numeric: tabular-nums; }
+.score-sub { font-size: 11px; color: var(--brass); margin: 4px 0 12px; }
+.score-bars { display: flex; flex-direction: column; gap: 6px; }
+.sb-row { display: flex; align-items: center; gap: 7px; }
+.sb-label { font-size: 9.5px; color: var(--mute-dim); width: 62px; flex-shrink: 0; }
+.sb-track { flex: 1; height: 2px; background: var(--line); }
+.sb-fill { height: 100%; background: var(--brass); }
+.sb-val { font-size: 9.5px; color: var(--mute); width: 16px; text-align: right; font-variant-numeric: tabular-nums; }
+.nav-group { margin-bottom: 18px; padding: 0 8px; }
+.nav-group-label { font-size: 9px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; color: var(--mute-dim); padding: 0 12px; margin-bottom: 6px; }
+.nav-item { display: flex; align-items: center; gap: 9px; padding: 7px 12px; border-left: 2px solid transparent; font-size: 13px; color: var(--mute); cursor: pointer; text-decoration: none; }
+.nav-item:hover { color: var(--cream); }
+.nav-item.active { color: var(--cream); border-left-color: var(--brass); background: rgba(196,160,99,0.07); font-weight: 600; }
+.nav-item .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--mute-dim); flex-shrink: 0; }
+.nav-item.active .dot { background: var(--brass); }
+.nav-divider { height: 1px; background: var(--line); margin: 4px 20px 14px; }
+
+.main { overflow-y: auto; display: flex; justify-content: center; }
+.main-inner { width: 100%; max-width: 700px; padding: 28px 24px 60px; }
+.page-head { margin-bottom: 22px; }
+.page-title { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 600; margin-bottom: 4px; }
+.page-sub { font-size: 12.5px; color: var(--mute); }
+
+.hero-score { background: linear-gradient(150deg, var(--navy-surface) 0%, var(--navy-surface-2) 100%); border: 1px solid var(--line); border-top: 2px solid var(--brass); border-radius: 8px; padding: 26px; text-align: center; margin-bottom: 24px; }
+.hero-num { font-family: 'Playfair Display', serif; font-size: 56px; font-weight: 700; color: var(--cream); line-height: 1; }
+.hero-trend { font-size: 13px; color: var(--brass); margin-top: 6px; }
+.hero-note { font-size: 12.5px; color: var(--mute); margin-top: 10px; max-width: 46ch; margin-left: auto; margin-right: auto; line-height: 1.6; }
+
+.sub-card { background: var(--navy-surface); border: 1px solid var(--line); border-radius: 6px; padding: 18px 20px; margin-bottom: 12px; }
+.sub-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.sub-name { font-size: 14px; font-weight: 700; }
+.sub-num { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; }
+.sub-num.low { color: var(--rust); }
+.sub-num.mid { color: var(--brass); }
+.sub-num.high { color: var(--green); }
+.sub-track { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; margin-bottom: 12px; }
+.sub-fill { height: 100%; }
+.sub-fill.low { background: var(--rust); }
+.sub-fill.mid { background: var(--brass); }
+.sub-fill.high { background: var(--green); }
+.sub-why { font-size: 11.5px; color: var(--mute-dim); margin-bottom: 3px; }
+.sub-list { margin: 0 0 12px; padding-left: 16px; }
+.sub-list li { font-size: 12.5px; color: var(--mute); line-height: 1.6; }
+.sub-action { font-size: 12px; color: var(--brass); font-weight: 600; }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--navy-surface-2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="logo">Fri<em>day</em></div>
+  <div class="top-right">
+    <span class="top-date">Tuesday, August 11</span>
+    <a class="top-score" href="friday_life_score.html">62</a>
+    <a class="top-notif" href="friday_notifications.html">🔔<div class="notif-dot"></div></a>
+    <a class="top-avatar" href="friday_settings.html">MG</a>
+  </div>
+</nav>
+
+<div class="body">
+
+  <aside class="sidebar">
+    <a class="score-card" href="friday_life_score.html" style="text-decoration:none; display:block;">
+      <div class="score-label">Life Health Score</div>
+      <div class="score-num">62</div>
+      <div class="score-sub">↑ Getting there</div>
+      <div class="score-bars">
+        <div class="sb-row"><span class="sb-label">Relationship</span><div class="sb-track"><div class="sb-fill" style="width:45%"></div></div><span class="sb-val">45</span></div>
+        <div class="sb-row"><span class="sb-label">Family</span><div class="sb-track"><div class="sb-fill" style="width:78%"></div></div><span class="sb-val">78</span></div>
+        <div class="sb-row"><span class="sb-label">Health</span><div class="sb-track"><div class="sb-fill" style="width:55%"></div></div><span class="sb-val">55</span></div>
+        <div class="sb-row"><span class="sb-label">Household</span><div class="sb-track"><div class="sb-fill" style="width:38%"></div></div><span class="sb-val">38</span></div>
+        <div class="sb-row"><span class="sb-label">Personal</span><div class="sb-track"><div class="sb-fill" style="width:68%"></div></div><span class="sb-val">68</span></div>
+      </div>
+    </a>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Main</div>
+      <a class="nav-item" href="friday_home.html"><span class="dot"></span> Home</a>
+      <a class="nav-item" href="friday_life_dashboard.html"><span class="dot"></span> Dashboard</a>
+      <a class="nav-item" href="friday_your_team.html"><span class="dot"></span> Your Team</a>
+      <a class="nav-item" href="friday_calendar.html"><span class="dot"></span> Calendar</a>
+      <a class="nav-item" href="friday_tasks.html"><span class="dot"></span> Tasks</a>
+      <a class="nav-item" href="friday_weekly_planner.html"><span class="dot"></span> Weekly Planner</a>
+      <a class="nav-item" href="friday_email.html"><span class="dot"></span> Email</a>
+      <a class="nav-item" href="friday_news.html"><span class="dot"></span> News</a>
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Life</div>
+      <a class="nav-item" href="friday_people.html"><span class="dot"></span> People</a>
+      <a class="nav-item" href="friday_date_night.html"><span class="dot"></span> Date Night</a>
+      <a class="nav-item" href="friday_restaurants.html"><span class="dot"></span> Restaurants</a>
+      <a class="nav-item" href="friday_family_activities.html"><span class="dot"></span> Family Activities</a>
+      <a class="nav-item" href="friday_travel.html"><span class="dot"></span> Travel & Trips</a>
+      <a class="nav-item" href="friday_goals.html"><span class="dot"></span> Goals</a>
+      <a class="nav-item" href="friday_finances.html"><span class="dot"></span> Finances</a>
+      <a class="nav-item" href="friday_media.html"><span class="dot"></span> Media</a>
+      <a class="nav-item" href="friday_health.html"><span class="dot"></span> Health</a>
+      <a class="nav-item" href="friday_fitness.html"><span class="dot"></span> Fitness</a>
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Home</div>
+      <div class="nav-item"><span class="dot"></span> Service Providers</div>
+      <div class="nav-item"><span class="dot"></span> Kitchen & Pantry</div>
+      <div class="nav-item"><span class="dot"></span> Household Tasks</div>
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <div class="nav-group">
+      <a class="nav-item active" href="friday_life_score.html"><span class="dot"></span> Life Health Score</a>
+      <a class="nav-item" href="friday_settings.html"><span class="dot"></span> Settings</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="main-inner">
+      <div class="page-head">
+        <div class="page-title">Life Health Score</div>
+        <div class="page-sub">Five sub-scores, and exactly what's moving each one.</div>
+      </div>
+
+      <div class="hero-score">
+        <div class="hero-num">62</div>
+        <div class="hero-trend">↑ Getting there, Matthew</div>
+        <div class="hero-note">Household is the one dragging everything else down right now — the other four are either fine or actively improving.</div>
+      </div>
+
+      <div class="sub-card">
+        <div class="sub-top"><span class="sub-name">Household</span><span class="sub-num low">38</span></div>
+        <div class="sub-track"><div class="sub-fill low" style="width:38%"></div></div>
+        <div class="sub-why">What's pulling it down:</div>
+        <ul class="sub-list">
+          <li>Gutters need clearing — flagged urgent by Home Manager</li>
+          <li>No HVAC cleaning provider on file</li>
+          <li>Mitchell Oil and landscaper invoices both unpaid</li>
+        </ul>
+        <div class="sub-action">Fastest fix: contact the landscaper about gutters →</div>
+      </div>
+
+      <div class="sub-card">
+        <div class="sub-top"><span class="sub-name">Relationship</span><span class="sub-num low">45</span></div>
+        <div class="sub-track"><div class="sub-fill low" style="width:45%"></div></div>
+        <div class="sub-why">What's pulling it down:</div>
+        <ul class="sub-list">
+          <li>No date night with Georgia in 2 weeks</li>
+          <li>3 friends gone quiet — Dan, Will O, Brendan</li>
+          <li>Andrew's bachelor party still has no date</li>
+        </ul>
+        <div class="sub-action">Fastest fix: book Saturday at Roots Prime or The Whelk →</div>
+      </div>
+
+      <div class="sub-card">
+        <div class="sub-top"><span class="sub-name">Health</span><span class="sub-num mid">55</span></div>
+        <div class="sub-track"><div class="sub-fill mid" style="width:55%"></div></div>
+        <div class="sub-why">What's holding it back:</div>
+        <ul class="sub-list">
+          <li>Dentist 4 months overdue</li>
+          <li>Annual physical due sometime this year, not scheduled</li>
+          <li>Eye doctor is current — this one's not a problem</li>
+        </ul>
+        <div class="sub-action">Fastest fix: call the dentist, easiest thing on the list →</div>
+      </div>
+
+      <div class="sub-card">
+        <div class="sub-top"><span class="sub-name">Personal</span><span class="sub-num mid">68</span></div>
+        <div class="sub-track"><div class="sub-fill mid" style="width:68%"></div></div>
+        <div class="sub-why">What's working, what's not:</div>
+        <ul class="sub-list">
+          <li>CFP prep at 40%, on pace for November</li>
+          <li>Workout goal at 60% — kettlebells arrived, still unused</li>
+          <li>Monthly newsletter stalled at 10%</li>
+        </ul>
+        <div class="sub-action">Fastest fix: log your first workout →</div>
+      </div>
+
+      <div class="sub-card">
+        <div class="sub-top"><span class="sub-name">Family</span><span class="sub-num high">78</span></div>
+        <div class="sub-track"><div class="sub-fill high" style="width:78%"></div></div>
+        <div class="sub-why">This one's in good shape:</div>
+        <ul class="sub-list">
+          <li>Miles' checkups are on track</li>
+          <li>Family dinner routine is consistent</li>
+        </ul>
+        <div class="sub-action">Nothing urgent here — keep doing what's working</div>
+      </div>
+
+    </div>
+  </main>
+
+</div>
+</body>
+</html>

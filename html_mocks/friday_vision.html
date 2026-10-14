@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Friday — The Vision & Roadmap</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@400;600;700&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --navy: #0F1830; --navy-side: #131F3B; --navy-surface: #182A4E; --navy-surface-2: #1D3157;
+  --cream: #F1EBDD; --mute: #93A2BE; --mute-dim: #6D7C9C;
+  --brass: #C4A063; --brass-bright: #D8B67D; --line: rgba(241,235,221,0.10); --rust: #C97A6B;
+}
+html { scroll-behavior: smooth; }
+body { font-family: 'Inter', sans-serif; background: var(--navy); color: var(--cream); }
+a { color: inherit; }
+
+.private-badge { position: fixed; top: 16px; right: 16px; z-index: 100; background: var(--navy-surface-2); border: 1px solid var(--brass); color: var(--brass); font-size: 10.5px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; padding: 6px 12px; border-radius: 20px; }
+
+.nav { position: sticky; top: 0; z-index: 50; background: rgba(15,24,48,0.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.nav-inner { max-width: 1040px; margin: 0 auto; padding: 0 28px; height: 64px; display: flex; align-items: center; }
+.logo { font-family: 'Playfair Display', serif; font-size: 21px; font-weight: 700; text-decoration: none; }
+.logo em { color: var(--brass); font-style: normal; }
+
+.hero { padding: 90px 28px 60px; text-align: center; background: radial-gradient(ellipse 900px 500px at 50% -10%, rgba(196,160,99,0.10), transparent); }
+.hero-inner { max-width: 760px; margin: 0 auto; }
+.hero-eyebrow { font-size: 11.5px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--brass); margin-bottom: 18px; }
+.hero h1 { font-family: 'Playfair Display', serif; font-size: 42px; font-weight: 700; line-height: 1.25; margin-bottom: 20px; }
+.hero h1 em { color: var(--brass); font-style: normal; }
+.hero-sub { font-size: 16.5px; color: var(--mute); line-height: 1.7; max-width: 580px; margin: 0 auto; }
+
+section { padding: 56px 28px; max-width: 980px; margin: 0 auto; }
+.section-label { font-size: 11px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; color: var(--mute-dim); text-align: center; margin-bottom: 10px; }
+.section-head { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 600; text-align: center; margin-bottom: 14px; }
+.section-sub { font-size: 14.5px; color: var(--mute); text-align: center; max-width: 620px; margin: 0 auto 44px; line-height: 1.7; }
+
+.agent-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.agent-card { background: var(--navy-surface); border: 1px solid var(--line); border-radius: 8px; padding: 20px; }
+.agent-card.live { border-color: var(--brass); }
+.agent-name { font-size: 14.5px; font-weight: 700; margin-bottom: 4px; }
+.agent-status { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; padding: 2px 8px; border-radius: 10px; display: inline-block; margin-bottom: 10px; }
+.agent-status.live { color: var(--brass); background: rgba(196,160,99,0.14); }
+.agent-status.next { color: var(--cream); background: rgba(147,162,190,0.14); }
+.agent-status.soon { color: var(--mute-dim); background: transparent; border: 1px dashed var(--line); }
+.agent-desc { font-size: 12.5px; color: var(--mute); line-height: 1.6; }
+
+.proof { background: var(--navy-surface); border: 1px solid var(--line); border-left: 3px solid var(--brass); border-radius: 8px; padding: 26px 30px; margin-bottom: 18px; }
+.proof-label { font-size: 10.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--brass); margin-bottom: 10px; }
+.proof-text { font-size: 15px; line-height: 1.75; color: var(--cream); }
+.proof-text strong { color: var(--brass); }
+
+.why-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.why-card { padding: 24px; }
+.why-num { font-family: 'Playfair Display', serif; font-size: 30px; color: var(--brass); margin-bottom: 10px; }
+.why-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+.why-body { font-size: 13px; color: var(--mute); line-height: 1.7; }
+
+.roadmap-list { max-width: 640px; margin: 0 auto; }
+.roadmap-row { display: flex; gap: 18px; padding: 16px 0; border-bottom: 1px solid var(--line); align-items: flex-start; }
+.roadmap-row:last-child { border-bottom: none; }
+.roadmap-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+.roadmap-dot.done { background: var(--brass); }
+.roadmap-dot.active { background: var(--brass); box-shadow: 0 0 0 4px rgba(196,160,99,0.2); }
+.roadmap-dot.future { background: transparent; border: 1.5px solid var(--mute-dim); }
+.roadmap-title { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+.roadmap-body { font-size: 12.5px; color: var(--mute); line-height: 1.6; }
+
+.footer { text-align: center; padding: 50px 28px 70px; border-top: 1px solid var(--line); margin-top: 20px; }
+.footer-note { font-size: 12px; color: var(--mute-dim); line-height: 1.8; max-width: 520px; margin: 0 auto; }
+
+@media (max-width: 760px) {
+  .agent-grid, .why-grid { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 30px; }
+}
+</style>
+</head>
+<body>
+
+<div class="private-badge">Private preview — not public</div>
+
+<nav class="nav"><div class="nav-inner"><a class="logo" href="#">Fri<em>day</em></a></div></nav>
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-eyebrow">The Vision & Roadmap</div>
+    <h1>Your wife is thinking about more things than you are. <em>Friday fixes that.</em></h1>
+    <p class="hero-sub">Friday is a personal life operating system — one home base for everything that actually matters, so the instinct becomes "check Friday," not "check Instagram." It's built as a team of specialists, each one quietly expert in one part of your life, reporting up to a single coordinator who tells you what to actually do about it.</p>
+  </div>
+</div>
+
+<section>
+  <div class="section-label">Why One Agent Isn't Enough</div>
+  <div class="section-head">A house inspector can't tell you about your marriage</div>
+  <p class="section-sub">Every "AI assistant" that tries to do everything ends up generic at everything. Friday's bet is the opposite: nine specialists, each with real domain expertise, each watching one part of your life closely enough to say something you didn't already know — then one coordinator who holds all of it at once, because you shouldn't have to.</p>
+  <div class="why-grid">
+    <div class="why-card">
+      <div class="why-num">01</div>
+      <div class="why-title">Specialists find what generalists miss</div>
+      <div class="why-body">A general assistant knows a little about your house. House Manager knows your house specifically — your oil tank, your panel brand, your inspection report from fourteen months ago that nobody ever went back to.</div>
+    </div>
+    <div class="why-card">
+      <div class="why-num">02</div>
+      <div class="why-title">The coordinator is where the real value lives</div>
+      <div class="why-body">Any one agent's advice is useful. The moment two agents' facts connect into one finding neither would have produced alone — that's the thing worth paying for.</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-label">Not Hypothetical</div>
+  <div class="section-head">This already works — here's actual output</div>
+  <p class="section-sub">No invented demo data. These are real findings from the two agents built so far, running against real answers.</p>
+
+  <div class="proof">
+    <div class="proof-label">House Manager</div>
+    <div class="proof-text">Your oil tank is old, its gauge is broken, you don't have a delivery provider on file, and heating season is weeks away. Each fact alone is nothing. Together: you could run dry mid-winter without warning.</div>
+  </div>
+  <div class="proof">
+    <div class="proof-label">Relationship Manager</div>
+    <div class="proof-text">Three of your closest friends, described separately, in depth — and all three got the same unprompted answer: <strong>"I don't see him enough."</strong> That pattern only exists if you hold all three answers together. No single conversation would have surfaced it.</div>
+  </div>
+  <div class="proof">
+    <div class="proof-label">Personal Entertainment Manager</div>
+    <div class="proof-text">Asked what's on the watchlist, the honest answer was <strong>"I don't know what to watch, which is why I'm here."</strong> No invented recommendation — the real fix was noticing there's no backlog at all, and handing back the one thing that already works every time: the audiobook you already reach for when nothing else gets picked.</div>
+  </div>
+</section>
+
+<section>
+  <div class="section-label">The Team</div>
+  <div class="section-head">Nine specialists, one coordinator</div>
+  <p class="section-sub">Reprioritized 2026-10-07 around a sharper target user — home, food, and daily entertainment first, since those are the three things that touch every day. Built one at a time, each one proven against real use before the next one starts.</p>
+  <div class="agent-grid">
+    <div class="agent-card live"><div class="agent-name">1. House Manager</div><div class="agent-status live">Live &amp; tested</div><div class="agent-desc">Service providers, maintenance, safety — the things a new homeowner doesn't know they don't know.</div></div>
+    <div class="agent-card live"><div class="agent-name">2. Personal Entertainment Manager</div><div class="agent-status live">Live &amp; tested</div><div class="agent-desc">What to watch, read, or listen to tonight — decided before the free hour starts, not during it.</div></div>
+    <div class="agent-card"><div class="agent-name">3. Food Manager</div><div class="agent-status next">Building now</div><div class="agent-desc">Cooking, leftovers, the freezer, delivery, or going out — deciding which, for every night of the week, plus the daily kid-meal logistics.</div></div>
+    <div class="agent-card live"><div class="agent-name">4. Relationship Manager</div><div class="agent-status live">Live &amp; tested</div><div class="agent-desc">Who matters, how the connection is doing, what moment is coming up.</div></div>
+    <div class="agent-card"><div class="agent-name">5. Goals and Tasks Manager</div><div class="agent-status soon">Planned</div><div class="agent-desc">The bucket list and the big rocks that are easy to let slide — plus the catch-all for anything that doesn't have another natural home, like car maintenance or a security to-do.</div></div>
+    <div class="agent-card"><div class="agent-name">6. Travel and Experiences Manager</div><div class="agent-status soon">Planned</div><div class="agent-desc">Trip planning and local ideas, organized by how much time you actually have.</div></div>
+    <div class="agent-card"><div class="agent-name">7. Health Manager</div><div class="agent-status soon">Planned</div><div class="agent-desc">Fitness goals that survive a real schedule, plus the doctor and dentist appointments that are easy to let slide. Personal-level for now.</div></div>
+    <div class="agent-card"><div class="agent-name">8. Family Scheduler</div><div class="agent-status soon">New, planned</div><div class="agent-desc">Who's covering childcare, pickups and dropoffs, and what work travel or an evening event breaks — "knowing where the bodies are," and it only gets harder with more kids.</div></div>
+    <div class="agent-card"><div class="agent-name">9. Restaurant Manager</div><div class="agent-status next">Building right after Food Manager</div><div class="agent-desc">Where to eat and the booking — split off from Food Manager since it's a genuinely different workflow. Deliberately builds depth in nearby towns that usually get overlooked, not just the default spots.</div></div>
+  </div>
+  <p class="section-sub" style="margin-top:28px; margin-bottom:0;">Financial Advisor and Social Coordinator remain real ideas, deliberately archived for now rather than built — the first pending a real decision about financial-advice scope, the second a true v2+ network-effect feature that needs more than one agent built first.</p>
+</section>
+
+<section>
+  <div class="section-label">Where This Is Headed</div>
+  <div class="section-head">Built bottom-up, on purpose</div>
+  <p class="section-sub">Each specialist gets built and proven on its own before the coordinator that links them gets built at all — synthesis can't be designed until there's real output to synthesize.</p>
+  <div class="roadmap-list">
+    <div class="roadmap-row"><div class="roadmap-dot done"></div><div><div class="roadmap-title">House Manager, Personal Entertainment Manager &amp; Relationship Manager — built and validated</div><div class="roadmap-body">All three run against real data and produce findings nobody had to invent.</div></div></div>
+    <div class="roadmap-row"><div class="roadmap-dot active"></div><div><div class="roadmap-title">Food Manager, then Restaurant Manager</div><div class="roadmap-body">The other most asked-about decision in a given week — what to eat, plus the daily kid-meal logistics — then where to actually go, split into its own agent since booking and occasion-matching turned out to be a different job entirely.</div></div></div>
+    <div class="roadmap-row"><div class="roadmap-dot future"></div><div><div class="roadmap-title">Goals and Tasks, Travel and Experiences, Health — then Family Scheduler</div><div class="roadmap-body">A new addition, 2026-10-07: a dedicated agent for who's covering childcare, pickups/dropoffs, and the conflicts travel creates — a problem that gets exponentially harder as more kids enter the picture, not easier.</div></div></div>
+    <div class="roadmap-row"><div class="roadmap-dot future"></div><div><div class="roadmap-title">Friday, the coordinator</div><div class="roadmap-body">Built last, on purpose — the thing that reads every specialist's findings and tells you the one thing that actually matters today.</div></div></div>
+  </div>
+</section>
+
+<div class="footer">
+  <p class="footer-note">This page describes where Friday is actually headed, not where it is today — every "planned" item above is exactly that, planned, not built. Built privately. Not yet public, not yet for sale.</p>
+</div>
+
+</body>
+</html>

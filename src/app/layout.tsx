@@ -1,9 +1,11 @@
 import "./globals.css";
+import { Inter, Playfair_Display } from "next/font/google";
 import Providers from "./providers";
 import type { ReactNode } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { siteConfig } from "@/config/site";
 import { themeInitScript } from "@/lib/theme";
+import { isLocalMode, LOCAL_USER, localStore } from "@/lib/local";
 
 export const metadata = {
   title: siteConfig.name,
@@ -18,6 +20,13 @@ export const metadata = {
   },
 };
 
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  weight: ["400", "600", "700"],
+  variable: "--font-playfair",
+});
+
 type RootLayoutProps = {
   children: ReactNode;
 };
@@ -26,7 +35,10 @@ export default async function RootLayout({ children }: RootLayoutProps) {
   let user = null;
   let userProfile = null;
 
-  try {
+  if (isLocalMode) {
+    user = LOCAL_USER;
+    userProfile = localStore.profile;
+  } else try {
     const supabase = await createClient();
 
     const {
@@ -48,7 +60,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
   }
 
   return (
-    <html lang="en">
+    <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
       <body suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <Providers initialUser={user} initialProfile={userProfile}>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { isLocalMode, localStore } from "@/lib/local";
 
 const jsonResponse = (data: unknown, status = 200) =>
   NextResponse.json(data, { status });
@@ -10,6 +11,7 @@ export async function GET() {
   const supabase = await createClient();
   const { user, errorResponse } = await requireUser();
   if (errorResponse) return errorResponse;
+  if (isLocalMode) return jsonResponse(localStore.profile);
 
   const { data, error } = await supabase
     .from("user_profiles")
@@ -54,6 +56,11 @@ export async function PATCH(request: Request) {
 
   if (Object.keys(allowed).length === 0) {
     return jsonResponse({ message: "No valid fields to update" }, 400);
+  }
+
+  if (isLocalMode) {
+    Object.assign(localStore.profile, allowed);
+    return jsonResponse({ ok: true });
   }
 
   const { error } = await supabase
