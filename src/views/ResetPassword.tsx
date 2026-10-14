@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../contexts/AuthContext';
 import { getErrorMessage } from '../lib/errors';
+import { siteConfig } from '@/config/site';
 
 const ResetPassword = () => {
   const [password, setPassword] = useState('');
@@ -61,7 +62,7 @@ const ResetPassword = () => {
       <div className="auth-container">
         <div className="auth-box">
           <div className="auth-header">
-            <Link href="/" className="auth-logo">GigFrog</Link>
+            <Link href="/" className="auth-logo">{siteConfig.name}</Link>
             <h1>Password Updated</h1>
           </div>
 
@@ -79,7 +80,7 @@ const ResetPassword = () => {
     <div className="auth-container">
       <div className="auth-box">
         <div className="auth-header">
-          <Link href="/" className="auth-logo">GigFrog</Link>
+          <Link href="/" className="auth-logo">{siteConfig.name}</Link>
           <h1>Set New Password</h1>
         </div>
 

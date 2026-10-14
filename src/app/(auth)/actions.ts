@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { headers } from "next/headers";
+import { siteConfig } from "@/config/site";
 
 export async function signIn(email: string, password: string) {
   const supabase = await createClient();
@@ -22,67 +23,31 @@ export async function signIn(email: string, password: string) {
 export async function signUp(
   email: string,
   password: string,
-  inviteCode: string
+  inviteCode = ""
 ) {
   const supabase = await createClient();
   const headersList = await headers();
   const origin = headersList.get("origin") || "";
+  const code = inviteCode.trim().toUpperCase();
 
-  // Validate invite code first
-  const { data: codeData, error: codeError } = await supabase
-    .from("invite_codes")
-    .select("*")
-    .eq("code", inviteCode.toUpperCase())
-    .gt("uses_remaining", 0)
-    .single();
-
-  if (codeError || !codeData) {
-    throw new Error("Invalid or expired invite code");
+  if (siteConfig.inviteOnly) {
+    const { valid, error } = await validateInviteCode(code);
+    if (!valid) throw new Error(error);
   }
 
-  // Check expiration
-  if (codeData.expires_at && new Date(codeData.expires_at) < new Date()) {
-    throw new Error("Invite code has expired");
-  }
-
-  // Sign up with Supabase
+  // The `handle_new_user` trigger (supabase/schema.sql) creates the profile,
+  // redeems the invite code from this metadata, and seeds a welcome notification.
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       emailRedirectTo: `${origin}/login?verified=true`,
+      data: code ? { invite_code: code } : undefined,
     },
   });
 
   if (error) {
     throw error;
-  }
-
-  // Decrement invite code uses
-  await supabase
-    .from("invite_codes")
-    .update({ uses_remaining: codeData.uses_remaining - 1 })
-    .eq("id", codeData.id);
-
-  // Upsert user profile — use upsert in case the trigger hasn't created the row yet
-  if (data.user) {
-    await supabase
-      .from("user_profiles")
-      .upsert({
-        id: data.user.id,
-        invite_code_used: inviteCode.toUpperCase(),
-        has_network_access: inviteCode.toUpperCase() === "EA2026!",
-      }, { onConflict: "id" });
-
-    // Seed onboarding notification
-    await supabase.from("notifications").insert({
-      user_id: data.user.id,
-      type: "linkedin_upload",
-      message: "Upload your LinkedIn connections to unlock the Network tab and see who you know at hiring companies.",
-      action_url: "/network",
-      is_dismissed: false,
-      is_completed: false,
-    });
   }
 
   return data;
@@ -91,23 +56,16 @@ export async function signUp(
 export async function validateInviteCode(code: string) {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("invite_codes")
-    .select("*")
-    .eq("code", code.toUpperCase())
-    .gt("uses_remaining", 0)
-    .single();
+  // Security-definer function so the invite_codes table stays unreadable to clients.
+  const { data, error } = await supabase.rpc("check_invite_code", {
+    p_code: code.trim().toUpperCase(),
+  });
 
   if (error || !data) {
     return { valid: false, error: "Invalid or expired invite code" };
   }
 
-  // Check expiration
-  if (data.expires_at && new Date(data.expires_at) < new Date()) {
-    return { valid: false, error: "Invite code has expired" };
-  }
-
-  return { valid: true, codeData: data };
+  return { valid: true };
 }
 
 export async function signOut() {

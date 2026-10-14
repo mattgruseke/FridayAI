@@ -7,9 +7,11 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { signUp, validateInviteCode } from "@/app/(auth)/actions";
 import { getErrorMessage } from "@/lib/errors";
+import { siteConfig } from "@/config/site";
 
 const Signup = () => {
-  const [step, setStep] = useState(1); // 1 = invite code, 2 = account details
+  // 1 = invite code, 2 = account details. Invite step is skipped unless siteConfig.inviteOnly.
+  const [step, setStep] = useState(siteConfig.inviteOnly ? 1 : 2);
   const [inviteCode, setInviteCode] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -90,7 +92,7 @@ const Signup = () => {
         <div className="auth-box">
           <div className="auth-header">
             <Link href="/" className="auth-logo">
-              GigFrog
+              {siteConfig.name}
             </Link>
             <h1>Check Your Email</h1>
           </div>
@@ -121,9 +123,10 @@ const Signup = () => {
       <div className="auth-box">
         <div className="auth-header">
           <Link href="/" className="auth-logo">
-            GigFrog
+            {siteConfig.name}
           </Link>
           <h1>Sign Up</h1>
+          {siteConfig.inviteOnly && (
           <div className="auth-steps">
             <span className={`step ${step >= 1 ? "active" : ""}`}>
               1. Invite Code
@@ -133,6 +136,7 @@ const Signup = () => {
               2. Account
             </span>
           </div>
+          )}
         </div>
 
         {error && <div className="auth-error">{error}</div>}
@@ -152,8 +156,8 @@ const Signup = () => {
                 style={{ textTransform: "uppercase" }}
               />
               <p className="form-hint">
-                GigFrog is currently invite-only. Enter your invite code to
-                continue.
+                {siteConfig.name} is currently invite-only. Enter your invite
+                code to continue.
               </p>
             </div>
 
@@ -163,6 +167,7 @@ const Signup = () => {
           </form>
         ) : (
           <form onSubmit={handleSignUp}>
+            {siteConfig.inviteOnly && (
             <div className="invite-badge">
               Using code: <strong>{inviteCode}</strong>
               <button
@@ -173,6 +178,7 @@ const Signup = () => {
                 Change
               </button>
             </div>
+            )}
 
             <div className="form-group">
               <label htmlFor="email">Email</label>

@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { signIn, resetPassword } from "@/app/(auth)/actions";
 import { getErrorMessage } from "@/lib/errors";
+import { siteConfig } from "@/config/site";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -87,7 +88,7 @@ const Login = () => {
       <div className="auth-box">
         <div className="auth-header">
           <Link href="/" className="auth-logo">
-            GigFrog
+            {siteConfig.name}
           </Link>
           <h1>{showForgotPassword ? "Reset Password" : "Log In"}</h1>
         </div>

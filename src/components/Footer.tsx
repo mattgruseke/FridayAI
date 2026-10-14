@@ -1,12 +1,11 @@
-
 "use client";
+
+import { siteConfig } from "@/config/site";
+
 const Footer = () => (
-  <>
-    <div className="footer">
-      {/* <a href="#">Get Started</a> |<a href="#">FAQ</a> |<a href="#">Donate</a> */}
-      <div><p className="copyrightText">© GigFrog, a RocSites, LLC product</p></div>
-    </div>
-  </>
+  <div className="footer">
+    <p className="copyrightText">{siteConfig.footer}</p>
+  </div>
 );
 
 export default Footer;

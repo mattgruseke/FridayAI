@@ -4,13 +4,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f6f6ef;
+  background: var(--bg);
   padding: 20px;
 }
 
 .auth-box {
-  background: #ffffff;
-  border: 1px solid #e6e6df;
+  background: var(--surface);
+  border: 1px solid var(--border);
   width: 100%;
   max-width: 400px;
   padding: 32px;
@@ -31,13 +31,13 @@
 }
 
 .auth-logo:hover {
-  color: #cc5200;
+  color: var(--accent-hover);
 }
 
 .auth-header h1 {
   font-size: 14pt;
   font-weight: bold;
-  color: #000000;
+  color: var(--text);
   margin: 0 0 8px 0;
 }
 
@@ -47,7 +47,7 @@
   justify-content: center;
   gap: 8px;
   font-size: 9pt;
-  color: #828282;
+  color: var(--muted);
   margin-top: 12px;
 }
 
@@ -104,13 +104,13 @@
 
 .auth-success-message p {
   font-size: 10pt;
-  color: #000000;
+  color: var(--text);
   margin: 8px 0;
 }
 
 .auth-hint {
   font-size: 9pt !important;
-  color: #828282 !important;
+  color: var(--muted) !important;
 }
 
 .form-group {
@@ -121,17 +121,17 @@
   display: block;
   font-size: 9pt;
   font-weight: bold;
-  color: #000000;
+  color: var(--text);
   margin-bottom: 4px;
 }
 
 .form-group input {
   width: 100%;
   padding: 10px;
-  font-family: Verdana, Geneva, sans-serif;
+  font-family: var(--font);
   font-size: 10pt;
-  border: 1px solid #e6e6df;
-  background: #ffffff;
+  border: 1px solid var(--border);
+  background: var(--surface);
   box-sizing: border-box;
 }
 
@@ -142,14 +142,14 @@
 
 .form-hint {
   font-size: 8pt;
-  color: #828282;
+  color: var(--muted);
   margin-top: 4px;
 }
 
 .auth-btn {
   width: 100%;
   padding: 12px;
-  font-family: Verdana, Geneva, sans-serif;
+  font-family: var(--font);
   font-size: 10pt;
   font-weight: bold;
   background: var(--accent);
@@ -160,8 +160,8 @@
 }
 
 .auth-btn:hover:not(:disabled) {
-  background: #cc5200;
-  border-color: #cc5200;
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 .auth-btn:disabled {
@@ -172,7 +172,7 @@
 .auth-link-btn {
   width: 100%;
   padding: 8px;
-  font-family: Verdana, Geneva, sans-serif;
+  font-family: var(--font);
   font-size: 9pt;
   background: none;
   color: var(--accent);
@@ -189,9 +189,9 @@
   text-align: center;
   margin-top: 24px;
   padding-top: 16px;
-  border-top: 1px solid #e6e6df;
+  border-top: 1px solid var(--border);
   font-size: 9pt;
-  color: #828282;
+  color: var(--muted);
 }
 
 .auth-footer a {
@@ -204,11 +204,11 @@
 }
 
 .invite-badge {
-  background: #fff8e6;
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
   border: 1px solid var(--accent);
   padding: 8px 12px;
   font-size: 9pt;
-  color: #000000;
+  color: var(--text);
   margin-bottom: 16px;
   display: flex;
   align-items: center;
@@ -222,7 +222,7 @@
 .change-code-btn {
   background: none;
   border: none;
-  color: #828282;
+  color: var(--muted);
   font-size: 8pt;
   cursor: pointer;
   text-decoration: underline;
@@ -239,13 +239,13 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #f6f6ef;
+  background: var(--bg);
 }
 
 .loading-spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid #e6e6df;
+  border: 3px solid var(--border);
   border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -260,22 +260,10 @@
 .auth-loading p {
   margin-top: 16px;
   font-size: 10pt;
-  color: #828282;
+  color: var(--muted);
 }
 
 /* Dark Mode */
-body.dark-mode .auth-container {
-  background: #1a1a1a;
-}
-
-body.dark-mode .auth-box {
-  background: #2a2a2a;
-  border-color: #404040;
-}
-
-body.dark-mode .auth-header h1 {
-  color: #e0e0e0;
-}
 
 body.dark-mode .auth-error {
   background: #3a1f1f;
@@ -287,43 +275,12 @@ body.dark-mode .auth-success {
   border-color: #00a000;
 }
 
-body.dark-mode .form-group label {
-  color: #e0e0e0;
-}
-
 body.dark-mode .form-group input {
-  background: #1a1a1a;
-  border-color: #404040;
-  color: #e0e0e0;
+  background: var(--bg);
+  color: var(--text);
 }
 
-body.dark-mode .form-group input:focus {
-  border-color: var(--accent);
-}
 
-body.dark-mode .auth-footer {
-  border-color: #404040;
-  color: #999999;
-}
-
-body.dark-mode .invite-badge {
-  background: #3a2f1f;
-  border-color: var(--accent);
-  color: #e0e0e0;
-}
-
-body.dark-mode .auth-loading {
-  background: #1a1a1a;
-}
-
-body.dark-mode .loading-spinner {
-  border-color: #404040;
-  border-top-color: var(--accent);
-}
-
-body.dark-mode .auth-success-message p {
-  color: #e0e0e0;
-}
 
 /* Mobile */
 @media (max-width: 480px) {

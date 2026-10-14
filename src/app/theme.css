@@ -1,0 +1,240 @@
+/* ── Theme tokens ───────────────────────────────────────────────────────────
+   Restyle the app by editing these. Component stylesheets read the tokens, so
+   most look-and-feel changes happen here. Tokens live on `body` (not :root)
+   because the accent picker overrides --accent on body and --accent-hover
+   must be derived from that override.
+   ───────────────────────────────────────────────────────────────────────── */
+body {
+  --font: Verdana, Geneva, sans-serif;
+  --font-size: 10pt;
+
+  --accent: #ff6600; /* default; keep in sync with siteConfig.accentThemes[0] */
+  --accent-hover: color-mix(in srgb, var(--accent) 80%, #000);
+  --on-accent: #ffffff; /* text drawn on top of the accent color */
+
+  --bg: #f6f6ef;      /* page background */
+  --surface: #ffffff; /* cards, dropdowns, inputs */
+  --border: #e6e6df;
+  --text: #000000;
+  --muted: #828282;
+  --hover: #f5f5f5;
+
+  --danger: #cc0000;
+  --success: #00a000;
+}
+
+body.dark-mode {
+  --bg: #1a1a1a;
+  --surface: #2a2a2a;
+  --border: #404040;
+  --text: #e0e0e0;
+  --muted: #999999;
+  --hover: #333333;
+}
+
+/* ── Base ──────────────────────────────────────────────────────────────── */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font);
+  font-size: var(--font-size);
+  background: var(--bg);
+  color: var(--text);
+}
+
+code {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 0.95em;
+}
+
+.muted {
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ── Page layout ───────────────────────────────────────────────────────── */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.main {
+  padding: 8px;
+}
+
+.section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+
+.section-header {
+  background: var(--bg);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-header a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: normal;
+}
+
+.section-header a:hover {
+  text-decoration: underline;
+}
+
+.section-body {
+  padding: 12px 8px;
+  line-height: 1.5;
+}
+
+/* ── Lists ─────────────────────────────────────────────────────────────── */
+.list-item {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.list-item:last-child {
+  border-bottom: none;
+}
+
+.list-item:hover {
+  background: var(--hover);
+}
+
+.item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.item-title a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.item-title a:hover {
+  text-decoration: underline;
+}
+
+.item-title--done {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.item-meta {
+  font-size: 8pt;
+  color: var(--muted);
+  margin-top: 2px;
+  font-weight: normal;
+}
+
+/* ── Forms & buttons ───────────────────────────────────────────────────── */
+.inline-form {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.input {
+  flex: 1;
+  padding: 6px 8px;
+  font-family: var(--font);
+  font-size: var(--font-size);
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.btn {
+  padding: 6px 14px;
+  font-family: var(--font);
+  font-size: var(--font-size);
+  font-weight: bold;
+  color: var(--on-accent);
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  font-family: var(--font);
+  font-size: 8pt;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.btn-link:hover {
+  text-decoration: underline;
+}
+
+.btn-link--danger:hover {
+  color: var(--danger);
+}
+
+/* ── Toast (see src/hooks/useToast.tsx) ────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  padding: 12px 20px;
+  border-radius: 4px;
+  font-size: 9pt;
+  font-family: var(--font);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 2000;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.toast-success {
+  background: var(--success);
+}
+
+.toast-error {
+  background: var(--danger);
+}
+
+.toast-info {
+  background: var(--accent);
+}

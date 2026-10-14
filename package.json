@@ -1,5 +1,5 @@
 {
-  "name": "nextgig2",
+  "name": "web-app-auth-template",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -8,26 +8,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "echo \"eslint disabled\"",
-    "dev:vite": "vite",
-    "build:vite": "vite build",
-    "preview:vite": "vite preview"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-"@supabase/ssr": "^0.8.0",
+    "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.90.1",
-    "@tiptap/extension-placeholder": "^3.19.0",
-    "@tiptap/extension-underline": "^3.20.0",
-    "@tiptap/react": "^3.19.0",
-    "@tiptap/starter-kit": "^3.19.0",
-    "@types/papaparse": "^5.5.2",
     "axios": "^1.12.2",
-    "dotenv": "^17.2.3",
-    "mongodb": "^7.0.0",
     "next": "^15.1.0",
-    "papaparse": "^5.5.3",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "tiptap-markdown": "^0.9.0"
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

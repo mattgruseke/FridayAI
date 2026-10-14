@@ -34,12 +34,13 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Protected routes - redirect to login if not authenticated
-  const isProtectedRoute = request.nextUrl.pathname.match(
-    /^\/(pipeline|leads|referrals|profile)/
+  // Everything is protected except the auth pages. API routes do their own
+  // checks (requireUser) and return 401 JSON instead of a redirect.
+  const isPublicRoute = request.nextUrl.pathname.match(
+    /^\/(login|signup|reset-password|api)(\/|$)/
   );
 
-  if (!user && isProtectedRoute) {
+  if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("from", request.nextUrl.pathname);

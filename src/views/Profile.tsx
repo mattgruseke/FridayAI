@@ -2,13 +2,10 @@
 
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import OnboardingModal from '../components/OnboardingModal';
-import { createClient } from '../lib/supabase/client';
+import api from '../api/client';
 
 const Profile = () => {
-    const { user, userProfile, isAdmin, preferredRoles, fullName, refreshProfile } = useAuth();
-    const supabase = createClient();
-    const [showPreferences, setShowPreferences] = useState(false);
+    const { user, userProfile, isAdmin, fullName, refreshProfile } = useAuth();
     const [editingName, setEditingName] = useState(false);
     const [nameInput, setNameInput] = useState(fullName);
     const [nameSaving, setNameSaving] = useState(false);
@@ -16,15 +13,12 @@ const Profile = () => {
     const displayName = fullName || user?.email?.split('@')[0] || 'user';
     const initials = displayName.slice(0, 2).toUpperCase();
 
-    const handlePreferencesDismiss = async () => {
-        setShowPreferences(false);
-        await refreshProfile();
-    };
-
     async function handleSaveName() {
         if (!user || !nameInput.trim()) return;
         setNameSaving(true);
-        await supabase.from("user_profiles").update({ full_name: nameInput.trim() }).eq("id", user.id);
+        await api.profile.update({ full_name: nameInput.trim() });
+        // Clears the "welcome" notification seeded at signup (supabase/schema.sql).
+        await api.notifications.completeByType("welcome").catch(() => {});
         await refreshProfile();
         setNameSaving(false);
         setEditingName(false);
@@ -87,36 +81,8 @@ const Profile = () => {
                             <span className="profile-value">{userProfile.invite_code_used}</span>
                         </div>
                     )}
-                    <div className="profile-row profile-row--roles">
-                        <div className="profile-roles-header">
-                            <span className="profile-label">Preferred roles</span>
-                            <button
-                                className="profile-configure-btn"
-                                onClick={() => setShowPreferences(true)}
-                            >
-                                {preferredRoles.length > 0 ? 'edit' : 'Configure'}
-                            </button>
-                        </div>
-                        {preferredRoles.length > 0 ? (
-                            <div className="profile-roles">
-                                {preferredRoles.map((role) => (
-                                    <span key={role} className="profile-role-chip">{role}</span>
-                                ))}
-                            </div>
-                        ) : (
-                            <span className="profile-roles-empty">No roles configured yet</span>
-                        )}
-                    </div>
                 </div>
             </div>
-
-            {showPreferences && (
-                <OnboardingModal
-                    mode="edit"
-                    initialRoles={preferredRoles}
-                    onDismiss={handlePreferencesDismiss}
-                />
-            )}
         </div>
     );
 };

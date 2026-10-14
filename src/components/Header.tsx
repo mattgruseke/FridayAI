@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import frogIcon from "../assets/frog.svg";
 import api from "../api/client";
+import { siteConfig } from "@/config/site";
+import { useTheme } from "@/hooks/useTheme";
 
 type Notification = {
   id: string;
@@ -18,35 +18,13 @@ type Notification = {
   created_at: string;
 };
 
-const COLOR_THEMES = [
-  { id: 'orange',     label: 'Orange',     hex: '#ff6600' },
-  { id: 'blue',       label: 'Blue',       hex: '#2563eb' },
-  { id: 'indigo',     label: 'Indigo',     hex: '#4f46e5' },
-  { id: 'purple',     label: 'Purple',     hex: '#7c3aed' },
-  { id: 'red',        label: 'Red',        hex: '#dc2626' },
-  { id: 'yellow',     label: 'Yellow',     hex: '#d97706' },
-  { id: 'green',      label: 'Green',      hex: '#16a34a' },
-  { id: 'dark-green', label: 'Dark Green', hex: '#166534' },
-];
-
 const Header = () => {
-  const { user, signOut, isAdmin, hasNetworkAccess, onboardingCompleted, onboardingSkipped } = useAuth();
+  const { user, signOut, isAdmin } = useAuth();
   const router = useRouter();
 
-  const [darkMode, setDarkMode] = useState(() => {
-    if (typeof window === 'undefined') return true;
-    const saved = localStorage.getItem("darkMode");
-    return saved !== "false";
-  });
-
-  const [colorTheme, setColorTheme] = useState(() => {
-    if (typeof window === 'undefined') return 'orange';
-    return localStorage.getItem('colorTheme') || 'orange';
-  });
+  const { darkMode, setDarkMode, accent, setAccent, accents } = useTheme();
 
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
-  const navHoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [hoveredNav, setHoveredNav] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -68,23 +46,6 @@ const Header = () => {
       prev.map((n) => (n.id === id ? { ...n, is_dismissed: true } : n))
     );
   }
-
-  useEffect(() => {
-    if (darkMode) {
-      document.body.classList.add("dark-mode");
-    } else {
-      document.body.classList.remove("dark-mode");
-    }
-    localStorage.setItem("darkMode", darkMode?.toString());
-  }, [darkMode]);
-
-  useEffect(() => {
-    COLOR_THEMES.forEach(t => document.body.classList.remove(`theme-${t.id}`));
-    if (colorTheme !== 'orange') {
-      document.body.classList.add(`theme-${colorTheme}`);
-    }
-    localStorage.setItem('colorTheme', colorTheme);
-  }, [colorTheme]);
 
   // Close sidebar when clicking outside
   useEffect(() => {
@@ -113,22 +74,6 @@ const Header = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    return () => { if (navHoverTimerRef.current) clearTimeout(navHoverTimerRef.current); };
-  }, []);
-
-  const showNavTips = onboardingCompleted || onboardingSkipped;
-
-  function handleNavEnter(key: string) {
-    if (navHoverTimerRef.current) clearTimeout(navHoverTimerRef.current);
-    navHoverTimerRef.current = setTimeout(() => setHoveredNav(key), 750);
-  }
-
-  function handleNavLeave() {
-    if (navHoverTimerRef.current) clearTimeout(navHoverTimerRef.current);
-    setHoveredNav(null);
-  }
-
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
   };
@@ -154,44 +99,14 @@ const Header = () => {
       <div className="header">
         <div className="header-inner">
           <Link href="/" className="logo active">
-            <Image src={frogIcon} alt="GigFrog" width={24} height={24} />
-            GigFrog
+            {siteConfig.name}
           </Link>
 
           {/* Desktop nav */}
           <nav className="nav desktop-nav">
-            <span className="nav-item-wrap tour-tip-wrap tour-tip-wrap--left" onMouseEnter={() => handleNavEnter('pipeline')} onMouseLeave={handleNavLeave}>
-              <Link href="/pipeline">pipeline</Link>
-              {showNavTips && hoveredNav === 'pipeline' && (
-                <span className="tour-tip-popup" role="tooltip">Track every lead by stage — Saved, Contacted, Applied, Interviewing, Offer.</span>
-              )}
-            </span>
-            <span className="nav-item-wrap tour-tip-wrap" onMouseEnter={() => handleNavEnter('leads')} onMouseLeave={handleNavLeave}>
-              <Link href="/leads">leads</Link>
-              {showNavTips && hoveredNav === 'leads' && (
-                <span className="tour-tip-popup" role="tooltip">Browse and filter all available job leads matching your preferences.</span>
-              )}
-            </span>
-            <span className="nav-item-wrap tour-tip-wrap" onMouseEnter={() => handleNavEnter('lists')} onMouseLeave={handleNavLeave}>
-              <Link href="/lists">lists</Link>
-              {showNavTips && hoveredNav === 'lists' && (
-                <span className="tour-tip-popup" role="tooltip">Organize leads into named collections like 'Dream companies' or 'Apply this week'.</span>
-              )}
-            </span>
-            {hasNetworkAccess && (
-              <span className="nav-item-wrap tour-tip-wrap" onMouseEnter={() => handleNavEnter('network')} onMouseLeave={handleNavLeave}>
-                <Link href="/network">network</Link>
-                {showNavTips && hoveredNav === 'network' && (
-                  <span className="tour-tip-popup" role="tooltip">Cross-reference your LinkedIn connections with open leads to find warm intros.</span>
-                )}
-              </span>
-            )}
-            <span className="nav-item-wrap tour-tip-wrap tour-tip-wrap--right" onMouseEnter={() => handleNavEnter('referrals')} onMouseLeave={handleNavLeave}>
-              <Link href="/referrals">referrals</Link>
-              {showNavTips && hoveredNav === 'referrals' && (
-                <span className="tour-tip-popup" role="tooltip">Track people who can refer you at specific companies and link them to leads.</span>
-              )}
-            </span>
+            {siteConfig.nav.map((item) => (
+              <Link key={item.href} href={item.href}>{item.label}</Link>
+            ))}
           </nav>
 
           <div className="spacer"></div>
@@ -305,12 +220,12 @@ const Header = () => {
 
             {colorPickerOpen && (
               <div className="color-picker-dropdown">
-                {COLOR_THEMES.map(theme => (
+                {accents.map(theme => (
                   <button
                     key={theme.id}
-                    className={`color-swatch ${colorTheme === theme.id ? 'color-swatch--active' : ''}`}
+                    className={`color-swatch ${accent === theme.id ? 'color-swatch--active' : ''}`}
                     style={{ background: theme.hex }}
-                    onClick={() => { setColorTheme(theme.id); setColorPickerOpen(false); }}
+                    onClick={() => { setAccent(theme.id); setColorPickerOpen(false); }}
                     title={theme.label}
                     aria-label={theme.label}
                   />
@@ -378,23 +293,11 @@ const Header = () => {
             </div>
             <div className="mobile-menu-divider"></div>
             <nav className="mobile-nav">
-              <Link href="/pipeline" onClick={() => setMobileMenuOpen(false)}>
-                Pipeline
-              </Link>
-              <Link href="/leads" onClick={() => setMobileMenuOpen(false)}>
-                Leads
-              </Link>
-              <Link href="/lists" onClick={() => setMobileMenuOpen(false)}>
-                Lists
-              </Link>
-              {hasNetworkAccess && (
-                <Link href="/network" onClick={() => setMobileMenuOpen(false)}>
-                  Network
+              {siteConfig.nav.map((item) => (
+                <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)}>
+                  {item.label}
                 </Link>
-              )}
-              <Link href="/referrals" onClick={() => setMobileMenuOpen(false)}>
-                Referrals
-              </Link>
+              ))}
             </nav>
             <div className="mobile-menu-divider"></div>
             <button className="mobile-menu-item" onClick={handleProfileClick}>

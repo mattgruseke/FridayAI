@@ -2,30 +2,19 @@ import "./globals.css";
 import Providers from "./providers";
 import type { ReactNode } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { siteConfig } from "@/config/site";
+import { themeInitScript } from "@/lib/theme";
 
 export const metadata = {
-  title: "Skip the wait. Jump into your next role with GigFrog.",
-  description: "Everything you need for your job search, all in one place. Leads, notes, and tips and tricks to help you land your next gig faster.",
-  metadataBase: new URL("https://app.gigfrog.io"),
+  title: siteConfig.name,
+  description: siteConfig.description,
+  metadataBase: new URL(siteConfig.url),
   openGraph: {
-    title: "Skip the wait. Jump into your next role with GigFrog.",
-    description: "Everything you need for your job search, all in one place. Leads, notes, and tips and tricks to help you land your next gig faster.",
-    url: "https://app.gigfrog.io",
-    siteName: "Skip the wait. Jump into your next role with GigFrog.",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-      },
-    ],
+    title: siteConfig.name,
+    description: siteConfig.description,
+    url: siteConfig.url,
+    siteName: siteConfig.name,
     type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Skip the wait. Jump into your next role with GigFrog.",
-    description: "Everything you need for your job search, all in one place. Leads, notes, and tips and tricks to help you land your next gig faster.",
-    images: ["/og-image.png"],
   },
 };
 
@@ -60,7 +49,8 @@ export default async function RootLayout({ children }: RootLayoutProps) {
 
   return (
     <html lang="en">
-      <body>
+      <body suppressHydrationWarning>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <Providers initialUser={user} initialProfile={userProfile}>
           {children}
         </Providers>

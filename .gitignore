@@ -30,3 +30,6 @@ dist-ssr
 .next
 tsconfig.tsbuildinfo
 .env.production
+
+# Keep the example env file
+!.env.example

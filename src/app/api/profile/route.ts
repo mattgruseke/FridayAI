@@ -40,7 +40,7 @@ export async function GET() {
 }
 
 // PATCH /api/profile
-// Body: { tour_completed?: boolean }
+// Body: { full_name?: string } — whitelist any column you let users edit
 export async function PATCH(request: Request) {
   const supabase = await createClient();
   const { user, errorResponse } = await requireUser();
@@ -48,8 +48,8 @@ export async function PATCH(request: Request) {
 
   const payload = await request.json();
   const allowed: Record<string, unknown> = {};
-  if (typeof payload.tour_completed === "boolean") {
-    allowed.tour_completed = payload.tour_completed;
+  if (typeof payload.full_name === "string") {
+    allowed.full_name = payload.full_name.trim();
   }
 
   if (Object.keys(allowed).length === 0) {

@@ -4,19 +4,18 @@ import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import { signOut as signOutAction } from "@/app/(auth)/actions";
+import {
+  signOut as signOutAction,
+  updatePassword as updatePasswordAction,
+} from "@/app/(auth)/actions";
 
-type UserProfile = {
+// Mirrors the `user_profiles` table (supabase/schema.sql). Add your own columns
+// here and in the schema.
+export type UserProfile = {
   id: string;
   role?: string;
-  invite_code_used?: string;
-  onboarding_completed?: boolean;
-  onboarding_skipped?: boolean;
-  preferred_roles?: string[];
-  preferred_compensation?: string[];
-  tour_completed?: boolean;
   full_name?: string;
-  has_network_access?: boolean;
+  invite_code_used?: string;
   [key: string]: unknown;
 } | null;
 
@@ -26,15 +25,10 @@ type AuthContextValue = {
   loading: boolean;
   isAdmin: boolean;
   isAuthenticated: boolean;
-  onboardingCompleted: boolean;
-  onboardingSkipped: boolean;
-  preferredRoles: string[];
-  preferredCompensation: string[];
-  tourCompleted: boolean;
-  hasNetworkAccess: boolean;
   fullName: string;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -107,15 +101,10 @@ export const AuthProvider = ({
     loading,
     isAdmin: userProfile?.role === "admin",
     isAuthenticated: !!user,
-    onboardingCompleted: userProfile?.onboarding_completed === true,
-    onboardingSkipped: userProfile?.onboarding_skipped === true,
-    preferredRoles: (userProfile?.preferred_roles as string[]) ?? [],
-    preferredCompensation: (userProfile?.preferred_compensation as string[]) ?? [],
-    tourCompleted: userProfile?.tour_completed === true,
-    hasNetworkAccess: userProfile?.has_network_access === true,
     fullName: (userProfile?.full_name as string) ?? "",
     refreshProfile,
     signOut: signOutAction,
+    updatePassword: updatePasswordAction,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -2,12 +2,8 @@
 const nextConfig = {
   reactStrictMode: true,
   eslint: {
-    // Skip ESLint during production builds for now.
+    // `yarn lint` is a no-op for now; type errors still fail the build.
     ignoreDuringBuilds: true,
-  },
-  typescript: {
-    // Skip type-checking during production builds for now.
-    ignoreBuildErrors: true,
   },
 };
 

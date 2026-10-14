@@ -54,7 +54,8 @@ export async function PUT(request: Request) {
   return jsonResponse({ ok: true });
 }
 
-// PUT /api/notifications?type=xxx&action=complete — complete by type (e.g. after linkedin upload)
+// PATCH /api/notifications — complete every notification of a type (e.g. once the user does the thing it asked for)
+// Body: { type: string }
 export async function PATCH(request: Request) {
   const supabase = await createClient();
   const { user, errorResponse } = await requireUser();
