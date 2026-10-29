@@ -97,3 +97,4 @@ src/
   middleware.ts    session refresh + redirect to /login
 supabase/schema.sql
 ```
+new items
