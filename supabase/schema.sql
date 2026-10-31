@@ -112,6 +112,72 @@ create policy "Users update own items" on public.items
 create policy "Users delete own items" on public.items
   for delete using (auth.uid() = user_id);
 
+-- ─── Restaurants ─────────────────────────────────────────────────────────────
+-- Places the user has logged (/restaurants). cuisine / occasions / services drive
+-- the page's filters; keep their values in sync with src/config/restaurants.ts.
+create table if not exists public.restaurants (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  name          text not null check (char_length(name) between 1 and 200),
+  cuisine       text not null default 'other' check (cuisine in (
+                  'breakfast', 'italian', 'mexican', 'chinese', 'poke', 'sushi', 'indian',
+                  'ramen', 'greek', 'bakeries', 'thai', 'salads', 'bbq', 'other')),
+  style         text,  -- shown instead of the cuisine label, e.g. "Steakhouse"
+  location      text,
+  distance      text,  -- e.g. "5 min drive"
+  price         smallint check (price between 1 and 4),
+  occasions     text[] not null default '{}'
+                  check (occasions <@ array['datenight', 'casual']::text[]),
+  services      text[] not null default '{}'
+                  check (services <@ array['dinein', 'delivery', 'takeout']::text[]),
+  tags          text[] not null default '{}',
+  note          text,
+  usual_order   text,
+  booking_label text,  -- e.g. "Book via OpenTable", "Walk-in only"
+  booking_url   text check (booking_url ~* '^https?://'),
+  created_at    timestamptz not null default now()
+);
+
+create index if not exists restaurants_user_id_idx on public.restaurants (user_id);
+
+alter table public.restaurants enable row level security;
+
+create policy "Users read own restaurants" on public.restaurants
+  for select using (auth.uid() = user_id);
+create policy "Users create own restaurants" on public.restaurants
+  for insert with check (auth.uid() = user_id);
+create policy "Users update own restaurants" on public.restaurants
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users delete own restaurants" on public.restaurants
+  for delete using (auth.uid() = user_id);
+
+-- One row per visit / check-in. A restaurant's rating is the average of these.
+create table if not exists public.restaurant_visits (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  restaurant_id uuid not null references public.restaurants (id) on delete cascade,
+  visited_on    date not null default current_date,
+  rating        smallint check (rating between 1 and 10),
+  rated_by      text,
+  note          text,
+  created_at    timestamptz not null default now()
+);
+
+create index if not exists restaurant_visits_restaurant_id_idx
+  on public.restaurant_visits (restaurant_id);
+
+alter table public.restaurant_visits enable row level security;
+
+create policy "Users read own visits" on public.restaurant_visits
+  for select using (auth.uid() = user_id);
+create policy "Users create own visits" on public.restaurant_visits
+  for insert with check (
+    auth.uid() = user_id
+    and exists (select 1 from public.restaurants r where r.id = restaurant_id and r.user_id = auth.uid())
+  );
+create policy "Users delete own visits" on public.restaurant_visits
+  for delete using (auth.uid() = user_id);
+
 -- ─── Agent intake ────────────────────────────────────────────────────────────
 -- Answers to an agent's intake form (/intake), one row per user per agent.
 -- `answers` holds { answers: {field: value}, known_providers: [...] }.

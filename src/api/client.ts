@@ -1,4 +1,5 @@
 import axios from "axios";
+import type { Cuisine, Occasion, Service } from "@/config/restaurants";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
@@ -117,6 +118,79 @@ export const intakeAPI = {
     }),
 };
 
+// Restaurants API — logged places plus their visits / ratings
+export type Restaurant = {
+  id: string;
+  name: string;
+  cuisine: Cuisine;
+  style: string | null;
+  location: string | null;
+  distance: string | null;
+  price: number | null;
+  occasions: Occasion[];
+  services: Service[];
+  tags: string[];
+  note: string | null;
+  usual_order: string | null;
+  booking_label: string | null;
+  booking_url: string | null;
+  created_at: string;
+  // Computed from visits by the API
+  avg_rating: number | null;
+  visit_count: number;
+};
+
+export type RestaurantInput = Omit<Restaurant, "id" | "created_at" | "avg_rating" | "visit_count">;
+
+export type RestaurantVisit = {
+  id: string;
+  restaurant_id: string;
+  visited_on: string; // YYYY-MM-DD
+  rating: number | null;
+  rated_by: string | null;
+  note: string | null;
+  created_at: string;
+};
+
+export type RestaurantVisitInput = Pick<RestaurantVisit, "visited_on" | "rating" | "rated_by" | "note">;
+
+export type RestaurantDetail = Restaurant & { visits: RestaurantVisit[] };
+
+export const restaurantsAPI = {
+  getAll: () => fetchAPI<Restaurant[]>("/restaurants"),
+
+  get: (id: string) =>
+    fetchAPI<RestaurantDetail>(`/restaurants?${toQueryString({ id })}`),
+
+  create: (data: RestaurantInput) =>
+    fetchAPI<Restaurant>("/restaurants", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: Partial<RestaurantInput>) =>
+    fetchAPI<Restaurant>(`/restaurants?${toQueryString({ id })}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    fetchAPI(`/restaurants?${toQueryString({ id })}`, {
+      method: "DELETE",
+    }),
+
+  addVisit: (restaurantId: string, data: RestaurantVisitInput) =>
+    fetchAPI<RestaurantVisit>(`/restaurants/visits?${toQueryString({ restaurant_id: restaurantId })}`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  deleteVisit: (id: string) =>
+    fetchAPI(`/restaurants/visits?${toQueryString({ id })}`, {
+      method: "DELETE",
+    }),
+};
+
 // Profile API
 export const profileAPI = {
   update: (data: { full_name?: string }) =>
@@ -147,6 +221,7 @@ export const notificationsAPI = {
 export const api = {
   items: itemsAPI,
   intake: intakeAPI,
+  restaurants: restaurantsAPI,
   profile: profileAPI,
   notifications: notificationsAPI,
 };

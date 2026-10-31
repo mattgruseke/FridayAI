@@ -20,7 +20,11 @@ const Sidebar = () => {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`nav-item${pathname === item.href ? " nav-item--active" : ""}`}
+                className={`nav-item${
+                  pathname === item.href || (item.href !== "/" && pathname.startsWith(`${item.href}/`))
+                    ? " nav-item--active"
+                    : ""
+                }`}
               >
                 <span className="nav-dot" />
                 {item.label}

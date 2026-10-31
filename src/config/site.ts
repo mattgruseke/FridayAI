@@ -37,6 +37,7 @@ export const siteConfig = {
     {
       label: "Life",
       items: [
+        { href: "/restaurants", label: "Restaurants" },
         { href: "/entertainment", label: "Entertainment" },
         { href: "/food", label: "Food" },
       ],
