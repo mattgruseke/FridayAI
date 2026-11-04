@@ -77,6 +77,7 @@ export type Item = {
   category: ItemCategory;
   done: boolean;
   status: ItemStatus;
+  notes: string | null;
   created_at: string;
   completed_at: string | null;
   sort_order: number; // lower is higher priority
@@ -93,7 +94,7 @@ export const itemsAPI = {
       body: JSON.stringify({ title, category }),
     }),
 
-  update: (id: string, data: Partial<Pick<Item, "title" | "done" | "status">>) =>
+  update: (id: string, data: Partial<Pick<Item, "title" | "done" | "status" | "notes">>) =>
     fetchAPI<Item>(`/items?id=${encodeURIComponent(id)}`, {
       method: "PUT",
       body: JSON.stringify(data),

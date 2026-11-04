@@ -101,11 +101,13 @@ create table if not exists public.items (
 
 create index if not exists items_user_id_category_idx on public.items (user_id, category);
 
--- Priority order, status and completion time. Safe to re-run on an existing project:
+-- Priority order, status, notes and completion time. Safe to re-run on an existing project:
 -- current items keep their newest-first order, and items already done have no
 -- completed_at because the real time wasn't recorded.
 alter table public.items add column if not exists completed_at timestamptz;
 alter table public.items add column if not exists sort_order bigint;
+alter table public.items add column if not exists notes text
+  check (char_length(notes) <= 5000);
 -- Where an open item stands. "Done" is the done column, so reopening an item
 -- returns it to the status it had. Keep in sync with ITEM_STATUSES (src/api/client.ts).
 alter table public.items add column if not exists status text not null default 'not_started'

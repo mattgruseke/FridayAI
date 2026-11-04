@@ -54,5 +54,8 @@ export const localStore: Store = (g.__localStore ??= {
   ],
 });
 
-// The store outlives hot reloads, so it can hold items from before `status` existed.
-for (const item of localStore.items) item.status ??= "not_started";
+// The store outlives hot reloads, so it can hold items from before these fields existed.
+for (const item of localStore.items) {
+  item.status ??= "not_started";
+  item.notes ??= null;
+}

@@ -66,6 +66,7 @@ export async function POST(request: Request) {
       category,
       done: false,
       status: "not_started" as const,
+      notes: null,
       created_at: new Date().toISOString(),
       completed_at: null,
       sort_order: Math.max(0, ...localStore.items.map((i) => i.sort_order)) + 1,
@@ -86,7 +87,7 @@ export async function POST(request: Request) {
 }
 
 // PUT /api/items?id=xxx
-// Body: { title?: string, done?: boolean, status?: ItemStatus }
+// Body: { title?: string, done?: boolean, status?: ItemStatus, notes?: string | null }
 export async function PUT(request: Request) {
   const supabase = await createClient();
   const { user, errorResponse } = await requireUser();
@@ -106,6 +107,13 @@ export async function PUT(request: Request) {
   }
   if (isStatus(payload.status)) {
     update.status = payload.status;
+  }
+  if (payload.notes === null || typeof payload.notes === "string") {
+    const notes = payload.notes?.trim() || null;
+    if (notes && notes.length > 5000) {
+      return jsonResponse({ message: "Notes can be at most 5000 characters" }, 400);
+    }
+    update.notes = notes;
   }
   if (Object.keys(update).length === 0) {
     return jsonResponse({ message: "No valid fields to update" }, 400);

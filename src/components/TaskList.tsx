@@ -56,10 +56,15 @@ const formatCompleted = (completedAt: string | null) =>
       })}`
     : "Finished (date not recorded)";
 
+type ItemEdit = Pick<Item, "title" | "notes">;
+
 type RowActions = {
   onToggle: (item: Item) => void;
   onStatus: (item: Item, status: ItemStatus) => void;
+  onEdit: (item: Item, edit: Partial<ItemEdit>) => void;
   onDelete: (item: Item) => void;
+  onExpand: (id: string | null) => void;
+  expandedId: string | null;
   showArea: boolean;
 };
 
@@ -68,7 +73,79 @@ type RowBodyProps = RowActions & {
   meta: string;
 };
 
-const RowBody = ({ item, meta, onToggle, onStatus, onDelete, showArea }: RowBodyProps) => (
+// The opened view of a task. Each field saves when it loses focus.
+const TaskDetails = ({
+  item,
+  onEdit,
+  onClose,
+}: {
+  item: Item;
+  onEdit: RowActions["onEdit"];
+  onClose: () => void;
+}) => {
+  const [title, setTitle] = useState(item.title);
+  const [notes, setNotes] = useState(item.notes ?? "");
+
+  const saveTitle = () => {
+    const trimmed = title.trim();
+    if (!trimmed) {
+      setTitle(item.title);
+    } else if (trimmed !== item.title) {
+      onEdit(item, { title: trimmed });
+    }
+  };
+
+  const saveNotes = () => {
+    const trimmed = notes.trim() || null;
+    if (trimmed !== item.notes) onEdit(item, { notes: trimmed });
+  };
+
+  return (
+    <div className="task-details">
+      <label className="task-field">
+        <span className="task-field-label">Task name</span>
+        <input
+          className="input"
+          type="text"
+          value={title}
+          maxLength={500}
+          onChange={(e) => setTitle(e.target.value)}
+          onBlur={saveTitle}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+          }}
+        />
+      </label>
+      <label className="task-field">
+        <span className="task-field-label">Notes</span>
+        <textarea
+          className="input task-notes"
+          value={notes}
+          rows={4}
+          maxLength={5000}
+          placeholder="Add details, reminders, phone numbers..."
+          onChange={(e) => setNotes(e.target.value)}
+          onBlur={saveNotes}
+        />
+      </label>
+      <button type="button" className="btn-link" onClick={onClose}>
+        close
+      </button>
+    </div>
+  );
+};
+
+const RowBody = ({
+  item,
+  meta,
+  onToggle,
+  onStatus,
+  onEdit,
+  onDelete,
+  onExpand,
+  expandedId,
+  showArea,
+}: RowBodyProps) => (
   <>
     <input
       type="checkbox"
@@ -77,8 +154,36 @@ const RowBody = ({ item, meta, onToggle, onStatus, onDelete, showArea }: RowBody
       aria-label={item.done ? "Mark as open" : "Mark as done"}
     />
     <div className="item-content">
-      <div className={`item-title${item.done ? " item-title--done" : ""}`}>{item.title}</div>
-      <div className="item-meta">{meta}</div>
+      <button
+        type="button"
+        className="task-open"
+        aria-expanded={expandedId === item.id}
+        onClick={() => onExpand(expandedId === item.id ? null : item.id)}
+      >
+        <span className={`item-title${item.done ? " item-title--done" : ""}`}>
+          <span>{item.title}</span>
+          {item.notes && (
+            <svg
+              className="task-note-flag"
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              role="img"
+              aria-label="Has notes"
+            >
+              <title>Has notes</title>
+              <path d="M3 1.5h7l3 3v10H3z" />
+              <path d="M5.5 7h5M5.5 10h5" />
+            </svg>
+          )}
+        </span>
+        <span className="item-meta">{meta}</span>
+      </button>
     </div>
     {showArea && (
       <Link href={`/${item.category}`} className="area-tag">
@@ -116,6 +221,9 @@ const RowBody = ({ item, meta, onToggle, onStatus, onDelete, showArea }: RowBody
         Done
       </button>
     </div>
+    {expandedId === item.id && (
+      <TaskDetails item={item} onEdit={onEdit} onClose={() => onExpand(null)} />
+    )}
   </>
 );
 
@@ -183,6 +291,7 @@ type TaskListProps = {
 // of finished ones. Used by the Items and Overview pages, which own the data.
 const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false }: TaskListProps) => {
   const [showFinished, setShowFinished] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -191,32 +300,38 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false }: T
   const open = items.filter((i) => !i.done).sort((a, b) => a.sort_order - b.sort_order);
   const finished = items.filter((i) => i.done).sort((a, b) => completedTime(b) - completedTime(a));
 
-  const handleToggle = async (item: Item) => {
-    const done = !item.done;
-    const completed_at = done ? new Date().toISOString() : null;
-    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, done, completed_at } : i)));
+  // Saves `changes` optimistically. Only those fields are touched afterwards, so
+  // saves that overlap (editing a note, then clicking a status) can't undo each other.
+  const saveChanges = async (
+    item: Item,
+    changes: Partial<Item>,
+    payload: Parameters<typeof api.items.update>[1]
+  ) => {
+    const pick = (source: Item) =>
+      Object.fromEntries(
+        Object.keys(changes).map((key) => [key, source[key as keyof Item]])
+      ) as Partial<Item>;
+    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, ...changes } : i)));
     try {
-      const updated = await api.items.update(item.id, { done });
-      setItems((prev) => prev.map((i) => (i.id === item.id ? updated : i)));
+      const updated = await api.items.update(item.id, payload);
+      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, ...pick(updated) } : i)));
     } catch (err) {
-      setItems((prev) => prev.map((i) => (i.id === item.id ? item : i)));
+      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, ...pick(item) } : i)));
       showToast(getErrorMessage(err), "error");
     }
   };
 
-  // Picking a status on a finished item also reopens it.
-  const handleStatus = async (item: Item, status: ItemStatus) => {
-    setItems((prev) =>
-      prev.map((i) => (i.id === item.id ? { ...i, status, done: false, completed_at: null } : i))
-    );
-    try {
-      const updated = await api.items.update(item.id, { status, done: false });
-      setItems((prev) => prev.map((i) => (i.id === item.id ? updated : i)));
-    } catch (err) {
-      setItems((prev) => prev.map((i) => (i.id === item.id ? item : i)));
-      showToast(getErrorMessage(err), "error");
-    }
+  const handleToggle = (item: Item) => {
+    const done = !item.done;
+    const completed_at = done ? new Date().toISOString() : null;
+    saveChanges(item, { done, completed_at }, { done });
   };
+
+  // Picking a status on a finished item also reopens it.
+  const handleStatus = (item: Item, status: ItemStatus) =>
+    saveChanges(item, { status, done: false, completed_at: null }, { status, done: false });
+
+  const handleEdit = (item: Item, edit: Partial<ItemEdit>) => saveChanges(item, edit, edit);
 
   const handleDelete = async (item: Item) => {
     setItems((prev) => prev.filter((i) => i.id !== item.id));
@@ -255,7 +370,10 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false }: T
   const actions = {
     onToggle: handleToggle,
     onStatus: handleStatus,
+    onEdit: handleEdit,
     onDelete: handleDelete,
+    onExpand: setExpandedId,
+    expandedId,
     showArea,
   };
 
