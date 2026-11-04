@@ -111,6 +111,23 @@ export const intakeAPI = {
   get: (agent: string) =>
     fetchAPI<Intake | null>(`/intake?${toQueryString({ agent })}`),
 
+  // Multipart upload, so this bypasses fetchAPI's JSON body handling.
+  uploadReport: async (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${API_URL}/intake/report`, {
+      method: "POST",
+      body: form,
+      credentials: "include",
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || "Upload failed");
+    return data as { name: string; path: string };
+  },
+
+  deleteReport: (path: string) =>
+    fetchAPI(`/intake/report?${toQueryString({ path })}`, { method: "DELETE" }),
+
   save: (agent: string, data: Pick<Intake, "answers" | "known_providers">) =>
     fetchAPI<{ ok: true; updated_at: string }>(`/intake?${toQueryString({ agent })}`, {
       method: "PUT",

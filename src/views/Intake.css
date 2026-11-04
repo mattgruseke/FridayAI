@@ -146,6 +146,65 @@
   border-color: var(--accent);
 }
 
+/* Inspection report step */
+.report-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 28px 20px;
+  text-align: center;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.report-drop:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.report-drop--busy {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.report-drop-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent-text);
+}
+
+.report-drop-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.report-file {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+}
+
+.report-file-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.report-file label.btn-link {
+  cursor: pointer;
+}
+
 /* Providers step */
 .provider-rows {
   display: flex;

@@ -23,9 +23,23 @@ export type Question = {
   parts?: QuestionPart[]; // "address" only; all parts are required to count as answered
   placeholder?: string;
   weight?: number; // Tier B only: findings unlocked, 1–5
+  inInspection?: boolean; // a home inspection report usually answers this; skipped once one is uploaded
 };
 
 const filled = (v: string | undefined) => !!v && v.trim() !== "";
+
+// Inspection report upload. The file's name and storage path are kept in the
+// intake answers under these fields (see /api/intake/report).
+export const INSPECTION_REPORT_FIELD = "inspection_report"; // "Yes" | "No"
+export const INSPECTION_REPORT_NAME = "inspection_report_name";
+export const INSPECTION_REPORT_PATH = "inspection_report_path";
+
+export const hasInspectionReport = (answers: Record<string, string> | undefined) =>
+  filled(answers?.[INSPECTION_REPORT_PATH]);
+
+// Answered directly, or covered by an uploaded inspection report.
+export const isCovered = (q: Question, answers: Record<string, string> | undefined) =>
+  isAnswered(q, answers) || (!!q.inInspection && hasInspectionReport(answers));
 
 // Whether a question has an answer. Multi-part questions need every part.
 export const isAnswered = (q: Question, answers: Record<string, string> | undefined) =>
@@ -99,6 +113,7 @@ export const TIER_A: Question[] = [
 export const TIER_B: Question[] = [
   {
     field: "electrical_panel_type_amps",
+    inInspection: true,
     short: "Electrical panel",
     weight: 5,
     label: "Do you know what kind of electrical panel you have?",
@@ -108,6 +123,7 @@ export const TIER_B: Question[] = [
   },
   {
     field: "water_heater_type_age",
+    inInspection: true,
     short: "Water heater",
     weight: 5,
     label: "How old is the water heater?",
@@ -132,6 +148,7 @@ export const TIER_B: Question[] = [
   },
   {
     field: "water_source",
+    inInspection: true,
     short: "Water source",
     weight: 4,
     label: "City water or well?",
@@ -140,6 +157,7 @@ export const TIER_B: Question[] = [
   },
   {
     field: "sewer_type",
+    inInspection: true,
     short: "Sewer",
     weight: 4,
     label: "City sewer or septic?",
@@ -149,6 +167,7 @@ export const TIER_B: Question[] = [
   },
   {
     field: "sump_pump_present_last_tested",
+    inInspection: true,
     short: "Sump pump",
     weight: 4,
     label: "Is there a sump pump, and when was it last tested?",
@@ -173,6 +192,7 @@ export const TIER_B: Question[] = [
   },
   {
     field: "roof_material_age",
+    inInspection: true,
     short: "Roof",
     weight: 4,
     label: "Do you know roughly how old the roof is?",
@@ -189,6 +209,7 @@ export const TIER_B: Question[] = [
   },
   {
     field: "basement_type",
+    inInspection: true,
     short: "Basement",
     weight: 3,
     label: "Is your basement finished, unfinished, or a mix?",
@@ -198,6 +219,7 @@ export const TIER_B: Question[] = [
   },
   {
     field: "smoke_co_detectors",
+    inInspection: true,
     short: "Smoke / CO detectors",
     weight: 3,
     label: "How many smoke and CO detectors do you have, and roughly where?",
@@ -206,6 +228,7 @@ export const TIER_B: Question[] = [
   },
   {
     field: "main_water_shutoff_location",
+    inInspection: true,
     short: "Water shutoff",
     weight: 3,
     label: "Do you know where the main water shutoff is?",
@@ -214,6 +237,7 @@ export const TIER_B: Question[] = [
   },
   {
     field: "appliance_ages",
+    inInspection: true,
     short: "Appliances",
     weight: 3,
     label: "Roughly how old are the major appliances?",
@@ -221,6 +245,7 @@ export const TIER_B: Question[] = [
   },
   {
     field: "windows_age_type",
+    inInspection: true,
     short: "Windows",
     weight: 2,
     label: "Do you know roughly how old your windows are, or if any have been replaced?",
@@ -228,6 +253,7 @@ export const TIER_B: Question[] = [
   },
   {
     field: "lot_trees_near_structure",
+    inInspection: true,
     short: "Trees near house",
     weight: 2,
     label: "Are there any large trees close to the house or garage?",
@@ -236,6 +262,7 @@ export const TIER_B: Question[] = [
   },
   {
     field: "grading_drainage_notes",
+    inInspection: true,
     short: "Drainage",
     weight: 2,
     label: "Does water tend to pool anywhere near the foundation after heavy rain?",

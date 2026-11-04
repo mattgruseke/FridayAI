@@ -198,6 +198,19 @@ create policy "Users create own intake" on public.intake_responses
 create policy "Users update own intake" on public.intake_responses
   for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+-- Uploaded home inspection reports (/api/intake/report). Private bucket; each
+-- user can only touch files under a folder named with their user id.
+insert into storage.buckets (id, name, public)
+  values ('inspection-reports', 'inspection-reports', false)
+  on conflict (id) do nothing;
+
+create policy "Users read own inspection reports" on storage.objects
+  for select using (bucket_id = 'inspection-reports' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "Users upload own inspection reports" on storage.objects
+  for insert with check (bucket_id = 'inspection-reports' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "Users delete own inspection reports" on storage.objects
+  for delete using (bucket_id = 'inspection-reports' and (storage.foldername(name))[1] = auth.uid()::text);
+
 -- ─── Signup trigger ─────────────────────────────────────────────────────────
 -- On every new auth user: redeem the invite code passed in signup metadata,
 -- create the profile, and seed a welcome notification.
