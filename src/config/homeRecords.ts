@@ -50,10 +50,10 @@ export const parseCost = (text: string): number | null | undefined => {
 };
 
 // Dates are plain YYYY-MM-DD strings, so they never shift with the time zone.
-const toDateString = (d: Date) =>
+export const toDateString = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-const fromDateString = (date: string) => {
+export const fromDateString = (date: string) => {
   const [year, month, day] = date.split("-").map(Number);
   return new Date(year, month - 1, day);
 };

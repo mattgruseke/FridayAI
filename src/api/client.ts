@@ -266,7 +266,7 @@ export type MaintenanceService = {
 
 export type MaintenanceServiceInput = Omit<MaintenanceService, "id" | "created_at">;
 
-const homeRecords = <Row, Input>(endpoint: string) => ({
+const recordsAPI = <Row, Input>(endpoint: string) => ({
   getAll: () => fetchAPI<Row[]>(endpoint),
 
   create: (data: Input) =>
@@ -288,9 +288,9 @@ const homeRecords = <Row, Input>(endpoint: string) => ({
 });
 
 export const homeAPI = {
-  improvements: homeRecords<HomeImprovement, HomeImprovementInput>("/home/improvements"),
-  maintenance: homeRecords<MaintenanceItem, MaintenanceItemInput>("/home/maintenance"),
-  services: homeRecords<MaintenanceService, MaintenanceServiceInput>("/home/maintenance/services"),
+  improvements: recordsAPI<HomeImprovement, HomeImprovementInput>("/home/improvements"),
+  maintenance: recordsAPI<MaintenanceItem, MaintenanceItemInput>("/home/maintenance"),
+  services: recordsAPI<MaintenanceService, MaintenanceServiceInput>("/home/maintenance/services"),
 
   // Multipart upload, so this bypasses fetchAPI's JSON body handling.
   uploadReceipt: async (file: File) => {
@@ -310,6 +310,63 @@ export const homeAPI = {
     fetchAPI(`/home/receipts?${toQueryString({ path })}`, { method: "DELETE" }),
 
   receiptUrl: (path: string) => `${API_URL}/home/receipts?${toQueryString({ path })}`,
+};
+
+// Family calendar API — events, plus who's looking after the kid and when
+export type CalendarEvent = {
+  id: string;
+  title: string;
+  event_on: string; // YYYY-MM-DD
+  start_time: string | null; // HH:MM, null means all day
+  location: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
+export type CalendarEventInput = Omit<CalendarEvent, "id" | "created_at">;
+
+export type ChildcarePerson = {
+  id: string;
+  name: string;
+  color: string;
+  archived: boolean; // hidden from pickers, but kept for past schedules
+  created_at: string;
+};
+
+export type ChildcarePersonInput = Omit<ChildcarePerson, "id" | "created_at">;
+
+export type ChildcareBlock = { person_id: string; start: string; end: string }; // HH:MM
+
+// A normal week, in effect from effective_from until a later one takes over, so
+// changing it never rewrites past weeks. weekday is 0 (Sunday) to 6.
+export type ChildcareSchedule = {
+  id: string;
+  effective_from: string; // YYYY-MM-DD
+  coverage_start: string; // HH:MM
+  coverage_end: string; // HH:MM
+  coverage_days: number[];
+  blocks: (ChildcareBlock & { weekday: number })[];
+  created_at: string;
+};
+
+export type ChildcareScheduleInput = Omit<ChildcareSchedule, "id" | "created_at">;
+
+// One day that differs from the normal week.
+export type ChildcareOverride = {
+  id: string;
+  on_date: string; // YYYY-MM-DD
+  blocks: ChildcareBlock[];
+  note: string | null;
+  created_at: string;
+};
+
+export type ChildcareOverrideInput = Omit<ChildcareOverride, "id" | "created_at">;
+
+export const calendarAPI = {
+  events: recordsAPI<CalendarEvent, CalendarEventInput>("/calendar/events"),
+  people: recordsAPI<ChildcarePerson, ChildcarePersonInput>("/childcare/people"),
+  schedules: recordsAPI<ChildcareSchedule, ChildcareScheduleInput>("/childcare/schedules"),
+  overrides: recordsAPI<ChildcareOverride, ChildcareOverrideInput>("/childcare/overrides"),
 };
 
 // Profile API
@@ -344,6 +401,7 @@ export const api = {
   intake: intakeAPI,
   restaurants: restaurantsAPI,
   home: homeAPI,
+  calendar: calendarAPI,
   profile: profileAPI,
   notifications: notificationsAPI,
 };

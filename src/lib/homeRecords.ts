@@ -1,14 +1,13 @@
-// Server-side helpers for /api/home: body validation, receipt files, and storage
-// for the home record tables. In local mode records are written to
-// .local-data/home-records.json and receipts to .local-data/home-records/, so
-// they survive restarts (like restaurants and intake answers).
+// Server-side helpers for /api/home: body validation, receipt files, and the home
+// record tables. In local mode records are written to .local-data/home-records.json
+// and receipts to .local-data/home-records/, so they survive restarts (like
+// restaurants and intake answers).
 
-import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
+import { unlink } from "node:fs/promises";
 import path from "node:path";
-import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
 import { isLocalMode } from "@/lib/local";
+import { jsonResponse, optionalDate, recordRoutes, recordStore, text } from "@/lib/recordStore";
+import type { ParseResult } from "@/lib/recordStore";
 import { createClient } from "@/lib/supabase/server";
 import { IMPROVEMENT_TYPES, MAINTENANCE_FREQUENCIES } from "@/config/homeRecords";
 import type {
@@ -21,10 +20,7 @@ import type {
   Receipt,
 } from "@/api/client";
 
-type ParseResult<T> = { ok: true; data: T } | { ok: false; error: string };
-
-export const jsonResponse = (data: unknown, status = 200) =>
-  NextResponse.json(data, { status });
+export { jsonResponse };
 
 // ─── Receipts ──────────────────────────────────────────────────────────────
 
@@ -55,22 +51,6 @@ export const removeReceiptFiles = async (paths: string[]) => {
 };
 
 // ─── Validation ────────────────────────────────────────────────────────────
-
-const text = (value: unknown, max: number) => {
-  if (typeof value !== "string") return null;
-  return value.trim().slice(0, max) || null;
-};
-
-const isRealDate = (value: string) =>
-  /^\d{4}-\d{2}-\d{2}$/.test(value) &&
-  !Number.isNaN(Date.parse(`${value}T00:00:00Z`)) &&
-  new Date(`${value}T00:00:00Z`).toISOString().startsWith(value);
-
-// null for blank, undefined for invalid.
-const optionalDate = (value: unknown) => {
-  if (value == null || value === "") return null;
-  return typeof value === "string" && isRealDate(value) ? value : undefined;
-};
 
 const optionalCost = (value: unknown) => {
   if (value == null || value === "") return null;
@@ -165,194 +145,29 @@ const parseService = async (
   };
 };
 
-// ─── Storage ───────────────────────────────────────────────────────────────
+// ─── Tables ────────────────────────────────────────────────────────────────
 
-type Table = "home_improvements" | "maintenance_items" | "maintenance_services";
-type StoredRow = { id: string; created_at: string; receipts?: Receipt[] };
-type LocalData = Record<Table, StoredRow[]>;
+const receiptPaths = (row: { receipts?: Receipt[] }) => (row.receipts ?? []).map((r) => r.path);
 
-const localFile = path.join(process.cwd(), ".local-data", "home-records.json");
-
-const readLocal = async (): Promise<LocalData> => {
-  try {
-    return JSON.parse(await readFile(localFile, "utf8"));
-  } catch (err) {
-    // Only a missing file means "empty". Treating a damaged file as empty would
-    // let the next save wipe it.
-    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
-      return { home_improvements: [], maintenance_items: [], maintenance_services: [] };
-    }
-    throw err;
-  }
+// Deletes the files for receipts taken off a record, or for a deleted record.
+const cleanUpReceipts = async (before: { receipts?: Receipt[] }, after?: { receipts?: Receipt[] }) => {
+  const kept = after ? receiptPaths(after) : [];
+  await removeReceiptFiles(receiptPaths(before).filter((p) => !kept.includes(p)));
 };
 
-// Changes run one at a time and swap the file in whole, so overlapping saves
-// can't lose each other's work and a crash can't leave half a file.
-let localQueue: Promise<unknown> = Promise.resolve();
+const LOCAL_FILE = "home-records";
 
-const changeLocal = <R>(change: (data: LocalData) => R): Promise<R> => {
-  const run = localQueue.then(async () => {
-    const data = await readLocal();
-    const result = change(data);
-    await mkdir(path.dirname(localFile), { recursive: true });
-    const temp = `${localFile}.tmp`;
-    await writeFile(temp, JSON.stringify(data, null, 2) + "\n");
-    await rename(temp, localFile);
-    return result;
-  });
-  localQueue = run.catch(() => {});
-  return run;
-};
-
-const removedReceipts = (before: StoredRow, after?: { receipts?: Receipt[] }) =>
-  (before.receipts ?? [])
-    .map((r) => r.path)
-    .filter((p) => !after?.receipts?.some((r) => r.path === p));
-
-const tableStore = <Row extends StoredRow, Input extends object>(table: Table) => ({
-  list: async (userId: string): Promise<Row[]> => {
-    if (isLocalMode) return (await readLocal())[table] as Row[];
-    const supabase = await createClient();
-    const { data, error } = await supabase.from(table).select("*").eq("user_id", userId);
-    if (error) throw error;
-    return (data ?? []) as Row[];
-  },
-
-  create: async (userId: string, input: Input): Promise<Row> => {
-    if (isLocalMode) {
-      const row = { id: randomUUID(), created_at: new Date().toISOString(), ...input } as unknown as Row;
-      await changeLocal((data) => data[table].push(row));
-      return row;
-    }
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from(table)
-      .insert({ user_id: userId, ...input })
-      .select("*")
-      .single();
-    if (error) throw error;
-    return data as Row;
-  },
-
-  // Returns null if there's no such row. Files for receipts taken off the record are deleted.
-  update: async (userId: string, id: string, input: Input): Promise<Row | null> => {
-    if (isLocalMode) {
-      const change = await changeLocal((data) => {
-        const index = data[table].findIndex((r) => r.id === id);
-        if (index < 0) return null;
-        const before = data[table][index];
-        const row = { ...before, ...input };
-        data[table][index] = row;
-        return { before, row };
-      });
-      if (!change) return null;
-      await removeReceiptFiles(removedReceipts(change.before, change.row));
-      return change.row as unknown as Row;
-    }
-    const supabase = await createClient();
-    const { data: before, error: readError } = await supabase
-      .from(table)
-      .select("*")
-      .eq("id", id)
-      .eq("user_id", userId)
-      .maybeSingle();
-    if (readError) throw readError;
-    if (!before) return null;
-    const { data, error } = await supabase
-      .from(table)
-      .update(input)
-      .eq("id", id)
-      .eq("user_id", userId)
-      .select("*")
-      .single();
-    if (error) throw error;
-    await removeReceiptFiles(removedReceipts(before as StoredRow, data as StoredRow));
-    return data as Row;
-  },
-
-  remove: async (userId: string, id: string): Promise<void> => {
-    if (isLocalMode) {
-      const removed = await changeLocal((data) => {
-        const row = data[table].find((r) => r.id === id);
-        data[table] = data[table].filter((r) => r.id !== id);
-        return row;
-      });
-      if (removed) await removeReceiptFiles(removedReceipts(removed));
-      return;
-    }
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from(table)
-      .delete()
-      .eq("id", id)
-      .eq("user_id", userId)
-      .select("*")
-      .maybeSingle();
-    if (error) throw error;
-    if (data) await removeReceiptFiles(removedReceipts(data as StoredRow));
-  },
-});
-
-const homeImprovements = tableStore<HomeImprovement, HomeImprovementInput>("home_improvements");
-const maintenanceItems = tableStore<MaintenanceItem, MaintenanceItemInput>("maintenance_items");
-const maintenanceServices = tableStore<MaintenanceService, MaintenanceServiceInput>("maintenance_services");
-
-// ─── Route handlers ────────────────────────────────────────────────────────
-
-type Store<Row extends StoredRow, Input extends object> = ReturnType<typeof tableStore<Row, Input>>;
-
-const errorMessage = (err: unknown) =>
-  (err as { message?: string })?.message || "Something went wrong";
-
-// GET, POST, PUT ?id=, DELETE ?id= for one table. Row-level security
-// (supabase/schema.sql) limits queries to the signed-in user's rows; the user id
-// filters in tableStore are belt-and-braces.
-const recordRoutes = <Row extends StoredRow, Input extends object>(
-  store: Store<Row, Input>,
-  parse: (body: Record<string, unknown>, userId: string) => Promise<ParseResult<Input>>,
-  beforeDelete?: (userId: string, id: string) => Promise<void>
-) => {
-  const withUser =
-    (handler: (userId: string, request: Request) => Promise<Response>) =>
-    async (request: Request) => {
-      const { user, errorResponse } = await requireUser();
-      if (errorResponse) return errorResponse;
-      try {
-        return await handler(user!.id, request);
-      } catch (err) {
-        return jsonResponse({ message: errorMessage(err) }, 500);
-      }
-    };
-
-  const idOf = (request: Request) => new URL(request.url).searchParams.get("id");
-
-  return {
-    GET: withUser(async (userId) => jsonResponse(await store.list(userId))),
-
-    POST: withUser(async (userId, request) => {
-      const parsed = await parse(await request.json(), userId);
-      if (!parsed.ok) return jsonResponse({ message: parsed.error }, 400);
-      return jsonResponse(await store.create(userId, parsed.data), 201);
-    }),
-
-    PUT: withUser(async (userId, request) => {
-      const id = idOf(request);
-      if (!id) return jsonResponse({ message: "Missing id" }, 400);
-      const parsed = await parse(await request.json(), userId);
-      if (!parsed.ok) return jsonResponse({ message: parsed.error }, 400);
-      const row = await store.update(userId, id, parsed.data);
-      return row ? jsonResponse(row) : jsonResponse({ message: "Not found" }, 404);
-    }),
-
-    DELETE: withUser(async (userId, request) => {
-      const id = idOf(request);
-      if (!id) return jsonResponse({ message: "Missing id" }, 400);
-      await beforeDelete?.(userId, id);
-      await store.remove(userId, id);
-      return new NextResponse(null, { status: 204 });
-    }),
-  };
-};
+const homeImprovements = recordStore<HomeImprovement, HomeImprovementInput>(
+  LOCAL_FILE,
+  "home_improvements",
+  cleanUpReceipts
+);
+const maintenanceItems = recordStore<MaintenanceItem, MaintenanceItemInput>(LOCAL_FILE, "maintenance_items");
+const maintenanceServices = recordStore<MaintenanceService, MaintenanceServiceInput>(
+  LOCAL_FILE,
+  "maintenance_services",
+  cleanUpReceipts
+);
 
 export const improvementRoutes = recordRoutes(homeImprovements, parseImprovement);
 

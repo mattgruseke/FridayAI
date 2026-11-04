@@ -32,6 +32,7 @@ export const siteConfig = {
       items: [
         { href: "/", label: "Home" },
         { href: "/all", label: "All items" },
+        { href: "/calendar", label: "Calendar" },
       ],
     },
     {

@@ -363,6 +363,99 @@ create policy "Users upload own home records" on storage.objects
 create policy "Users delete own home records" on storage.objects
   for delete using (bucket_id = 'home-records' and (storage.foldername(name))[1] = auth.uid()::text);
 
+-- ─── Family calendar ────────────────────────────────────────────────────────
+-- Events and the childcare schedule (/calendar). A schedule is a normal week that
+-- applies from effective_from until a later one takes over, so past weeks keep their
+-- real numbers. An override replaces one day. Their blocks hold
+-- [{ person_id, start, end }] (schedules add weekday, 0 = Sunday).
+create table if not exists public.calendar_events (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  title      text not null check (char_length(title) between 1 and 200),
+  event_on   date not null,
+  start_time time,  -- null means all day
+  location   text,
+  notes      text check (char_length(notes) <= 5000),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists calendar_events_user_id_idx on public.calendar_events (user_id, event_on);
+
+alter table public.calendar_events enable row level security;
+
+create policy "Users read own events" on public.calendar_events
+  for select using (auth.uid() = user_id);
+create policy "Users create own events" on public.calendar_events
+  for insert with check (auth.uid() = user_id);
+create policy "Users update own events" on public.calendar_events
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users delete own events" on public.calendar_events
+  for delete using (auth.uid() = user_id);
+
+create table if not exists public.childcare_people (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  name       text not null check (char_length(name) between 1 and 80),
+  color      text not null,
+  archived   boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists childcare_people_user_id_idx on public.childcare_people (user_id);
+
+alter table public.childcare_people enable row level security;
+
+create policy "Users read own childcare people" on public.childcare_people
+  for select using (auth.uid() = user_id);
+create policy "Users create own childcare people" on public.childcare_people
+  for insert with check (auth.uid() = user_id);
+create policy "Users update own childcare people" on public.childcare_people
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create table if not exists public.childcare_schedules (
+  id             uuid primary key default gen_random_uuid(),
+  user_id        uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  effective_from date not null,
+  coverage_start time not null default '07:00',
+  coverage_end   time not null default '18:00',
+  coverage_days  smallint[] not null default '{1,2,3,4,5}',
+  blocks         jsonb not null default '[]'::jsonb,
+  created_at     timestamptz not null default now(),
+  unique (user_id, effective_from)
+);
+
+alter table public.childcare_schedules enable row level security;
+
+create policy "Users read own childcare schedules" on public.childcare_schedules
+  for select using (auth.uid() = user_id);
+create policy "Users create own childcare schedules" on public.childcare_schedules
+  for insert with check (auth.uid() = user_id);
+create policy "Users update own childcare schedules" on public.childcare_schedules
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users delete own childcare schedules" on public.childcare_schedules
+  for delete using (auth.uid() = user_id);
+
+create table if not exists public.childcare_overrides (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  on_date    date not null,
+  blocks     jsonb not null default '[]'::jsonb,
+  note       text,
+  created_at timestamptz not null default now(),
+  unique (user_id, on_date)
+);
+
+alter table public.childcare_overrides enable row level security;
+
+create policy "Users read own childcare overrides" on public.childcare_overrides
+  for select using (auth.uid() = user_id);
+create policy "Users create own childcare overrides" on public.childcare_overrides
+  for insert with check (auth.uid() = user_id);
+create policy "Users update own childcare overrides" on public.childcare_overrides
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users delete own childcare overrides" on public.childcare_overrides
+  for delete using (auth.uid() = user_id);
+
 -- ─── Signup trigger ─────────────────────────────────────────────────────────
 -- On every new auth user: redeem the invite code passed in signup metadata,
 -- create the profile, and seed a welcome notification.
