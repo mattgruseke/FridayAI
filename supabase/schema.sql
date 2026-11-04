@@ -265,6 +265,104 @@ create policy "Users upload own inspection reports" on storage.objects
 create policy "Users delete own inspection reports" on storage.objects
   for delete using (bucket_id = 'inspection-reports' and (storage.foldername(name))[1] = auth.uid()::text);
 
+-- ─── Home records ───────────────────────────────────────────────────────────
+-- Capital improvements (/improvements), plus the maintenance schedule and service
+-- history (/maintenance). Keep type values and interval_months in sync with
+-- src/config/homeRecords.ts. receipts holds [{ name, path }] files in the
+-- home-records bucket.
+create table if not exists public.home_improvements (
+  id             uuid primary key default gen_random_uuid(),
+  user_id        uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  title          text not null check (char_length(title) between 1 and 200),
+  type           text not null default 'improvement' check (type in ('improvement', 'appliance', 'repair')),
+  completed_on   date,
+  cost           numeric(12, 2) check (cost >= 0),
+  done_by        text,
+  warranty_until date,
+  notes          text check (char_length(notes) <= 5000),
+  receipts       jsonb not null default '[]'::jsonb,
+  created_at     timestamptz not null default now()
+);
+
+create index if not exists home_improvements_user_id_idx on public.home_improvements (user_id);
+
+alter table public.home_improvements enable row level security;
+
+create policy "Users read own improvements" on public.home_improvements
+  for select using (auth.uid() = user_id);
+create policy "Users create own improvements" on public.home_improvements
+  for insert with check (auth.uid() = user_id);
+create policy "Users update own improvements" on public.home_improvements
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users delete own improvements" on public.home_improvements
+  for delete using (auth.uid() = user_id);
+
+create table if not exists public.maintenance_items (
+  id              uuid primary key default gen_random_uuid(),
+  user_id         uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  title           text not null check (char_length(title) between 1 and 200),
+  interval_months smallint check (interval_months > 0),  -- null means as needed
+  notes           text check (char_length(notes) <= 5000),
+  created_at      timestamptz not null default now()
+);
+
+create index if not exists maintenance_items_user_id_idx on public.maintenance_items (user_id);
+
+alter table public.maintenance_items enable row level security;
+
+create policy "Users read own maintenance items" on public.maintenance_items
+  for select using (auth.uid() = user_id);
+create policy "Users create own maintenance items" on public.maintenance_items
+  for insert with check (auth.uid() = user_id);
+create policy "Users update own maintenance items" on public.maintenance_items
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users delete own maintenance items" on public.maintenance_items
+  for delete using (auth.uid() = user_id);
+
+create table if not exists public.maintenance_services (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  item_id    uuid not null references public.maintenance_items (id) on delete cascade,
+  service_on date not null default current_date,
+  provider   text,
+  cost       numeric(12, 2) check (cost >= 0),
+  notes      text check (char_length(notes) <= 5000),
+  receipts   jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists maintenance_services_user_id_idx on public.maintenance_services (user_id);
+create index if not exists maintenance_services_item_id_idx on public.maintenance_services (item_id);
+
+alter table public.maintenance_services enable row level security;
+
+create policy "Users read own services" on public.maintenance_services
+  for select using (auth.uid() = user_id);
+create policy "Users create own services" on public.maintenance_services
+  for insert with check (
+    auth.uid() = user_id
+    and exists (select 1 from public.maintenance_items i where i.id = item_id and i.user_id = auth.uid())
+  );
+create policy "Users update own services" on public.maintenance_services
+  for update using (auth.uid() = user_id) with check (
+    auth.uid() = user_id
+    and exists (select 1 from public.maintenance_items i where i.id = item_id and i.user_id = auth.uid())
+  );
+create policy "Users delete own services" on public.maintenance_services
+  for delete using (auth.uid() = user_id);
+
+-- Private bucket; each user can only touch files under a folder named with their user id.
+insert into storage.buckets (id, name, public)
+  values ('home-records', 'home-records', false)
+  on conflict (id) do nothing;
+
+create policy "Users read own home records" on storage.objects
+  for select using (bucket_id = 'home-records' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "Users upload own home records" on storage.objects
+  for insert with check (bucket_id = 'home-records' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "Users delete own home records" on storage.objects
+  for delete using (bucket_id = 'home-records' and (storage.foldername(name))[1] = auth.uid()::text);
+
 -- ─── Signup trigger ─────────────────────────────────────────────────────────
 -- On every new auth user: redeem the invite code passed in signup metadata,
 -- create the profile, and seed a welcome notification.

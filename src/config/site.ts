@@ -46,6 +46,8 @@ export const siteConfig = {
       label: "Home",
       items: [
         { href: "/home", label: "Household tasks" },
+        { href: "/improvements", label: "Capital improvements" },
+        { href: "/maintenance", label: "Maintenance" },
         { href: "/intake", label: "Home intake" },
       ],
     },

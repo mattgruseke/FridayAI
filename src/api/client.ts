@@ -1,5 +1,6 @@
 import axios from "axios";
 import type { Cuisine, Occasion, Service } from "@/config/restaurants";
+import type { ImprovementType } from "@/config/homeRecords";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
@@ -224,6 +225,93 @@ export const restaurantsAPI = {
     }),
 };
 
+// Home records API — capital improvements, the maintenance schedule, and service history
+export type Receipt = { name: string; path: string };
+
+export type HomeImprovement = {
+  id: string;
+  title: string;
+  type: ImprovementType;
+  completed_on: string | null; // YYYY-MM-DD
+  cost: number | null;
+  done_by: string | null;
+  warranty_until: string | null; // YYYY-MM-DD
+  notes: string | null;
+  receipts: Receipt[];
+  created_at: string;
+};
+
+export type HomeImprovementInput = Omit<HomeImprovement, "id" | "created_at">;
+
+export type MaintenanceItem = {
+  id: string;
+  title: string;
+  interval_months: number | null; // null means as needed
+  notes: string | null;
+  created_at: string;
+};
+
+export type MaintenanceItemInput = Omit<MaintenanceItem, "id" | "created_at">;
+
+export type MaintenanceService = {
+  id: string;
+  item_id: string;
+  service_on: string; // YYYY-MM-DD
+  provider: string | null;
+  cost: number | null;
+  notes: string | null;
+  receipts: Receipt[];
+  created_at: string;
+};
+
+export type MaintenanceServiceInput = Omit<MaintenanceService, "id" | "created_at">;
+
+const homeRecords = <Row, Input>(endpoint: string) => ({
+  getAll: () => fetchAPI<Row[]>(endpoint),
+
+  create: (data: Input) =>
+    fetchAPI<Row>(endpoint, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: Input) =>
+    fetchAPI<Row>(`${endpoint}?${toQueryString({ id })}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    fetchAPI(`${endpoint}?${toQueryString({ id })}`, {
+      method: "DELETE",
+    }),
+});
+
+export const homeAPI = {
+  improvements: homeRecords<HomeImprovement, HomeImprovementInput>("/home/improvements"),
+  maintenance: homeRecords<MaintenanceItem, MaintenanceItemInput>("/home/maintenance"),
+  services: homeRecords<MaintenanceService, MaintenanceServiceInput>("/home/maintenance/services"),
+
+  // Multipart upload, so this bypasses fetchAPI's JSON body handling.
+  uploadReceipt: async (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${API_URL}/home/receipts`, {
+      method: "POST",
+      body: form,
+      credentials: "include",
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || "Upload failed");
+    return data as Receipt;
+  },
+
+  deleteReceipt: (path: string) =>
+    fetchAPI(`/home/receipts?${toQueryString({ path })}`, { method: "DELETE" }),
+
+  receiptUrl: (path: string) => `${API_URL}/home/receipts?${toQueryString({ path })}`,
+};
+
 // Profile API
 export const profileAPI = {
   update: (data: { full_name?: string }) =>
@@ -255,6 +343,7 @@ export const api = {
   items: itemsAPI,
   intake: intakeAPI,
   restaurants: restaurantsAPI,
+  home: homeAPI,
   profile: profileAPI,
   notifications: notificationsAPI,
 };
