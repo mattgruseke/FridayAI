@@ -148,6 +148,40 @@
   font-weight: 400;
 }
 
+/* Tasks with a date: outlined, to tell them from events. */
+.fc-chip--task {
+  box-shadow: inset 0 0 0 1px var(--accent);
+  background: none;
+  color: var(--text);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.fc-chip--task:hover {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.fc-chip--done {
+  color: var(--muted);
+  text-decoration: line-through;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.fc-upcoming-tag {
+  margin-left: 8px;
+  padding: 0 6px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--accent-text);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.fc-task-link {
+  color: var(--accent-text);
+  font-size: 13px;
+}
+
 /* Coming up */
 .fc-upcoming {
   padding: 14px 20px 16px;

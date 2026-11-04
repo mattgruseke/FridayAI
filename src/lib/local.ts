@@ -58,4 +58,6 @@ export const localStore: Store = (g.__localStore ??= {
 for (const item of localStore.items) {
   item.status ??= "not_started";
   item.notes ??= null;
+  item.scheduled_on ??= null;
+  item.scheduled_time ??= null;
 }

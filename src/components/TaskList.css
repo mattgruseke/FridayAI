@@ -151,6 +151,29 @@
   padding-top: 4px;
 }
 
+.task-when {
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.task-schedule {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 12px;
+  width: 100%;
+  max-width: 640px;
+}
+
+.task-schedule .task-field {
+  flex: 1 1 150px;
+  width: auto;
+}
+
+.task-schedule .btn-link {
+  padding: 0 0 10px;
+}
+
 .task-field {
   display: block;
   width: 100%;

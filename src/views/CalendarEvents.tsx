@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
+import Link from "next/link";
 import api from "../api/client";
-import type { CalendarEvent, CalendarEventInput } from "../api/client";
+import type { CalendarEvent, CalendarEventInput, Item } from "../api/client";
 import {
   addDays,
   addMonthsToMonth,
@@ -16,6 +17,7 @@ import {
   monthGrid,
   normalizeTime,
   startOfMonth,
+  statusForSchedule,
   WEEKDAYS,
 } from "../config/familyCalendar";
 import { formatDate, today } from "../config/homeRecords";
@@ -135,6 +137,87 @@ const EventForm = ({
   );
 };
 
+// A task's booking lives on the task, so this edits the task itself.
+const TaskBookingForm = ({
+  task,
+  onChanged,
+  onClose,
+  showToast,
+}: {
+  task: Item;
+  onChanged: (updated: Item, message: string) => void;
+  onClose: () => void;
+  showToast: ShowToast;
+}) => {
+  const [date, setDate] = useState(task.scheduled_on ?? "");
+  const [time, setTime] = useState(task.scheduled_time ? normalizeTime(task.scheduled_time) : "");
+  const [saving, setSaving] = useState(false);
+
+  const update = async (change: Parameters<typeof api.items.update>[1], message: string) => {
+    setSaving(true);
+    try {
+      onChanged(await api.items.update(task.id, change), message);
+    } catch (err) {
+      showToast(getErrorMessage(err), "error");
+      setSaving(false);
+    }
+  };
+
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    update({ scheduled_on: date, scheduled_time: time || null }, "Task rescheduled");
+  };
+
+  return (
+    <form className="record-form" onSubmit={handleSubmit}>
+      <div className="record-field record-field--wide">
+        <span className="record-label">Task</span>
+        <span className={`item-title${task.done ? " item-title--done" : ""}`}>{task.title}</span>
+      </div>
+      <Field label="Date">
+        <input className="input" type="date" required autoFocus value={date} onChange={(e) => setDate(e.target.value)} />
+      </Field>
+      <Field label="Time (optional)">
+        <input className="input" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+      </Field>
+      <div className="record-actions">
+        <button className="btn" type="submit" disabled={saving}>
+          Save
+        </button>
+        <button type="button" className="btn-link" onClick={onClose}>
+          cancel
+        </button>
+        <Link className="fc-task-link" href={`/${task.category}#task-${task.id}`}>
+          open task
+        </Link>
+        <button
+          type="button"
+          className="btn-link record-delete"
+          disabled={saving}
+          onClick={() =>
+            update({ done: !task.done }, task.done ? "Task reopened" : "Task marked done")
+          }
+        >
+          {task.done ? "reopen task" : "mark done"}
+        </button>
+        <button
+          type="button"
+          className="btn-link"
+          disabled={saving}
+          onClick={() =>
+            update(
+              { scheduled_on: null, scheduled_time: null, status: statusForSchedule(task, null) },
+              "Taken off the calendar"
+            )
+          }
+        >
+          take off calendar
+        </button>
+      </div>
+    </form>
+  );
+};
+
 type OpenForm = { event?: CalendarEvent; date: string } | null;
 
 const CalendarEvents = ({ showToast }: { showToast: ShowToast }) => {
@@ -143,11 +226,15 @@ const CalendarEvents = ({ showToast }: { showToast: ShowToast }) => {
   const [loading, setLoading] = useState(true);
   const [month, setMonth] = useState(startOfMonth(now));
   const [open, setOpen] = useState<OpenForm>(null);
+  const [tasks, setTasks] = useState<Item[]>([]);
+  const [openTask, setOpenTask] = useState<Item | null>(null);
 
   useEffect(() => {
-    api.calendar.events
-      .getAll()
-      .then(setEvents)
+    Promise.all([api.calendar.events.getAll(), api.items.getAll()])
+      .then(([loadedEvents, items]) => {
+        setEvents(loadedEvents);
+        setTasks(items);
+      })
       .catch((err) => showToast(getErrorMessage(err), "error"))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -160,18 +247,42 @@ const CalendarEvents = ({ showToast }: { showToast: ShowToast }) => {
     return map;
   }, [events]);
 
+  const tasksByDate = useMemo(() => {
+    const map = new Map<string, Item[]>();
+    for (const task of tasks) {
+      if (task.scheduled_on) map.set(task.scheduled_on, [...(map.get(task.scheduled_on) ?? []), task]);
+    }
+    map.forEach((list) =>
+      list.sort((a, b) => (a.scheduled_time ?? "").localeCompare(b.scheduled_time ?? ""))
+    );
+    return map;
+  }, [tasks]);
+
+  const openEventForm = (form: OpenForm) => {
+    setOpenTask(null);
+    setOpen(form);
+  };
+
   const upcoming = useMemo(() => {
     const end = addDays(now, UPCOMING_DAYS);
     const years = [Number(now.slice(0, 4)), Number(end.slice(0, 4))];
     const holidays = [...new Set(years)]
       .flatMap(holidaysInYear)
-      .map((h) => ({ date: h.date, title: h.title, holiday: true as const }));
-    const own = events.map((event) => ({ date: event.event_on, title: event.title, event, holiday: false as const }));
-    return [...own, ...holidays]
+      .map((h) => ({ kind: "holiday" as const, date: h.date, title: h.title }));
+    const own = events.map((event) => ({
+      kind: "event" as const,
+      date: event.event_on,
+      title: event.title,
+      event,
+    }));
+    const booked = tasks
+      .filter((task) => task.scheduled_on && !task.done)
+      .map((task) => ({ kind: "task" as const, date: task.scheduled_on as string, title: task.title, task }));
+    return [...own, ...booked, ...holidays]
       .filter((entry) => entry.date >= now && entry.date <= end)
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(0, UPCOMING_LIMIT);
-  }, [events, now]);
+  }, [events, tasks, now]);
 
   const handleSaved = (saved: CalendarEvent) => {
     setEvents((prev) =>
@@ -207,7 +318,7 @@ const CalendarEvents = ({ showToast }: { showToast: ShowToast }) => {
           </button>
           <span className="fc-title">{formatMonth(month)}</span>
         </div>
-        <button className="btn" type="button" onClick={() => setOpen({ date: now })}>
+        <button className="btn" type="button" onClick={() => openEventForm({ date: now })}>
           Add event
         </button>
       </div>
@@ -228,6 +339,21 @@ const CalendarEvents = ({ showToast }: { showToast: ShowToast }) => {
         />
       )}
 
+      {openTask && (
+        <TaskBookingForm
+          key={openTask.id}
+          task={openTask}
+          onChanged={(updated, message) => {
+            setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+            if (updated.scheduled_on) setMonth(startOfMonth(updated.scheduled_on));
+            setOpenTask(null);
+            showToast(message);
+          }}
+          onClose={() => setOpenTask(null)}
+          showToast={showToast}
+        />
+      )}
+
       <div className="fc-grid-wrap">
         <div className="fc-grid fc-grid--head" aria-hidden="true">
           {WEEKDAYS.map((day) => (
@@ -243,7 +369,7 @@ const CalendarEvents = ({ showToast }: { showToast: ShowToast }) => {
               <div
                 key={date}
                 className={`fc-day${outside ? " fc-day--outside" : ""}${date === now ? " fc-day--today" : ""}`}
-                onClick={() => setOpen({ date })}
+                onClick={() => openEventForm({ date })}
               >
                 <button
                   type="button"
@@ -251,7 +377,7 @@ const CalendarEvents = ({ showToast }: { showToast: ShowToast }) => {
                   aria-label={`Add an event on ${formatDay(date)}`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    setOpen({ date });
+                    openEventForm({ date });
                   }}
                 >
                   {Number(date.slice(8))}
@@ -269,11 +395,29 @@ const CalendarEvents = ({ showToast }: { showToast: ShowToast }) => {
                     title={event.title}
                     onClick={(e) => {
                       e.stopPropagation();
-                      setOpen({ event, date });
+                      openEventForm({ event, date });
                     }}
                   >
                     {event.start_time && <span className="fc-chip-time">{formatTime(normalizeTime(event.start_time))} </span>}
                     {event.title}
+                  </button>
+                ))}
+                {(tasksByDate.get(date) ?? []).map((task) => (
+                  <button
+                    key={task.id}
+                    type="button"
+                    className={`fc-chip fc-chip--task${task.done ? " fc-chip--done" : ""}`}
+                    title={`Task: ${task.title}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpen(null);
+                      setOpenTask(task);
+                    }}
+                  >
+                    {task.scheduled_time && (
+                      <span className="fc-chip-time">{formatTime(normalizeTime(task.scheduled_time))} </span>
+                    )}
+                    {task.title}
                   </button>
                 ))}
               </div>
@@ -289,23 +433,34 @@ const CalendarEvents = ({ showToast }: { showToast: ShowToast }) => {
         ) : (
           <ul className="fc-upcoming-list">
             {upcoming.map((entry) => (
-              <li key={entry.holiday ? `${entry.date}-${entry.title}` : entry.event.id} className="fc-upcoming-item">
+              <li key={`${entry.kind}-${entry.date}-${entry.title}`} className="fc-upcoming-item">
                 <span className="fc-upcoming-when">{formatCountdown(entry.date, now)}</span>
-                {entry.holiday ? (
+                {entry.kind === "holiday" ? (
                   <span className="muted">{entry.title}</span>
                 ) : (
                   <button
                     type="button"
                     className="record-open"
-                    onClick={() => setOpen({ event: entry.event, date: entry.date })}
+                    onClick={() => {
+                      if (entry.kind === "event") {
+                        openEventForm({ event: entry.event, date: entry.date });
+                      } else {
+                        setOpen(null);
+                        setOpenTask(entry.task);
+                      }
+                    }}
                   >
                     {entry.title}
+                    {entry.kind === "task" && <span className="fc-upcoming-tag">task</span>}
                   </button>
                 )}
                 <span className="item-meta fc-upcoming-date">
                   {formatDate(entry.date)}
-                  {!entry.holiday && entry.event.start_time
+                  {entry.kind === "event" && entry.event.start_time
                     ? ` · ${formatTime(normalizeTime(entry.event.start_time))}`
+                    : ""}
+                  {entry.kind === "task" && entry.task.scheduled_time
+                    ? ` · ${formatTime(normalizeTime(entry.task.scheduled_time))}`
                     : ""}
                 </span>
               </li>

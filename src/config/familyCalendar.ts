@@ -5,6 +5,8 @@ import type {
   ChildcareOverride,
   ChildcarePerson,
   ChildcareSchedule,
+  Item,
+  ItemStatus,
 } from "@/api/client";
 import { fromDateString, toDateString } from "./homeRecords";
 
@@ -88,6 +90,24 @@ export const formatTime = (time: string) => {
     hour: "numeric",
     minute: "2-digit",
   });
+};
+
+// "Thu, Nov 5, 8:00 AM"
+export const formatScheduled = (date: string, time: string | null) => {
+  const day = fromDateString(date).toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+  return time ? `${day}, ${formatTime(normalizeTime(time))}` : day;
+};
+
+// Booking a task marks it Scheduled, and taking the booking off undoes that. Moving
+// an existing booking leaves the status alone, since it may have been set on purpose.
+export const statusForSchedule = (item: Item, date: string | null): ItemStatus => {
+  if (date && !item.scheduled_on) return "scheduled";
+  if (!date && item.status === "scheduled") return "not_started";
+  return item.status;
 };
 
 export const formatHours = (minutes: number) => {

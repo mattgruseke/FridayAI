@@ -79,6 +79,8 @@ export type Item = {
   done: boolean;
   status: ItemStatus;
   notes: string | null;
+  scheduled_on: string | null; // YYYY-MM-DD; a date puts the item on the calendar
+  scheduled_time: string | null; // HH:MM, null means no set time
   created_at: string;
   completed_at: string | null;
   sort_order: number; // lower is higher priority
@@ -95,7 +97,7 @@ export const itemsAPI = {
       body: JSON.stringify({ title, category }),
     }),
 
-  update: (id: string, data: Partial<Pick<Item, "title" | "done" | "status" | "notes">>) =>
+  update: (id: string, data: Partial<Pick<Item, "title" | "done" | "status" | "notes" | "scheduled_on" | "scheduled_time">>) =>
     fetchAPI<Item>(`/items?id=${encodeURIComponent(id)}`, {
       method: "PUT",
       body: JSON.stringify(data),

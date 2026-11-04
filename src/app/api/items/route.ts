@@ -3,6 +3,8 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { isLocalMode, localStore } from "@/lib/local";
 import { ITEM_CATEGORIES, ITEM_STATUSES, type ItemCategory, type ItemStatus } from "@/api/client";
+import { isValidTime, normalizeTime } from "@/config/familyCalendar";
+import { isRealDate } from "@/lib/recordStore";
 
 const isCategory = (value: unknown): value is ItemCategory =>
   ITEM_CATEGORIES.includes(value as ItemCategory);
@@ -67,6 +69,8 @@ export async function POST(request: Request) {
       done: false,
       status: "not_started" as const,
       notes: null,
+      scheduled_on: null,
+      scheduled_time: null,
       created_at: new Date().toISOString(),
       completed_at: null,
       sort_order: Math.max(0, ...localStore.items.map((i) => i.sort_order)) + 1,
@@ -87,7 +91,9 @@ export async function POST(request: Request) {
 }
 
 // PUT /api/items?id=xxx
-// Body: { title?: string, done?: boolean, status?: ItemStatus, notes?: string | null }
+// Body: { title?: string, done?: boolean, status?: ItemStatus, notes?: string | null,
+//         scheduled_on?: string | null, scheduled_time?: string | null }
+// scheduled_time is read along with scheduled_on, since a time needs a date.
 export async function PUT(request: Request) {
   const supabase = await createClient();
   const { user, errorResponse } = await requireUser();
@@ -114,6 +120,16 @@ export async function PUT(request: Request) {
       return jsonResponse({ message: "Notes can be at most 5000 characters" }, 400);
     }
     update.notes = notes;
+  }
+  if ("scheduled_on" in payload) {
+    const date = payload.scheduled_on || null;
+    const time = (date && payload.scheduled_time) || null;
+    if (date && !isRealDate(date)) return jsonResponse({ message: "Invalid date" }, 400);
+    if (time && !isValidTime(normalizeTime(String(time)))) {
+      return jsonResponse({ message: "Invalid time" }, 400);
+    }
+    update.scheduled_on = date;
+    update.scheduled_time = time && normalizeTime(String(time));
   }
   if (Object.keys(update).length === 0) {
     return jsonResponse({ message: "No valid fields to update" }, 400);

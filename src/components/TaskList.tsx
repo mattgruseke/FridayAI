@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import Link from "next/link";
 import {
@@ -21,6 +21,7 @@ import {
 } from "@dnd-kit/sortable";
 import api from "../api/client";
 import type { Item, ItemStatus } from "../api/client";
+import { formatScheduled, normalizeTime, statusForSchedule } from "../config/familyCalendar";
 import { getErrorMessage } from "../lib/errors";
 import "./TaskList.css";
 
@@ -62,6 +63,7 @@ type RowActions = {
   onToggle: (item: Item) => void;
   onStatus: (item: Item, status: ItemStatus) => void;
   onEdit: (item: Item, edit: Partial<ItemEdit>) => void;
+  onSchedule: (item: Item, date: string | null, time: string | null) => void;
   onDelete: (item: Item) => void;
   onExpand: (id: string | null) => void;
   expandedId: string | null;
@@ -77,14 +79,19 @@ type RowBodyProps = RowActions & {
 const TaskDetails = ({
   item,
   onEdit,
+  onSchedule,
   onClose,
 }: {
   item: Item;
   onEdit: RowActions["onEdit"];
+  onSchedule: RowActions["onSchedule"];
   onClose: () => void;
 }) => {
+  const savedTime = item.scheduled_time ? normalizeTime(item.scheduled_time) : "";
   const [title, setTitle] = useState(item.title);
   const [notes, setNotes] = useState(item.notes ?? "");
+  const [date, setDate] = useState(item.scheduled_on ?? "");
+  const [time, setTime] = useState(savedTime);
 
   const saveTitle = () => {
     const trimmed = title.trim();
@@ -98,6 +105,17 @@ const TaskDetails = ({
   const saveNotes = () => {
     const trimmed = notes.trim() || null;
     if (trimmed !== item.notes) onEdit(item, { notes: trimmed });
+  };
+
+  const saveSchedule = () => {
+    if (date === (item.scheduled_on ?? "") && (!date || time === savedTime)) return;
+    onSchedule(item, date || null, date ? time || null : null);
+  };
+
+  const clearSchedule = () => {
+    setDate("");
+    setTime("");
+    onSchedule(item, null, null);
   };
 
   return (
@@ -116,6 +134,35 @@ const TaskDetails = ({
           }}
         />
       </label>
+      <div className="task-schedule">
+        <label className="task-field">
+          <span className="task-field-label">Scheduled for</span>
+          <input
+            className="input"
+            type="date"
+            value={date}
+            autoFocus={item.status === "scheduled" && !item.scheduled_on && !item.done}
+            onChange={(e) => setDate(e.target.value)}
+            onBlur={saveSchedule}
+          />
+        </label>
+        <label className="task-field">
+          <span className="task-field-label">Time (optional)</span>
+          <input
+            className="input"
+            type="time"
+            value={time}
+            disabled={!date}
+            onChange={(e) => setTime(e.target.value)}
+            onBlur={saveSchedule}
+          />
+        </label>
+        {item.scheduled_on && (
+          <button type="button" className="btn-link" onClick={clearSchedule}>
+            take off calendar
+          </button>
+        )}
+      </div>
       <label className="task-field">
         <span className="task-field-label">Notes</span>
         <textarea
@@ -141,6 +188,7 @@ const RowBody = ({
   onToggle,
   onStatus,
   onEdit,
+  onSchedule,
   onDelete,
   onExpand,
   expandedId,
@@ -182,7 +230,12 @@ const RowBody = ({
             </svg>
           )}
         </span>
-        <span className="item-meta">{meta}</span>
+        <span className="item-meta">
+          {meta}
+          {item.scheduled_on && (
+            <span className="task-when"> · Scheduled {formatScheduled(item.scheduled_on, item.scheduled_time)}</span>
+          )}
+        </span>
       </button>
     </div>
     {showArea && (
@@ -204,6 +257,8 @@ const RowBody = ({
             aria-pressed={active}
             onClick={() => {
               if (!active) onStatus(item, status);
+              // Scheduled needs a date to reach the calendar, so ask for one.
+              if (status === "scheduled" && !item.scheduled_on) onExpand(item.id);
             }}
           >
             {STATUS_LABELS[status]}
@@ -222,7 +277,7 @@ const RowBody = ({
       </button>
     </div>
     {expandedId === item.id && (
-      <TaskDetails item={item} onEdit={onEdit} onClose={() => onExpand(null)} />
+      <TaskDetails item={item} onEdit={onEdit} onSchedule={onSchedule} onClose={() => onExpand(null)} />
     )}
   </>
 );
@@ -244,6 +299,7 @@ const OpenRow = ({ item, ...actions }: RowActions & { item: Item }) => {
   return (
     <div
       ref={setNodeRef}
+      id={`task-${item.id}`}
       className={`list-item task-row${isDragging ? " task-row--dragging" : ""}`}
       style={{
         transform: transform ? `translate3d(0, ${transform.y}px, 0)` : undefined,
@@ -297,6 +353,19 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false }: T
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  // The calendar links to a task as #task-<id>: open it and bring it into view.
+  useEffect(() => {
+    const target = window.location.hash.match(/^#task-(.+)$/)?.[1];
+    const item = target ? items.find((i) => i.id === target) : undefined;
+    if (!item) return;
+    setExpandedId(item.id);
+    if (item.done) setShowFinished(true);
+    requestAnimationFrame(() =>
+      document.getElementById(`task-${item.id}`)?.scrollIntoView({ block: "center" })
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const open = items.filter((i) => !i.done).sort((a, b) => a.sort_order - b.sort_order);
   const finished = items.filter((i) => i.done).sort((a, b) => completedTime(b) - completedTime(a));
 
@@ -332,6 +401,15 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false }: T
     saveChanges(item, { status, done: false, completed_at: null }, { status, done: false });
 
   const handleEdit = (item: Item, edit: Partial<ItemEdit>) => saveChanges(item, edit, edit);
+
+  const handleSchedule = (item: Item, date: string | null, time: string | null) => {
+    const changes = {
+      scheduled_on: date,
+      scheduled_time: time,
+      status: statusForSchedule(item, date),
+    };
+    saveChanges(item, changes, changes);
+  };
 
   const handleDelete = async (item: Item) => {
     setItems((prev) => prev.filter((i) => i.id !== item.id));
@@ -371,6 +449,7 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false }: T
     onToggle: handleToggle,
     onStatus: handleStatus,
     onEdit: handleEdit,
+    onSchedule: handleSchedule,
     onDelete: handleDelete,
     onExpand: setExpandedId,
     expandedId,
@@ -427,7 +506,7 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false }: T
         ) : (
           <div>
             {finished.map((item) => (
-              <div key={item.id} className="list-item task-row task-row--finished">
+              <div key={item.id} id={`task-${item.id}`} className="list-item task-row task-row--finished">
                 <RowBody item={item} meta={formatCompleted(item.completed_at)} {...actions} />
               </div>
             ))}
