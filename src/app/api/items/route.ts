@@ -2,10 +2,13 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { isLocalMode, localStore } from "@/lib/local";
-import { ITEM_CATEGORIES, type ItemCategory } from "@/api/client";
+import { ITEM_CATEGORIES, ITEM_STATUSES, type ItemCategory, type ItemStatus } from "@/api/client";
 
 const isCategory = (value: unknown): value is ItemCategory =>
   ITEM_CATEGORIES.includes(value as ItemCategory);
+
+const isStatus = (value: unknown): value is ItemStatus =>
+  ITEM_STATUSES.includes(value as ItemStatus);
 
 // Sample resource. Row-level security on `items` (supabase/schema.sql) limits
 // every query to the signed-in user's rows; the user_id filters below are
@@ -14,7 +17,7 @@ const isCategory = (value: unknown): value is ItemCategory =>
 const jsonResponse = (data: unknown, status = 200) =>
   NextResponse.json(data, { status });
 
-// GET /api/items[?category=xxx] — the current user's items, newest first,
+// GET /api/items[?category=xxx] — the current user's items in priority order,
 // optionally limited to one category
 export async function GET(request: Request) {
   const category = new URL(request.url).searchParams.get("category");
@@ -22,9 +25,10 @@ export async function GET(request: Request) {
     return jsonResponse({ message: "Invalid category" }, 400);
   }
   if (isLocalMode) {
-    return jsonResponse(
-      category ? localStore.items.filter((i) => i.category === category) : localStore.items
-    );
+    const items = category
+      ? localStore.items.filter((i) => i.category === category)
+      : localStore.items;
+    return jsonResponse([...items].sort((a, b) => a.sort_order - b.sort_order));
   }
 
   const supabase = await createClient();
@@ -33,7 +37,7 @@ export async function GET(request: Request) {
 
   let query = supabase.from("items").select("*").eq("user_id", user!.id);
   if (category) query = query.eq("category", category);
-  const { data, error } = await query.order("created_at", { ascending: false });
+  const { data, error } = await query.order("sort_order");
 
   if (error) return jsonResponse({ message: error.message }, 500);
 
@@ -61,9 +65,12 @@ export async function POST(request: Request) {
       title: title.trim(),
       category,
       done: false,
+      status: "not_started" as const,
       created_at: new Date().toISOString(),
+      completed_at: null,
+      sort_order: Math.max(0, ...localStore.items.map((i) => i.sort_order)) + 1,
     };
-    localStore.items.unshift(item);
+    localStore.items.push(item);
     return jsonResponse(item, 201);
   }
 
@@ -79,7 +86,7 @@ export async function POST(request: Request) {
 }
 
 // PUT /api/items?id=xxx
-// Body: { title?: string, done?: boolean }
+// Body: { title?: string, done?: boolean, status?: ItemStatus }
 export async function PUT(request: Request) {
   const supabase = await createClient();
   const { user, errorResponse } = await requireUser();
@@ -95,6 +102,10 @@ export async function PUT(request: Request) {
   }
   if (typeof payload.done === "boolean") {
     update.done = payload.done;
+    update.completed_at = payload.done ? new Date().toISOString() : null;
+  }
+  if (isStatus(payload.status)) {
+    update.status = payload.status;
   }
   if (Object.keys(update).length === 0) {
     return jsonResponse({ message: "No valid fields to update" }, 400);

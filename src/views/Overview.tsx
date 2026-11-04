@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import api from "../api/client";
 import type { Item } from "../api/client";
 import { useToast } from "../hooks/useToast";
 import { getErrorMessage } from "../lib/errors";
 import Calendar from "../components/Calendar";
+import TaskList from "../components/TaskList";
 import ViewToggle from "../components/ViewToggle";
 import type { View } from "../components/ViewToggle";
 
@@ -42,29 +42,14 @@ const Overview = () => {
             <div className="list-item">
               <div className="item-meta">Loading...</div>
             </div>
-          ) : items.length === 0 ? (
-            <div className="list-item">
-              <div className="item-content">
-                <div className="item-title muted">No items yet</div>
-                <div className="item-meta">Add some from the home, entertainment or food tabs.</div>
-              </div>
-            </div>
           ) : (
-            items.map((item) => (
-              <div key={item.id} className="list-item">
-                <div className="item-content">
-                  <div className={`item-title${item.done ? " item-title--done" : ""}`}>
-                    {item.title}
-                  </div>
-                  <div className="item-meta">
-                    {new Date(item.created_at).toLocaleDateString()}
-                  </div>
-                </div>
-                <Link href={`/${item.category}`} className="area-tag">
-                  {item.category}
-                </Link>
-              </div>
-            ))
+            <TaskList
+              items={items}
+              setItems={setItems}
+              showToast={showToast}
+              emptyHint="Add some from the home, entertainment or food tabs."
+              showArea
+            />
           )}
         </div>
       </div>

@@ -101,6 +101,58 @@ create table if not exists public.items (
 
 create index if not exists items_user_id_category_idx on public.items (user_id, category);
 
+-- Priority order, status and completion time. Safe to re-run on an existing project:
+-- current items keep their newest-first order, and items already done have no
+-- completed_at because the real time wasn't recorded.
+alter table public.items add column if not exists completed_at timestamptz;
+alter table public.items add column if not exists sort_order bigint;
+-- Where an open item stands. "Done" is the done column, so reopening an item
+-- returns it to the status it had. Keep in sync with ITEM_STATUSES (src/api/client.ts).
+alter table public.items add column if not exists status text not null default 'not_started'
+  check (status in ('needs_research', 'not_started', 'in_progress', 'scheduled'));
+
+create sequence if not exists public.items_sort_order_seq;
+grant usage, select on sequence public.items_sort_order_seq to authenticated;
+
+update public.items i
+  set sort_order = o.next_order
+  from (
+    select id, nextval('public.items_sort_order_seq') as next_order
+    from (select id from public.items where sort_order is null order by created_at desc) s
+  ) o
+  where i.id = o.id;
+
+-- New items take the next value, which puts them at the bottom of the list.
+alter table public.items
+  alter column sort_order set default nextval('public.items_sort_order_seq'),
+  alter column sort_order set not null;
+
+-- Applies a new order to the given items by shuffling the sort_order values they
+-- already hold, so items outside the list (other categories) keep their places.
+create or replace function public.reorder_items(p_ids uuid[])
+returns void
+language sql
+set search_path = public
+as $$
+  with ordered as (
+    select i.id, row_number() over (order by t.ord) as rn
+    from unnest(p_ids) with ordinality as t (id, ord)
+    join public.items i on i.id = t.id and i.user_id = auth.uid()
+  ),
+  slots as (
+    select i.sort_order, row_number() over (order by i.sort_order) as rn
+    from public.items i
+    join ordered o on o.id = i.id
+  )
+  update public.items i
+    set sort_order = s.sort_order
+    from ordered o
+    join slots s on s.rn = o.rn
+    where i.id = o.id;
+$$;
+
+grant execute on function public.reorder_items(uuid[]) to authenticated;
+
 alter table public.items enable row level security;
 
 create policy "Users read own items" on public.items

@@ -66,12 +66,20 @@ const toQueryString = (params: QueryParams) =>
 export const ITEM_CATEGORIES = ["home", "entertainment", "food"] as const;
 export type ItemCategory = (typeof ITEM_CATEGORIES)[number];
 
+// Where an open item stands. Finishing is tracked by `done`, so reopening an
+// item returns it to the status it had.
+export const ITEM_STATUSES = ["needs_research", "not_started", "in_progress", "scheduled"] as const;
+export type ItemStatus = (typeof ITEM_STATUSES)[number];
+
 export type Item = {
   id: string;
   title: string;
   category: ItemCategory;
   done: boolean;
+  status: ItemStatus;
   created_at: string;
+  completed_at: string | null;
+  sort_order: number; // lower is higher priority
 };
 
 export const itemsAPI = {
@@ -85,10 +93,17 @@ export const itemsAPI = {
       body: JSON.stringify({ title, category }),
     }),
 
-  update: (id: string, data: Partial<Pick<Item, "title" | "done">>) =>
+  update: (id: string, data: Partial<Pick<Item, "title" | "done" | "status">>) =>
     fetchAPI<Item>(`/items?id=${encodeURIComponent(id)}`, {
       method: "PUT",
       body: JSON.stringify(data),
+    }),
+
+  // ids in their new order, highest priority first.
+  reorder: (ids: string[]) =>
+    fetchAPI("/items/reorder", {
+      method: "PUT",
+      body: JSON.stringify({ ids }),
     }),
 
   delete: (id: string) =>

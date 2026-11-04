@@ -1,0 +1,151 @@
+.task-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 20px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.task-heading--toggle {
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.task-heading--toggle:last-child {
+  border-bottom: none;
+}
+
+.task-heading--toggle:hover {
+  color: var(--accent-text);
+}
+
+.task-count {
+  color: var(--muted);
+  font-weight: normal;
+}
+
+.task-chevron {
+  display: inline-block;
+  width: 10px;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.task-chevron--open {
+  transform: rotate(90deg);
+}
+
+.task-row {
+  position: relative;
+  flex-wrap: wrap;
+  background: var(--surface);
+}
+
+.list-item.task-row--dragging,
+.list-item.task-row--dragging:hover {
+  z-index: 1;
+  background: var(--surface-2);
+  box-shadow: var(--shadow);
+}
+
+.task-handle {
+  display: flex;
+  flex-shrink: 0;
+  padding: 4px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--muted-dim);
+  cursor: grab;
+  touch-action: none; /* lets touch drags move the row instead of scrolling */
+}
+
+.task-handle:hover {
+  color: var(--text);
+}
+
+.task-row--dragging .task-handle {
+  cursor: grabbing;
+}
+
+.task-priority {
+  flex-shrink: 0;
+  min-width: 2ch;
+  color: var(--accent-text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* A full-width line under the row, lined up with the title above it. */
+.task-statuses {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-left: 88px; /* handle + priority + checkbox + gaps */
+}
+
+.task-row--finished .task-statuses {
+  padding-left: 28px; /* checkbox + gap */
+}
+
+@media (max-width: 600px) {
+  .task-statuses,
+  .task-row--finished .task-statuses {
+    padding-left: 0;
+  }
+}
+
+.task-status {
+  --status-color: var(--muted);
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.task-status:hover {
+  border-color: var(--status-color);
+  color: var(--text);
+}
+
+.task-status[aria-pressed="true"] {
+  border-color: var(--status-color);
+  background: color-mix(in srgb, var(--status-color) 16%, transparent);
+  color: var(--status-color);
+  font-weight: 600;
+  cursor: default;
+}
+
+.task-status--needs_research {
+  --status-color: var(--danger);
+}
+
+.task-status--in_progress {
+  --status-color: var(--accent-text);
+}
+
+.task-status--scheduled {
+  --status-color: #3B6AA8;
+}
+
+body.dark-mode .task-status--scheduled {
+  --status-color: #8DB4E8;
+}
+
+.task-status--done {
+  --status-color: var(--success);
+}

@@ -9,7 +9,7 @@ import type { Item, ItemCategory } from "../api/client";
 import { useToast } from "../hooks/useToast";
 
 // Signed-in landing page: greeting, ask bar, and "On your radar" — the open
-// items across every area, newest first.
+// items across every area, highest priority first.
 
 const RADAR_LIMIT = 4;
 

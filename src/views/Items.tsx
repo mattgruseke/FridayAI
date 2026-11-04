@@ -7,10 +7,12 @@ import type { Item, ItemCategory } from "../api/client";
 import { useToast } from "../hooks/useToast";
 import { getErrorMessage } from "../lib/errors";
 import Calendar from "../components/Calendar";
+import TaskList from "../components/TaskList";
 import ViewToggle from "../components/ViewToggle";
 import type { View } from "../components/ViewToggle";
 
-// A per-user list of one category's items with create / toggle / delete.
+// A per-user list of one category's items with create, plus TaskList's
+// reorder / toggle / delete.
 // Used by the home, entertainment and food pages.
 type ItemsProps = {
   category: ItemCategory;
@@ -40,33 +42,12 @@ const Items = ({ category, heading }: ItemsProps) => {
     setSaving(true);
     try {
       const created = await api.items.create(title, category);
-      setItems((prev) => [created, ...prev]);
+      setItems((prev) => [...prev, created]);
       setTitle("");
     } catch (err) {
       showToast(getErrorMessage(err), "error");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleToggle = async (item: Item) => {
-    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, done: !i.done } : i)));
-    try {
-      await api.items.update(item.id, { done: !item.done });
-    } catch (err) {
-      setItems((prev) => prev.map((i) => (i.id === item.id ? item : i)));
-      showToast(getErrorMessage(err), "error");
-    }
-  };
-
-  const handleDelete = async (item: Item) => {
-    setItems((prev) => prev.filter((i) => i.id !== item.id));
-    try {
-      await api.items.delete(item.id);
-      showToast("Item deleted");
-    } catch (err) {
-      setItems((prev) => [item, ...prev]);
-      showToast(getErrorMessage(err), "error");
     }
   };
 
@@ -101,39 +82,14 @@ const Items = ({ category, heading }: ItemsProps) => {
               <div className="list-item">
                 <div className="item-meta">Loading...</div>
               </div>
-            ) : items.length === 0 ? (
-              <div className="list-item">
-                <div className="item-content">
-                  <div className="item-title muted">No items yet</div>
-                  <div className="item-meta">Add one above to get started.</div>
-                </div>
-              </div>
             ) : (
-              items.map((item) => (
-                <div key={item.id} className="list-item">
-                  <input
-                    type="checkbox"
-                    checked={item.done}
-                    onChange={() => handleToggle(item)}
-                    aria-label={item.done ? "Mark as open" : "Mark as done"}
-                  />
-                  <div className="item-content">
-                    <div className={`item-title${item.done ? " item-title--done" : ""}`}>
-                      {item.title}
-                    </div>
-                    <div className="item-meta">
-                      {new Date(item.created_at).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <button
-                    className="btn-link btn-link--danger"
-                    onClick={() => handleDelete(item)}
-                  >
-                    delete
-                  </button>
-                </div>
-              ))
-              )}
+              <TaskList
+                items={items}
+                setItems={setItems}
+                showToast={showToast}
+                emptyHint="Add one above to get started."
+              />
+            )}
             </>
           )}
         </div>
