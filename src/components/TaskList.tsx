@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import Link from "next/link";
 import {
@@ -33,6 +33,8 @@ const STATUS_LABELS: Record<ItemStatus, string> = {
 };
 
 const STATUSES = Object.keys(STATUS_LABELS) as ItemStatus[];
+
+type StatusFilter = ItemStatus | "all";
 
 const verticalOnly: Modifier = ({ transform }) => ({ ...transform, x: 0 });
 
@@ -282,7 +284,13 @@ const RowBody = ({
   </>
 );
 
-const OpenRow = ({ item, ...actions }: RowActions & { item: Item }) => {
+// `priorities` holds the number shown at each position in the current list. With
+// a filter on, they're the rows' places among all open items, not 1, 2, 3.
+const OpenRow = ({
+  item,
+  priorities,
+  ...actions
+}: RowActions & { item: Item; priorities: number[] }) => {
   const {
     activeIndex,
     attributes,
@@ -324,7 +332,7 @@ const OpenRow = ({ item, ...actions }: RowActions & { item: Item }) => {
         </svg>
       </button>
       <span className="task-priority" title="Priority">
-        {liveIndex(index, activeIndex, overIndex) + 1}
+        {priorities[liveIndex(index, activeIndex, overIndex)]}
       </span>
       <RowBody
         item={item}
@@ -348,6 +356,7 @@ type TaskListProps = {
 const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false }: TaskListProps) => {
   const [showFinished, setShowFinished] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<StatusFilter>("all");
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -368,6 +377,26 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false }: T
 
   const open = items.filter((i) => !i.done).sort((a, b) => a.sort_order - b.sort_order);
   const finished = items.filter((i) => i.done).sort((a, b) => completedTime(b) - completedTime(a));
+
+  // An opened task stays put when its status changes, so picking Scheduled while
+  // filtered to something else can still ask for a date.
+  const visible = open.filter(
+    (i) => filter === "all" || i.status === filter || i.id === expandedId
+  );
+  const priorities = visible.map((i) => open.indexOf(i) + 1);
+
+  // A new task might not match the filter, which would look like it never saved.
+  const itemCount = useRef(items.length);
+  useEffect(() => {
+    if (items.length > itemCount.current) setFilter("all");
+    itemCount.current = items.length;
+  }, [items.length]);
+
+  // Pressing the active filter again turns it off.
+  const handleFilter = (next: StatusFilter) => {
+    setFilter(next === filter ? "all" : next);
+    setExpandedId(null);
+  };
 
   // Saves `changes` optimistically. Only those fields are touched afterwards, so
   // saves that overlap (editing a note, then clicking a status) can't undo each other.
@@ -424,12 +453,13 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false }: T
 
   const handleDragEnd = async ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return;
-    const from = open.findIndex((i) => i.id === active.id);
-    const to = open.findIndex((i) => i.id === over.id);
-    const reordered = arrayMove(open, from, to);
+    const from = visible.findIndex((i) => i.id === active.id);
+    const to = visible.findIndex((i) => i.id === over.id);
+    const reordered = arrayMove(visible, from, to);
 
-    // Same swap the API makes: these items trade the sort_order values they hold.
-    const newOrder = new Map(reordered.map((item, i) => [item.id, open[i].sort_order]));
+    // Same swap the API makes: these items trade the sort_order values they hold,
+    // so tasks hidden by the filter keep their places.
+    const newOrder = new Map(reordered.map((item, i) => [item.id, visible[i].sort_order]));
     const previous = items;
     setItems((prev) =>
       prev.map((i) => {
@@ -460,6 +490,32 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false }: T
     <>
       <div className="task-heading">
         Open Items <span className="task-count">{open.length}</span>
+        {open.length > 0 && (
+          <div className="task-filters" role="group" aria-label="Filter open items">
+            <button
+              type="button"
+              className="task-status task-filter"
+              aria-pressed={filter === "all"}
+              onClick={() => handleFilter("all")}
+            >
+              All
+            </button>
+            {STATUSES.map((status) => (
+              <button
+                key={status}
+                type="button"
+                className={`task-status task-filter task-status--${status}`}
+                aria-pressed={filter === status}
+                onClick={() => handleFilter(status)}
+              >
+                {STATUS_LABELS[status]}{" "}
+                <span className="task-filter-count">
+                  {open.filter((i) => i.status === status).length}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       {open.length === 0 ? (
         <div className="list-item">
@@ -470,6 +526,12 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false }: T
             {items.length === 0 && <div className="item-meta">{emptyHint}</div>}
           </div>
         </div>
+      ) : visible.length === 0 ? (
+        <div className="list-item">
+          <div className="item-content">
+            <div className="item-title muted">No open items match this filter</div>
+          </div>
+        </div>
       ) : (
         <DndContext
           sensors={sensors}
@@ -477,10 +539,10 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false }: T
           modifiers={[verticalOnly]}
           onDragEnd={handleDragEnd}
         >
-          <SortableContext items={open.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+          <SortableContext items={visible.map((i) => i.id)} strategy={verticalListSortingStrategy}>
             <div>
-              {open.map((item) => (
-                <OpenRow key={item.id} item={item} {...actions} />
+              {visible.map((item) => (
+                <OpenRow key={item.id} item={item} priorities={priorities} {...actions} />
               ))}
             </div>
           </SortableContext>
