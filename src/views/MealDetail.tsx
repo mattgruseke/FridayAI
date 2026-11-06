@@ -4,21 +4,25 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import api from "../api/client";
-import type { Meal, MealInput, PlanDay } from "../api/client";
+import type { CalendarEvent, Meal, MealInput, PlanDay } from "../api/client";
 import { formatDay } from "../config/familyCalendar";
 import { today } from "../config/homeRecords";
 import {
   formatMinutes,
   INGREDIENT_GROUPS,
+  isDinnerMeal,
   isOnHandGroup,
+  kindLabel,
+  linkSource,
   mealCuisineLabel,
+  mealKind,
   methodLabel,
   totalMinutes,
 } from "../config/meals";
 import { useToast } from "../hooks/useToast";
 import { getErrorMessage } from "../lib/errors";
 import MealForm from "./MealForm";
-import PlanMealPicker from "./PlanMealPicker";
+import PlanMealPicker, { PlanDishPicker } from "./PlanMealPicker";
 
 // One meal: what it takes, what to buy, and a way to put it on the weekly plan.
 const MealDetail = ({ id }: { id: string }) => {
@@ -26,15 +30,17 @@ const MealDetail = ({ id }: { id: string }) => {
   const now = today();
   const [meal, setMeal] = useState<Meal | null>(null);
   const [days, setDays] = useState<PlanDay[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const { showToast, toastElement } = useToast();
 
   useEffect(() => {
-    Promise.all([api.meals.getAll(), api.planner.days.getAll()])
-      .then(([meals, loadedDays]) => {
+    Promise.all([api.meals.getAll(), api.planner.days.getAll(), api.calendar.events.getAll()])
+      .then(([meals, loadedDays, loadedEvents]) => {
         setMeal(meals.find((m) => m.id === id) ?? null);
         setDays(loadedDays);
+        setEvents(loadedEvents);
       })
       .catch((err) => showToast(getErrorMessage(err), "error"))
       .finally(() => setLoading(false));
@@ -45,7 +51,7 @@ const MealDetail = ({ id }: { id: string }) => {
     try {
       setMeal(await api.meals.update(id, data));
       setEditing(false);
-      showToast("Meal saved");
+      showToast("Saved");
     } catch (err) {
       showToast(getErrorMessage(err), "error");
     }
@@ -58,7 +64,7 @@ const MealDetail = ({ id }: { id: string }) => {
     }
     try {
       await api.meals.delete(id);
-      router.push("/food");
+      router.push(isDinnerMeal(meal) ? "/food" : "/food?tab=extras");
     } catch (err) {
       showToast(getErrorMessage(err), "error");
     }
@@ -77,7 +83,7 @@ const MealDetail = ({ id }: { id: string }) => {
     return (
       <div className="rest-detail">
         <Link href="/food" className="back-link">
-          ← Food
+          ← Meals and food
         </Link>
         <div className="rest-empty">
           <div className="rest-empty-title">Meal not found</div>
@@ -88,15 +94,20 @@ const MealDetail = ({ id }: { id: string }) => {
   }
 
   const total = totalMinutes(meal);
+  const isMeal = isDinnerMeal(meal);
+  const upsertDay = (saved: PlanDay) =>
+    setDays((prev) =>
+      prev.some((d) => d.id === saved.id) ? prev.map((d) => (d.id === saved.id ? saved : d)) : [...prev, saved]
+    );
   const upcoming = days
-    .filter((d) => d.dinner?.meal_id === meal.id && d.plan_on >= now)
+    .filter((d) => d.plan_on >= now && (d.dinner?.meal_id === meal.id || d.dishes?.some((x) => x.meal_id === meal.id)))
     .map((d) => d.plan_on)
     .sort();
 
   return (
     <div className="rest-detail">
-      <Link href="/food" className="back-link">
-        ← Food
+      <Link href={isMeal ? "/food" : "/food?tab=extras"} className="back-link">
+        ← {isMeal ? "Meals and food" : "Sides & desserts"}
       </Link>
 
       {editing ? (
@@ -109,7 +120,9 @@ const MealDetail = ({ id }: { id: string }) => {
           <div className="rest-head">
             <div>
               <h1 className="rest-name">{meal.name}</h1>
-              <div className="rest-meta">{mealCuisineLabel(meal.cuisine)}</div>
+              <div className="rest-meta">
+                {isMeal ? mealCuisineLabel(meal.cuisine) : `${kindLabel(mealKind(meal))} · ${mealCuisineLabel(meal.cuisine)}`}
+              </div>
               {(meal.methods.length > 0 || meal.tags.length > 0) && (
                 <div className="rc-tags rest-head-tags">
                   {meal.methods.map((m) => (
@@ -124,6 +137,17 @@ const MealDetail = ({ id }: { id: string }) => {
                   ))}
                 </div>
               )}
+              <div className="meal-link-row">
+                {meal.recipe_url ? (
+                  <a className="rc-btn rc-btn--book" href={meal.recipe_url} target="_blank" rel="noopener noreferrer">
+                    Open on {linkSource(meal.recipe_url)}
+                  </a>
+                ) : (
+                  <button type="button" className="btn-link" onClick={() => setEditing(true)}>
+                    + Add a link
+                  </button>
+                )}
+              </div>
             </div>
             {total != null && (
               <div className="rest-rating-box">
@@ -134,20 +158,15 @@ const MealDetail = ({ id }: { id: string }) => {
           </div>
 
           <div className="rest-section">
-            <div className="rest-section-title">Make it for dinner</div>
+            <div className="rest-section-title">{isMeal ? "Make it for dinner" : "Make it for something"}</div>
             {upcoming.length > 0 && (
               <p className="item-meta meal-upcoming">On the plan for {upcoming.map(formatDay).join(", ")}</p>
             )}
-            <PlanMealPicker
-              meal={meal}
-              days={days}
-              onPlanned={(saved) =>
-                setDays((prev) =>
-                  prev.some((d) => d.id === saved.id) ? prev.map((d) => (d.id === saved.id ? saved : d)) : [...prev, saved]
-                )
-              }
-              showToast={showToast}
-            />
+            {isMeal ? (
+              <PlanMealPicker meal={meal} days={days} onPlanned={upsertDay} showToast={showToast} />
+            ) : (
+              <PlanDishPicker meal={meal} days={days} events={events} onPlanned={upsertDay} showToast={showToast} />
+            )}
           </div>
 
           <div className="rest-section">
@@ -164,14 +183,6 @@ const MealDetail = ({ id }: { id: string }) => {
                 <div className="fact-label">Servings</div>
                 <div className="fact-val">{meal.servings ?? "—"}</div>
               </div>
-              {meal.recipe_url && (
-                <div>
-                  <div className="fact-label">Recipe</div>
-                  <a className="fact-val" href={meal.recipe_url} target="_blank" rel="noopener noreferrer">
-                    Open recipe
-                  </a>
-                </div>
-              )}
             </div>
           </div>
 

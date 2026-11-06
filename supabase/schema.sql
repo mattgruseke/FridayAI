@@ -463,12 +463,14 @@ create policy "Users delete own childcare overrides" on public.childcare_overrid
 -- hand each week. work holds { parent_id: { location_id, commute, leave_at, start, end, home_at } }
 -- and dinner holds { plan, meal, meal_id, owner, home: { parent_id: boolean } }. Settings hold the
 -- household's two parents, its work locations, and each parent's standard days to fill in from.
+-- dishes holds [{ id, meal_id, name, occasion }]: sides and desserts being made that day.
 create table if not exists public.planner_days (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null default auth.uid() references auth.users (id) on delete cascade,
   plan_on    date not null,
   work       jsonb not null default '{}'::jsonb,
   dinner     jsonb not null default '{}'::jsonb,
+  dishes     jsonb not null default '[]'::jsonb,
   note       text check (char_length(note) <= 2000),
   created_at timestamptz not null default now(),
   unique (user_id, plan_on)
@@ -510,6 +512,7 @@ create table if not exists public.meals (
   id           uuid primary key default gen_random_uuid(),
   user_id      uuid not null default auth.uid() references auth.users (id) on delete cascade,
   name         text not null check (char_length(name) between 1 and 120),
+  kind         text not null default 'meal',  -- meal, side or dessert
   cuisine      text not null,
   methods      jsonb not null default '[]'::jsonb,
   prep_minutes integer check (prep_minutes between 0 and 2880),
@@ -518,7 +521,7 @@ create table if not exists public.meals (
   ingredients  jsonb not null default '[]'::jsonb,
   tags         jsonb not null default '[]'::jsonb,
   notes        text check (char_length(notes) <= 10000),
-  recipe_url   text check (char_length(recipe_url) <= 500),
+  recipe_url   text check (char_length(recipe_url) <= 2000),
   created_at   timestamptz not null default now()
 );
 

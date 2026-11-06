@@ -7,6 +7,20 @@
   margin-bottom: 18px;
 }
 
+/* An open day picker makes one tile taller; the rest of its row stays put. */
+.meal-grid {
+  align-items: start;
+}
+
+.meal-link-row {
+  margin-top: 12px;
+}
+
+.meal-link-row .btn-link {
+  padding: 0;
+  color: var(--accent-text);
+}
+
 .meal-seed {
   margin: 14px 0 0;
 }
@@ -36,7 +50,33 @@
   line-height: 1.7;
 }
 
+.food-head {
+  flex-wrap: wrap;
+}
+
+.food-tab-intro {
+  margin-bottom: 14px;
+}
+
 /* Day picker */
+.meal-picker-events {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+
+.meal-event--on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.meal-picker .meal-picker-occasion {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
 .meal-picker {
   padding: 0 16px 16px;
 }

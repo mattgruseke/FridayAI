@@ -1,7 +1,7 @@
 import axios from "axios";
 import type { Cuisine, Occasion, Service } from "@/config/restaurants";
 import type { ImprovementType } from "@/config/homeRecords";
-import type { IngredientGroup, MealCuisine, MealMethod } from "@/config/meals";
+import type { IngredientGroup, MealCuisine, MealKind, MealMethod } from "@/config/meals";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
@@ -430,11 +430,21 @@ export type PlannerDinner = {
   home: Partial<Record<ParentId, boolean>>; // unset means nobody's answered yet
 };
 
+// A side or dessert being made that day, like a corn salad for a friend's barbecue.
+// It adds to the grocery list without being that night's dinner.
+export type PlannerDish = {
+  id: string;
+  meal_id: string;
+  name: string; // kept so the day still reads right if the recipe is deleted
+  occasion: string | null;
+};
+
 export type PlanDay = {
   id: string;
   plan_on: string; // YYYY-MM-DD
   work: Partial<Record<ParentId, PlannerWork>>;
   dinner: PlannerDinner;
+  dishes: PlannerDish[];
   note: string | null;
   created_at: string;
 };
@@ -454,6 +464,7 @@ export type MealIngredient = { name: string; quantity: string | null; group: Ing
 export type Meal = {
   id: string;
   name: string;
+  kind: MealKind;
   cuisine: MealCuisine;
   methods: MealMethod[];
   prep_minutes: number | null;

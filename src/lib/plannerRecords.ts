@@ -23,6 +23,7 @@ import type { ParseResult } from "@/lib/recordStore";
 const LOCAL_FILE = "planner";
 const MAX_LOCATIONS = 30;
 const MAX_STANDARD_DAYS = 40;
+const MAX_DISHES = 20;
 
 const days = recordStore<PlanDay, PlanDayInput>(LOCAL_FILE, "planner_days");
 const settings = recordStore<PlannerSettings, PlannerSettingsInput>(LOCAL_FILE, "planner_settings");
@@ -74,11 +75,23 @@ const parseDay = async (body: Record<string, unknown>, userId: string): Promise<
     if (typeof rawHome[parent] === "boolean") home[parent] = rawHome[parent] as boolean;
   }
 
+  const rawDishes = Array.isArray(body.dishes) ? body.dishes : [];
+  if (rawDishes.length > MAX_DISHES) return { ok: false, error: "Too many dishes on one day" };
+  const dishes: PlanDayInput["dishes"] = [];
+  for (const raw of rawDishes) {
+    const name = text(raw?.name, 120);
+    const id = text(raw?.id, 80);
+    const meal_id = text(raw?.meal_id, 80);
+    if (!name || !id || !meal_id) return { ok: false, error: "Invalid dish" };
+    dishes.push({ id, meal_id, name, occasion: text(raw.occasion, 200) });
+  }
+
   return {
     ok: true,
     data: {
       plan_on: body.plan_on,
       work,
+      dishes,
       dinner: {
         plan: (rawDinner.plan as DinnerPlan | null | undefined) ?? null,
         meal: text(rawDinner.meal, 200),

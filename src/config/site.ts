@@ -40,7 +40,7 @@ export const siteConfig = {
       items: [
         { href: "/restaurants", label: "Restaurants" },
         { href: "/entertainment", label: "Entertainment" },
-        { href: "/food", label: "Food" },
+        { href: "/food", label: "Meals and food" },
       ],
     },
     {

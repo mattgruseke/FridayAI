@@ -16,7 +16,7 @@ const RADAR_LIMIT = 4;
 const AREA_LABELS: Record<ItemCategory, string> = {
   home: "Household",
   entertainment: "Entertainment",
-  food: "Food",
+  food: "Meals and food",
 };
 
 const greetingFor = (hour: number) =>

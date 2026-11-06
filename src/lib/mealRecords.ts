@@ -2,8 +2,8 @@
 // they're written to .local-data/meals.json, so they survive restarts.
 
 import type { GroceryWeek, GroceryWeekInput, Meal, MealInput } from "@/api/client";
-import { INGREDIENT_GROUP_IDS, MEAL_CUISINE_IDS, MEAL_METHOD_IDS } from "@/config/meals";
-import type { IngredientGroup, MealCuisine, MealMethod } from "@/config/meals";
+import { INGREDIENT_GROUP_IDS, MEAL_CUISINE_IDS, MEAL_KIND_IDS, MEAL_METHOD_IDS, normalizeLink } from "@/config/meals";
+import type { IngredientGroup, MealCuisine, MealKind, MealMethod } from "@/config/meals";
 import { isRealDate, recordRoutes, recordStore, text } from "@/lib/recordStore";
 import type { ParseResult } from "@/lib/recordStore";
 
@@ -14,6 +14,7 @@ const MAX_MINUTES = 2880;
 const MAX_SERVINGS = 100;
 const MAX_KEYS = 500;
 const MAX_EXTRAS = 100;
+const MAX_LINK = 2000;
 
 const meals = recordStore<Meal, MealInput>(LOCAL_FILE, "meals");
 const groceryWeeks = recordStore<GroceryWeek, GroceryWeekInput>(LOCAL_FILE, "grocery_weeks");
@@ -26,20 +27,19 @@ const optionalInt = (value: unknown, min: number, max: number) => {
   return Number.isInteger(value) && (value as number) >= min && (value as number) <= max ? (value as number) : undefined;
 };
 
-const parseUrl = (value: unknown) => {
-  const url = text(value, 500);
-  if (!url) return null;
-  try {
-    return ["http:", "https:"].includes(new URL(url).protocol) ? url : undefined;
-  } catch {
-    return undefined;
-  }
+// Share links carry long tracking codes, and cutting one short would break it.
+const parseLink = (value: unknown) => {
+  if (value == null) return null;
+  if (typeof value !== "string" || value.length > MAX_LINK) return undefined;
+  return normalizeLink(value);
 };
 
 const parseMeal = async (body: Record<string, unknown>): Promise<ParseResult<MealInput>> => {
   const name = text(body.name, 120);
   if (!name) return { ok: false, error: "A meal name is required" };
   if (!MEAL_CUISINE_IDS.includes(body.cuisine as MealCuisine)) return { ok: false, error: "Invalid cuisine" };
+  const kind = body.kind ?? "meal";
+  if (!MEAL_KIND_IDS.includes(kind as MealKind)) return { ok: false, error: "Invalid recipe type" };
 
   const methods = Array.isArray(body.methods) ? body.methods : [];
   if (methods.some((m) => !MEAL_METHOD_IDS.includes(m))) return { ok: false, error: "Invalid cooking style" };
@@ -62,8 +62,8 @@ const parseMeal = async (body: Record<string, unknown>): Promise<ParseResult<Mea
     ingredients.push({ name: ingredient, quantity: text(raw.quantity, 60), group: raw.group });
   }
 
-  const recipe_url = parseUrl(body.recipe_url);
-  if (recipe_url === undefined) return { ok: false, error: "The recipe link has to be a web address" };
+  const recipe_url = parseLink(body.recipe_url);
+  if (recipe_url === undefined) return { ok: false, error: "That link doesn't look like a web address" };
 
   const tags = (Array.isArray(body.tags) ? body.tags : [])
     .map((tag) => text(tag, 40))
@@ -74,6 +74,7 @@ const parseMeal = async (body: Record<string, unknown>): Promise<ParseResult<Mea
     ok: true,
     data: {
       name,
+      kind: kind as MealKind,
       cuisine: body.cuisine as MealCuisine,
       methods: [...new Set(methods as MealMethod[])],
       prep_minutes,

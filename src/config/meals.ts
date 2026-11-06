@@ -6,6 +6,16 @@ import { PARENT_IDS } from "@/api/client";
 import { formatTime, fromMinutes, toMinutes } from "./familyCalendar";
 import { formatDate, fromDateString } from "./homeRecords";
 
+// Meals are what's for dinner. Sides and desserts are for bringing somewhere or adding
+// to a dinner, so they're never suggested as the dinner itself.
+export const MEAL_KINDS = [
+  { id: "meal", label: "Meal" },
+  { id: "side", label: "Side" },
+  { id: "dessert", label: "Dessert" },
+] as const;
+
+export const EXTRA_KINDS = MEAL_KINDS.filter((k) => k.id !== "meal");
+
 export const MEAL_METHODS = [
   { id: "crockpot", label: "Crock pot" },
   { id: "night_before", label: "Prep the night before" },
@@ -42,11 +52,13 @@ export const INGREDIENT_GROUPS = [
   { id: "spices", label: "Spices" },
 ] as const;
 
+export type MealKind = (typeof MEAL_KINDS)[number]["id"];
 export type MealMethod = (typeof MEAL_METHODS)[number]["id"];
 export type MealCuisine = (typeof MEAL_CUISINES)[number]["id"];
 export type TimeFilter = (typeof TIME_FILTERS)[number]["id"];
 export type IngredientGroup = (typeof INGREDIENT_GROUPS)[number]["id"];
 
+export const MEAL_KIND_IDS = MEAL_KINDS.map((k) => k.id) as MealKind[];
 export const MEAL_METHOD_IDS = MEAL_METHODS.map((m) => m.id) as MealMethod[];
 export const MEAL_CUISINE_IDS = MEAL_CUISINES.map((c) => c.id) as MealCuisine[];
 export const INGREDIENT_GROUP_IDS = INGREDIENT_GROUPS.map((g) => g.id) as IngredientGroup[];
@@ -54,11 +66,60 @@ export const INGREDIENT_GROUP_IDS = INGREDIENT_GROUPS.map((g) => g.id) as Ingred
 const labelOf = (list: readonly { id: string; label: string }[], id: string) =>
   list.find((x) => x.id === id)?.label ?? id;
 
+export const kindLabel = (id: string) => labelOf(MEAL_KINDS, id);
 export const methodLabel = (id: string) => labelOf(MEAL_METHODS, id);
 export const mealCuisineLabel = (id: string) => labelOf(MEAL_CUISINES, id);
 export const groupLabel = (id: string) => labelOf(INGREDIENT_GROUPS, id);
 
 export const isOnHandGroup = (group: IngredientGroup) => group === "pantry" || group === "spices";
+
+// Recipes saved before sides and desserts existed have no kind, and they're all meals.
+export const mealKind = (meal: Pick<Meal, "kind">): MealKind => meal.kind ?? "meal";
+export const isDinnerMeal = (meal: Pick<Meal, "kind">) => mealKind(meal) === "meal";
+
+// ─── Links ───────────────────────────────────────────────────────────────
+
+const LINK_SOURCES: [string, string][] = [
+  ["instagram.com", "Instagram"],
+  ["tiktok.com", "TikTok"],
+  ["youtube.com", "YouTube"],
+  ["youtu.be", "YouTube"],
+  ["pinterest.com", "Pinterest"],
+  ["pin.it", "Pinterest"],
+  ["facebook.com", "Facebook"],
+  ["fb.watch", "Facebook"],
+];
+
+// A clean web address from whatever got pasted: a bare address, or share text with a
+// link inside it. null for blank, undefined if there's no usable link. Only http and
+// https get through, since this ends up as something you click.
+export const normalizeLink = (value: string) => {
+  const pasted = value.trim();
+  if (!pasted) return null;
+  const inText = pasted.match(/https?:\/\/\S+/i)?.[0];
+  if (!inText && (/\s/.test(pasted) || !pasted.includes("."))) return undefined;
+  // Something like ftp: or mailto: is a different kind of address, not a bare site name.
+  // A colon then a number is a port, as in example.com:8080.
+  if (!inText && /^[a-z][a-z0-9+.-]*:(?!\d)/i.test(pasted)) return undefined;
+  try {
+    const url = new URL(inText ?? `https://${pasted}`);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return undefined;
+    return url.hostname.includes(".") && !url.username && !url.password ? url.href : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+// "Instagram", "TikTok", or the site's own name, like "seriouseats.com".
+export const linkSource = (link: string) => {
+  try {
+    const host = new URL(link).hostname.replace(/^www\./, "");
+    const known = LINK_SOURCES.find(([domain]) => host === domain || host.endsWith(`.${domain}`));
+    return known ? known[1] : host;
+  } catch {
+    return "link";
+  }
+};
 
 // ─── Times ─────────────────────────────────────────────────────────────────
 
@@ -107,6 +168,7 @@ export type GroceryItem = {
 
 export type GroceryList = {
   dinners: { date: string; meal: Meal }[];
+  dishes: { date: string; meal: Meal; occasion: string | null }[];
   toBuy: GroceryItem[];
   onHand: GroceryItem[];
   // What actually needs ordering, once "already have it" and "I'm out" are applied.
@@ -149,8 +211,17 @@ export const buildGroceryList = ({
       return meal ? [{ date, meal }] : [];
     });
 
+  const dishes = dates
+    .filter((date) => date >= now)
+    .flatMap((date) =>
+      (days.find((d) => d.plan_on === date)?.dishes ?? []).flatMap((dish) => {
+        const meal = meals.find((m) => m.id === dish.meal_id);
+        return meal ? [{ date, meal, occasion: dish.occasion }] : [];
+      })
+    );
+
   const items = new Map<string, GroceryItem>();
-  for (const { meal } of dinners) {
+  for (const { meal } of [...dinners, ...dishes]) {
     for (const ingredient of meal.ingredients) {
       const key = groceryKey(ingredient.name);
       const item = items.get(key) ?? {
@@ -194,14 +265,24 @@ export const buildGroceryList = ({
       ? "to_order"
       : "empty";
 
-  return { dinners, toBuy, onHand, needed, addedSinceOrder, status };
+  return { dinners, dishes, toBuy, onHand, needed, addedSinceOrder, status };
 };
 
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
 
-// "14 items for 3 dinners"
-export const grocerySummary = (list: GroceryList) =>
-  `${plural(list.needed.length, "item")} for ${plural(list.dinners.length, "dinner")}`;
+// "14 items for 3 dinners", "16 items for 3 dinners and 1 other dish"
+export const grocerySummary = (list: GroceryList) => {
+  const dinners = list.dinners.length;
+  const dishes = list.dishes.length;
+  const dishWord = (count: number) => `${count} ${count === 1 ? "dish" : "dishes"}`;
+  const forWhat =
+    dinners > 0 && dishes > 0
+      ? `${plural(dinners, "dinner")} and ${dishes} other ${dishes === 1 ? "dish" : "dishes"}`
+      : dishes > 0
+        ? dishWord(dishes)
+        : plural(dinners, "dinner");
+  return `${plural(list.needed.length, "item")} for ${forWhat}`;
+};
 
 export const itemAmount = (item: GroceryItem) => item.quantities.join(" + ");
 
@@ -318,6 +399,7 @@ const starter = (
   rows: Row[]
 ): MealInput => ({
   name,
+  kind: "meal",
   cuisine,
   methods,
   prep_minutes,
@@ -378,4 +460,44 @@ export const STARTER_MEALS: MealInput[] = [
     ["spices", "Italian seasoning", "1 tsp"],
     ["spices", "Salt and pepper"],
   ]),
+];
+
+// The same, for the Sides & desserts tab.
+export const STARTER_EXTRAS: MealInput[] = [
+  {
+    ...starter("Corn salad", "american", ["stovetop"], 15, 10, 8, [
+      ["produce", "Sweet corn", "6 ears"],
+      ["produce", "Cherry tomatoes", "1 pint"],
+      ["produce", "Red onion", "1/2"],
+      ["produce", "Basil", "1 bunch"],
+      ["dairy", "Feta", "4 oz"],
+      ["pantry", "Olive oil", "3 tbsp"],
+      ["pantry", "Red wine vinegar", "2 tbsp"],
+      ["spices", "Salt and pepper"],
+    ]),
+    kind: "side",
+  },
+  {
+    ...starter("Pound cake", "american", ["oven"], 20, 70, 12, [
+      ["dairy", "Butter", "1 lb"],
+      ["dairy", "Eggs", "6"],
+      ["dairy", "Milk", "1/4 cup"],
+      ["pantry", "Flour", "3 cups"],
+      ["pantry", "Sugar", "3 cups"],
+      ["pantry", "Vanilla extract", "2 tsp"],
+      ["spices", "Salt", "1/2 tsp"],
+    ]),
+    kind: "dessert",
+  },
+  {
+    ...starter("Magic cookie bars", "american", ["oven"], 10, 25, 24, [
+      ["grocery", "Graham cracker crumbs", "1 1/2 cups"],
+      ["grocery", "Sweetened condensed milk", "14 oz can"],
+      ["grocery", "Semisweet chocolate chips", "2 cups"],
+      ["grocery", "Shredded coconut", "1 1/3 cups"],
+      ["grocery", "Chopped walnuts", "1 cup"],
+      ["dairy", "Butter", "1/2 cup"],
+    ]),
+    kind: "dessert",
+  },
 ];

@@ -130,10 +130,10 @@ const GroceryPanel = ({
 
   return (
     <div className="grocery-panel">
-      {list.dinners.length > 0 ? (
+      {list.dinners.length + list.dishes.length > 0 ? (
         <div className="grocery-dinners">
-          {list.dinners.map(({ date, meal }) => (
-            <Link key={date} className="grocery-dinner" href={`/food/${meal.id}`}>
+          {[...list.dinners, ...list.dishes].map(({ date, meal }) => (
+            <Link key={`${date}-${meal.id}`} className="grocery-dinner" href={`/food/${meal.id}`}>
               <span className="grocery-dinner-day">
                 {WEEKDAYS[weekdayOf(date)].slice(0, 3)} {Number(date.slice(8))}
               </span>
@@ -144,7 +144,7 @@ const GroceryPanel = ({
       ) : (
         <p className="item-meta">
           No meals picked for the rest of this week. Pick one on a day&apos;s dinner, or from{" "}
-          <Link href="/food">Food</Link>, and its groceries show up here.
+          <Link href="/food">Meals and food</Link>, and its groceries show up here.
         </p>
       )}
 

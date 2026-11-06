@@ -3,14 +3,25 @@
 import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { Meal, MealIngredient, MealInput } from "../api/client";
-import { formatMinutes, INGREDIENT_GROUPS, isOnHandGroup, MEAL_CUISINES, MEAL_METHODS } from "../config/meals";
-import type { IngredientGroup, MealCuisine, MealMethod } from "../config/meals";
+import {
+  formatMinutes,
+  INGREDIENT_GROUPS,
+  isOnHandGroup,
+  linkSource,
+  MEAL_CUISINES,
+  MEAL_KINDS,
+  MEAL_METHODS,
+  mealKind,
+  normalizeLink,
+} from "../config/meals";
+import type { IngredientGroup, MealCuisine, MealKind, MealMethod } from "../config/meals";
 import { Chips, toggleIn } from "./RestaurantForm";
 
 type IngredientRow = { rowId: number; name: string; quantity: string; group: IngredientGroup };
 
 type FormState = {
   name: string;
+  kind: MealKind;
   cuisine: MealCuisine;
   methods: MealMethod[];
   prep: string;
@@ -26,6 +37,7 @@ const numberOrNull = (value: string) => (value.trim() === "" ? null : Number(val
 
 const fromForm = (f: FormState): MealInput => ({
   name: f.name.trim(),
+  kind: f.kind,
   cuisine: f.cuisine,
   methods: f.methods,
   prep_minutes: numberOrNull(f.prep),
@@ -43,11 +55,13 @@ const fromForm = (f: FormState): MealInput => ({
 
 const MealForm = ({
   initial,
+  defaultKind = "meal",
   submitLabel,
   onSubmit,
   onCancel,
 }: {
   initial?: Meal;
+  defaultKind?: MealKind;
   submitLabel: string;
   onSubmit: (data: MealInput) => Promise<void>;
   onCancel: () => void;
@@ -62,6 +76,7 @@ const MealForm = ({
 
   const [form, setForm] = useState<FormState>(() => ({
     name: initial?.name ?? "",
+    kind: initial ? mealKind(initial) : defaultKind,
     cuisine: initial?.cuisine ?? "american",
     methods: initial?.methods ?? [],
     prep: initial?.prep_minutes != null ? String(initial.prep_minutes) : "",
@@ -94,6 +109,8 @@ const MealForm = ({
     }
   };
 
+  const link = normalizeLink(form.recipe_url);
+
   const minutesField = (key: "prep" | "cook", label: string) => {
     const minutes = Number(form[key]);
     return (
@@ -117,15 +134,32 @@ const MealForm = ({
   return (
     <form className="rest-form" onSubmit={handleSubmit}>
       <label className="rf-field">
-        <span className="rf-label">Meal *</span>
+        <span className="rf-label">Name *</span>
         <input
           className="input"
           value={form.name}
           maxLength={120}
-          placeholder="Chicken tacos"
+          placeholder={form.kind === "meal" ? "Chicken tacos" : form.kind === "side" ? "Corn salad" : "Pound cake"}
           onChange={(e) => set("name", e.target.value)}
         />
       </label>
+
+      <label className="rf-field">
+        <span className="rf-label">Link</span>
+        <input
+          className="input"
+          value={form.recipe_url}
+          placeholder="Paste a link from Instagram, TikTok or a cooking site"
+          onChange={(e) => set("recipe_url", e.target.value)}
+        />
+        {link && <span className="item-meta">{linkSource(link)} link</span>}
+        {link === undefined && <span className="fc-gap-text item-meta">That doesn&apos;t look like a link yet</span>}
+      </label>
+
+      <div className="rf-field">
+        <span className="rf-label">Type</span>
+        <Chips wide options={MEAL_KINDS} selected={[form.kind]} onToggle={(id) => set("kind", id)} label="Type" />
+      </div>
 
       <div className="rf-grid">
         {minutesField("prep", "Prep time (minutes)")}
@@ -230,29 +264,18 @@ const MealForm = ({
         />
       </label>
 
-      <div className="rf-grid">
-        <label className="rf-field">
-          <span className="rf-label">Recipe link</span>
-          <input
-            className="input"
-            value={form.recipe_url}
-            placeholder="https://..."
-            onChange={(e) => set("recipe_url", e.target.value)}
-          />
-        </label>
-        <label className="rf-field">
-          <span className="rf-label">Tags</span>
-          <input
-            className="input"
-            value={form.tags}
-            placeholder="Kid friendly, Freezes well"
-            onChange={(e) => set("tags", e.target.value)}
-          />
-        </label>
-      </div>
+      <label className="rf-field">
+        <span className="rf-label">Tags</span>
+        <input
+          className="input"
+          value={form.tags}
+          placeholder="Kid friendly, Freezes well"
+          onChange={(e) => set("tags", e.target.value)}
+        />
+      </label>
 
       <div className="rf-actions">
-        <button className="btn" type="submit" disabled={saving || !form.name.trim()}>
+        <button className="btn" type="submit" disabled={saving || !form.name.trim() || link === undefined}>
           {saving ? "Saving..." : submitLabel}
         </button>
         <button className="btn-link" type="button" onClick={onCancel}>

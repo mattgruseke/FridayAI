@@ -15,6 +15,7 @@ import type {
   LocationKind,
   Meal,
   ParentId,
+  PlannerDish,
   PlanDay,
   PlanDayInput,
   PlannerDinner,
@@ -59,6 +60,7 @@ import {
 import {
   buildGroceryList,
   grocerySummary,
+  isDinnerMeal,
   mealTimes,
   sortMeals,
   suggestDinners,
@@ -482,7 +484,7 @@ const DinnerEditor = ({
       <p className="item-meta fc-help">
         No meals to suggest yet.{" "}
         <Link href="/food" target="_blank">
-          Add some in Food
+          Add some in Meals and food
         </Link>
       </p>
     )}
@@ -614,6 +616,7 @@ const DayEditor = ({
     parent_2: { ...emptyWork(), ...row?.work.parent_2 },
   }));
   const [dinner, setDinner] = useState<PlannerDinner>(() => ({ ...emptyDinner(), ...row?.dinner }));
+  const [dishes, setDishes] = useState<PlannerDish[]>(row?.dishes ?? []);
   const [note, setNote] = useState(row?.note ?? "");
   const [saving, setSaving] = useState(false);
   const ref = useRef<HTMLFormElement>(null);
@@ -629,6 +632,7 @@ const DayEditor = ({
       parent_2: cleanWork(work.parent_2, settings.locations),
     },
     dinner,
+    dishes,
     note: note || null,
   });
 
@@ -664,6 +668,8 @@ const DayEditor = ({
   };
 
   const gaps = gapsIn(care);
+  const dinnerMeals = meals.filter(isDinnerMeal);
+  const extras = meals.filter((m) => !isDinnerMeal(m));
 
   return (
     <form
@@ -717,12 +723,12 @@ const DayEditor = ({
       <DinnerEditor
         dinner={dinner}
         settings={settings}
-        meals={meals}
+        meals={dinnerMeals}
         suggestions={suggestDinners({
           date,
           day: { work, dinner },
           settings,
-          meals,
+          meals: dinnerMeals,
           days,
           excludeIds: weekDates(date).flatMap((d) => {
             const id = days.find((row) => row.plan_on === d)?.dinner?.meal_id;
@@ -731,6 +737,54 @@ const DayEditor = ({
         }).slice(0, SUGGESTIONS_SHOWN)}
         onChange={setDinner}
       />
+
+      {(extras.length > 0 || dishes.length > 0) && (
+        <div className="wp-editor-section">
+          <div className="fc-subhead">Also making</div>
+          {dishes.map((dish) => (
+            <div key={dish.id} className="wp-meal-picked">
+              <span className="wp-strong">{dish.name}</span>
+              {dish.occasion && <span className="item-meta">{dish.occasion}</span>}
+              <button
+                type="button"
+                className="btn-link btn-link--danger"
+                aria-label={`Remove ${dish.name}`}
+                onClick={() => setDishes((prev) => prev.filter((d) => d.id !== dish.id))}
+              >
+                remove
+              </button>
+            </div>
+          ))}
+          {extras.length > 0 && (
+            <div className="wp-times">
+              <Field label="Add a side or dessert">
+                <select
+                  className="input"
+                  value=""
+                  onChange={(e) => {
+                    const meal = extras.find((m) => m.id === e.target.value);
+                    if (meal) {
+                      setDishes((prev) => [
+                        ...prev,
+                        { id: crypto.randomUUID(), meal_id: meal.id, name: meal.name, occasion: null },
+                      ]);
+                    }
+                  }}
+                >
+                  <option value="">Choose one...</option>
+                  {extras
+                    .filter((m) => !dishes.some((d) => d.meal_id === m.id))
+                    .map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                </select>
+              </Field>
+            </div>
+          )}
+        </div>
+      )}
 
       <Field label="Notes for this day">
         <input
@@ -957,7 +1011,7 @@ const WeeklyPlan = ({
     for (const date of dates) {
       const day = dayByDate.get(date);
       if (date < now || day?.dinner?.plan) continue;
-      const [best] = suggestDinners({ date, day, settings, meals, days, excludeIds: used });
+      const [best] = suggestDinners({ date, day, settings, meals: meals.filter(isDinnerMeal), days, excludeIds: used });
       if (best) {
         result.set(date, best.meal);
         used.push(best.meal.id);
@@ -1002,6 +1056,7 @@ const WeeklyPlan = ({
           plan_on: date,
           work,
           dinner: { ...emptyDinner(), ...row?.dinner },
+          dishes: row?.dishes ?? [],
           note: row?.note ?? null,
         };
         const saved = row ? await api.planner.days.update(row.id, input) : await api.planner.days.create(input);
@@ -1269,6 +1324,12 @@ const WeeklyPlan = ({
                       <span key={task.id}>
                         Task: {task.title}
                         {task.scheduled_time && ` ${formatTime(normalizeTime(task.scheduled_time))}`}
+                      </span>
+                    ))}
+                    {day?.dishes?.map((dish) => (
+                      <span key={dish.id}>
+                        Make: <span className="wp-strong">{dish.name}</span>
+                        {dish.occasion && ` for ${dish.occasion}`}
                       </span>
                     ))}
                     {day?.note && <span className="wp-note">{day.note}</span>}
