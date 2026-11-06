@@ -1,6 +1,7 @@
 import axios from "axios";
 import type { Cuisine, Occasion, Service } from "@/config/restaurants";
 import type { ImprovementType } from "@/config/homeRecords";
+import type { IngredientGroup, MealCuisine, MealMethod } from "@/config/meals";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
@@ -371,6 +372,121 @@ export const calendarAPI = {
   overrides: recordsAPI<ChildcareOverride, ChildcareOverrideInput>("/childcare/overrides"),
 };
 
+// Weekly plan API — one row per planned day, plus the household's parents and work
+// locations. Each day is filled in by hand: nothing carries over between weeks.
+export const PARENT_IDS = ["parent_1", "parent_2"] as const;
+export type ParentId = (typeof PARENT_IDS)[number];
+
+export type PlannerParent = { id: ParentId; name: string };
+
+// commute: leave home, work, come back. home: working hours only. off: no hours.
+export const LOCATION_KINDS = ["commute", "home", "off"] as const;
+export type LocationKind = (typeof LOCATION_KINDS)[number];
+
+export type PlannerLocation = {
+  id: string;
+  name: string;
+  kind: LocationKind;
+  color: string;
+  archived: boolean; // hidden from pickers, but kept for past days
+};
+
+export type PlannerSettings = {
+  id: string;
+  parents: PlannerParent[];
+  locations: PlannerLocation[];
+  standard_days: PlannerStandardDay[];
+  created_at: string;
+};
+
+export type PlannerSettingsInput = Omit<PlannerSettings, "id" | "created_at">;
+
+export type PlannerWork = {
+  location_id: string | null;
+  commute: string | null; // how they get there: "7:22 train", "Drive"
+  leave_at: string | null; // HH:MM, starts the commute in
+  start: string | null; // HH:MM, starts work
+  end: string | null; // HH:MM, finishes work
+  home_at: string | null; // HH:MM, ends the commute home
+};
+
+// A saved day to fill in from, like "New York, 7:22 train". A parent can have several,
+// and the one marked is_default is what "Apply standard days" uses.
+export type PlannerStandardDay = {
+  id: string;
+  parent_id: ParentId;
+  is_default: boolean;
+  work: PlannerWork;
+};
+
+export const DINNER_PLANS = ["cook", "leftovers", "pickup", "delivery", "eat_out", "undecided"] as const;
+export type DinnerPlan = (typeof DINNER_PLANS)[number];
+
+export type PlannerDinner = {
+  plan: DinnerPlan | null;
+  meal: string | null; // the meal's name, or free text like "Thai from Rye Ridge"
+  meal_id: string | null; // set when picked from Food, which is what brings in its groceries
+  owner: ParentId | null; // who's handling it
+  home: Partial<Record<ParentId, boolean>>; // unset means nobody's answered yet
+};
+
+export type PlanDay = {
+  id: string;
+  plan_on: string; // YYYY-MM-DD
+  work: Partial<Record<ParentId, PlannerWork>>;
+  dinner: PlannerDinner;
+  note: string | null;
+  created_at: string;
+};
+
+export type PlanDayInput = Omit<PlanDay, "id" | "created_at">;
+
+export const plannerAPI = {
+  days: recordsAPI<PlanDay, PlanDayInput>("/planner/days"),
+  // At most one row per household.
+  settings: recordsAPI<PlannerSettings, PlannerSettingsInput>("/planner/settings"),
+};
+
+// Meals API — the list of meals to make, and each week's grocery list. The list itself
+// is worked out from the week's planned dinners; only what you've changed gets saved.
+export type MealIngredient = { name: string; quantity: string | null; group: IngredientGroup };
+
+export type Meal = {
+  id: string;
+  name: string;
+  cuisine: MealCuisine;
+  methods: MealMethod[];
+  prep_minutes: number | null;
+  cook_minutes: number | null;
+  servings: number | null;
+  ingredients: MealIngredient[];
+  tags: string[];
+  notes: string | null;
+  recipe_url: string | null;
+  created_at: string;
+};
+
+export type MealInput = Omit<Meal, "id" | "created_at">;
+
+export type GroceryExtra = { id: string; name: string; quantity: string | null; group: IngredientGroup };
+
+export type GroceryWeek = {
+  id: string;
+  week_of: string; // YYYY-MM-DD, the Monday
+  have: string[]; // items to buy that you already have
+  need: string[]; // pantry items and spices you're out of
+  extras: GroceryExtra[]; // added by hand
+  ordered_at: string | null;
+  ordered_keys: string[]; // what was on the list when it was ordered
+  created_at: string;
+};
+
+export type GroceryWeekInput = Omit<GroceryWeek, "id" | "created_at">;
+export type GroceryWeekDraft = GroceryWeekInput & { id?: string };
+
+export const mealsAPI = recordsAPI<Meal, MealInput>("/meals");
+export const groceriesAPI = recordsAPI<GroceryWeek, GroceryWeekInput>("/groceries");
+
 // Profile API
 export const profileAPI = {
   update: (data: { full_name?: string }) =>
@@ -404,6 +520,9 @@ export const api = {
   restaurants: restaurantsAPI,
   home: homeAPI,
   calendar: calendarAPI,
+  planner: plannerAPI,
+  meals: mealsAPI,
+  groceries: groceriesAPI,
   profile: profileAPI,
   notifications: notificationsAPI,
 };

@@ -35,6 +35,7 @@ import {
   startOfWeek,
   SUGGESTED_PEOPLE,
   toMinutes,
+  WEEK_ORDER,
   weekdayOf,
   WEEKDAYS,
 } from "../config/familyCalendar";
@@ -206,10 +207,10 @@ const WeekEditor = ({
   return (
     <form className="fc-editor" onSubmit={handleSubmit}>
       <div className="fc-subhead">Normal week</div>
-      {WEEKDAYS.map((label, weekday) => (
-        <div key={label} className="fc-editor-day">
+      {WEEK_ORDER.map((weekday) => (
+        <div key={weekday} className="fc-editor-day">
           <div className="fc-editor-day-head">
-            <span className="record-label">{label}</span>
+            <span className="record-label">{WEEKDAYS[weekday]}</span>
             {weekday === 1 && days[1].length > 0 && (
               <button
                 type="button"
@@ -225,7 +226,7 @@ const WeekEditor = ({
           <BlockRows
             blocks={days[weekday]}
             people={people}
-            dayLabel={label}
+            dayLabel={WEEKDAYS[weekday]}
             defaultStart={coverageStart}
             defaultEnd={coverageEnd}
             onChange={(blocks) => setDays((prev) => prev.map((b, d) => (d === weekday ? blocks : b)))}
@@ -246,8 +247,8 @@ const WeekEditor = ({
         </Field>
       </div>
       <div className="fc-coverage-days" role="group" aria-label="Days that need coverage">
-        {WEEKDAYS.map((label, weekday) => (
-          <label key={label} className="fc-check">
+        {WEEK_ORDER.map((weekday) => (
+          <label key={weekday} className="fc-check">
             <input
               type="checkbox"
               checked={coverageDays.includes(weekday)}
@@ -257,7 +258,7 @@ const WeekEditor = ({
                 )
               }
             />
-            {label.slice(0, 3)}
+            {WEEKDAYS[weekday].slice(0, 3)}
           </label>
         ))}
       </div>
@@ -501,15 +502,16 @@ const PeoplePanel = ({
 type Mode = "week" | "month";
 type Panel = "people" | "normal" | { date: string } | null;
 
-const Childcare = ({ showToast }: { showToast: ShowToast }) => {
+// initialDate opens straight into editing that day.
+const Childcare = ({ showToast, initialDate }: { showToast: ShowToast; initialDate?: string }) => {
   const now = today();
   const [people, setPeople] = useState<ChildcarePerson[]>([]);
   const [schedules, setSchedules] = useState<ChildcareSchedule[]>([]);
   const [overrides, setOverrides] = useState<ChildcareOverride[]>([]);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<Mode>("week");
-  const [anchor, setAnchor] = useState(now);
-  const [panel, setPanel] = useState<Panel>(null);
+  const [anchor, setAnchor] = useState(initialDate ?? now);
+  const [panel, setPanel] = useState<Panel>(initialDate ? { date: initialDate } : null);
 
   useEffect(() => {
     Promise.all([api.calendar.people.getAll(), api.calendar.schedules.getAll(), api.calendar.overrides.getAll()])
@@ -657,7 +659,7 @@ const Childcare = ({ showToast }: { showToast: ShowToast }) => {
         />
       )}
 
-      {typeof panel === "object" && panel !== null && (
+      {!loading && typeof panel === "object" && panel !== null && (
         <DayEditor
           key={panel.date}
           date={panel.date}
@@ -792,9 +794,9 @@ const Childcare = ({ showToast }: { showToast: ShowToast }) => {
           ) : (
             <div className="fc-grid-wrap">
               <div className="fc-grid fc-grid--head" aria-hidden="true">
-                {WEEKDAYS.map((day) => (
-                  <div key={day} className="fc-weekday">
-                    {day.slice(0, 3)}
+                {WEEK_ORDER.map((weekday) => (
+                  <div key={weekday} className="fc-weekday">
+                    {WEEKDAYS[weekday].slice(0, 3)}
                   </div>
                 ))}
               </div>

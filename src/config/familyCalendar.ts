@@ -10,7 +10,11 @@ import type {
 } from "@/api/client";
 import { fromDateString, toDateString } from "./homeRecords";
 
+// Indexed by weekday number, 0 = Sunday, which is how schedules store them.
 export const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+// The order weeks are shown in: Monday first, ending on the weekend.
+export const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 // `ink` is the text color that reads on top of the swatch.
 export const PERSON_COLORS = [
@@ -40,7 +44,31 @@ export const addDays = (date: string, days: number) => {
 
 export const weekdayOf = (date: string) => fromDateString(date).getDay();
 
-export const startOfWeek = (date: string) => addDays(date, -weekdayOf(date));
+// The Monday on or before this date.
+export const startOfWeek = (date: string) => addDays(date, -((weekdayOf(date) + 6) % 7));
+
+// The days of this date's week, Monday first.
+export const weekDates = (date: string, count = 7) => {
+  const start = startOfWeek(date);
+  return Array.from({ length: count }, (_, i) => addDays(start, i));
+};
+
+// The Saturdays of `count` weekends, starting with the one in this date's week.
+export const weekendsFrom = (date: string, count: number) => {
+  const saturday = addDays(startOfWeek(date), 5);
+  return Array.from({ length: count }, (_, i) => addDays(saturday, i * 7));
+};
+
+// "This weekend", "Next weekend", "In 3 weeks", "Last weekend", "2 weeks ago"
+export const weekendLabel = (saturday: string, now: string) => {
+  const weeks = Math.round(
+    (fromDateString(startOfWeek(saturday)).getTime() - fromDateString(startOfWeek(now)).getTime()) / (7 * 86400000)
+  );
+  if (weeks === 0) return "This weekend";
+  if (weeks === 1) return "Next weekend";
+  if (weeks === -1) return "Last weekend";
+  return weeks > 0 ? `In ${weeks} weeks` : `${-weeks} weeks ago`;
+};
 
 export const startOfMonth = (date: string) => `${date.slice(0, 7)}-01`;
 
@@ -56,7 +84,7 @@ export const datesInMonth = (monthStart: string) => {
   return dates;
 };
 
-// Whole weeks, Sunday first, that cover the month.
+// Whole weeks, Monday first, that cover the month.
 export const monthGrid = (monthStart: string) => {
   const last = addDays(addMonthsToMonth(monthStart, 1), -1);
   const dates: string[] = [];

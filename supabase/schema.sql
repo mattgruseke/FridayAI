@@ -459,6 +459,104 @@ create policy "Users update own childcare overrides" on public.childcare_overrid
 create policy "Users delete own childcare overrides" on public.childcare_overrides
   for delete using (auth.uid() = user_id);
 
+-- Weekly plan (/calendar, Weekly plan tab). One row per planned day, filled in by
+-- hand each week. work holds { parent_id: { location_id, commute, leave_at, start, end, home_at } }
+-- and dinner holds { plan, meal, meal_id, owner, home: { parent_id: boolean } }. Settings hold the
+-- household's two parents, its work locations, and each parent's standard days to fill in from.
+create table if not exists public.planner_days (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  plan_on    date not null,
+  work       jsonb not null default '{}'::jsonb,
+  dinner     jsonb not null default '{}'::jsonb,
+  note       text check (char_length(note) <= 2000),
+  created_at timestamptz not null default now(),
+  unique (user_id, plan_on)
+);
+
+alter table public.planner_days enable row level security;
+
+create policy "Users read own plan days" on public.planner_days
+  for select using (auth.uid() = user_id);
+create policy "Users create own plan days" on public.planner_days
+  for insert with check (auth.uid() = user_id);
+create policy "Users update own plan days" on public.planner_days
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users delete own plan days" on public.planner_days
+  for delete using (auth.uid() = user_id);
+
+create table if not exists public.planner_settings (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null unique default auth.uid() references auth.users (id) on delete cascade,
+  parents    jsonb not null default '[]'::jsonb,
+  locations  jsonb not null default '[]'::jsonb,
+  standard_days jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+alter table public.planner_settings enable row level security;
+
+create policy "Users read own planner settings" on public.planner_settings
+  for select using (auth.uid() = user_id);
+create policy "Users create own planner settings" on public.planner_settings
+  for insert with check (auth.uid() = user_id);
+create policy "Users update own planner settings" on public.planner_settings
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Meals (/food) and each week's grocery list. A meal's ingredients hold
+-- [{ name, quantity, group }]. A grocery list is worked out from the week's planned
+-- dinners, so grocery_weeks only keeps what's been changed or ordered.
+create table if not exists public.meals (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  name         text not null check (char_length(name) between 1 and 120),
+  cuisine      text not null,
+  methods      jsonb not null default '[]'::jsonb,
+  prep_minutes integer check (prep_minutes between 0 and 2880),
+  cook_minutes integer check (cook_minutes between 0 and 2880),
+  servings     integer check (servings between 1 and 100),
+  ingredients  jsonb not null default '[]'::jsonb,
+  tags         jsonb not null default '[]'::jsonb,
+  notes        text check (char_length(notes) <= 10000),
+  recipe_url   text check (char_length(recipe_url) <= 500),
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists meals_user_id_idx on public.meals (user_id);
+
+alter table public.meals enable row level security;
+
+create policy "Users read own meals" on public.meals
+  for select using (auth.uid() = user_id);
+create policy "Users create own meals" on public.meals
+  for insert with check (auth.uid() = user_id);
+create policy "Users update own meals" on public.meals
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users delete own meals" on public.meals
+  for delete using (auth.uid() = user_id);
+
+create table if not exists public.grocery_weeks (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  week_of      date not null,
+  have         jsonb not null default '[]'::jsonb,
+  need         jsonb not null default '[]'::jsonb,
+  extras       jsonb not null default '[]'::jsonb,
+  ordered_at   timestamptz,
+  ordered_keys jsonb not null default '[]'::jsonb,
+  created_at   timestamptz not null default now(),
+  unique (user_id, week_of)
+);
+
+alter table public.grocery_weeks enable row level security;
+
+create policy "Users read own grocery weeks" on public.grocery_weeks
+  for select using (auth.uid() = user_id);
+create policy "Users create own grocery weeks" on public.grocery_weeks
+  for insert with check (auth.uid() = user_id);
+create policy "Users update own grocery weeks" on public.grocery_weeks
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
 -- ─── Signup trigger ─────────────────────────────────────────────────────────
 -- On every new auth user: redeem the invite code passed in signup metadata,
 -- create the profile, and seed a welcome notification.

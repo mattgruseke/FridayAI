@@ -91,6 +91,18 @@
   opacity: 0.45;
 }
 
+.fc-day-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fc-day-name {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .fc-day-number {
   align-self: flex-start;
   min-width: 22px;
@@ -146,6 +158,54 @@
 
 .fc-chip-time {
   font-weight: 400;
+}
+
+/* Week, work week and weekend views: taller days, with titles shown in full. */
+.fc-day--tall {
+  min-height: 150px;
+}
+
+.fc-day--tall .fc-chip {
+  flex-shrink: 0;
+  white-space: normal;
+}
+
+.fc-grid--five {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.fc-grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fc-grid--five .fc-day:nth-child(n),
+.fc-grid--two .fc-day:nth-child(n) {
+  border-right: 1px solid var(--border);
+}
+
+.fc-grid--five .fc-day:nth-child(5n),
+.fc-grid--two .fc-day:nth-child(2n) {
+  border-right: none;
+}
+
+.fc-weekend .fc-day--tall {
+  min-height: 92px;
+}
+
+.fc-weekend-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 12px;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.fc-free {
+  color: var(--muted-dim);
+  font-size: 12px;
 }
 
 /* Tasks with a date: outlined, to tell them from events. */
@@ -559,6 +619,22 @@
     padding: 3px;
   }
 
+  /* Week views are too narrow for columns on a phone, so days stack. */
+  .fc-grid--stack {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fc-grid--stack .fc-day:nth-child(n) {
+    min-height: 64px;
+    padding: 6px;
+    border-right: none;
+  }
+
+  .fc-weekend-head {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
   .fc-chip {
     padding: 1px 3px;
     font-size: 10px;
@@ -571,5 +647,306 @@
   .fc-upcoming-date {
     width: 100%;
     margin-left: 96px;
+  }
+}
+
+/* Weekly plan: one column per day, one row per topic. */
+.wp-issues {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.wp-issues--clear {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.wp-issue-list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wp-issue-row {
+  display: flex;
+  gap: 10px;
+  padding: 4px 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.wp-issue-day {
+  flex-shrink: 0;
+  width: 58px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wp-issue-text {
+  color: var(--danger);
+}
+
+.wp-grid {
+  display: grid;
+  grid-template-columns: 84px repeat(7, minmax(0, 1fr));
+  grid-template-rows: repeat(6, auto);
+  grid-auto-flow: column;
+}
+
+.wp-col {
+  display: contents;
+}
+
+.wp-label,
+.wp-head,
+.wp-cell {
+  min-width: 0;
+  padding: 8px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.wp-col:last-child > * {
+  border-right: none;
+}
+
+.wp-label {
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.wp-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.wp-head-date {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.wp-head--today .wp-head-date {
+  color: var(--accent-text);
+}
+
+.wp-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  width: 100%;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+button.wp-cell {
+  border-top: none;
+  border-left: none;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+button.wp-cell:hover {
+  background: var(--hover);
+}
+
+.wp-cell-label {
+  display: none;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.wp-location {
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.wp-missing {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.wp-empty {
+  color: var(--muted-dim);
+}
+
+.wp-strong {
+  font-weight: 600;
+}
+
+.wp-note {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.wp-care-row {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+/* Editors */
+.wp-editor-title {
+  margin-left: 0;
+}
+
+.wp-editor-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.wp-editor-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wp-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wp-option {
+  padding: 4px 11px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.wp-option:hover {
+  border-color: var(--accent);
+}
+
+.wp-option--on {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.wp-times {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  max-width: 800px;
+}
+
+.wp-home-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 13px;
+}
+
+.wp-home-name {
+  min-width: 70px;
+  font-weight: 600;
+}
+
+.wp-location-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.wp-location-row input.input {
+  flex: 1 1 170px;
+  min-width: 0;
+}
+
+.wp-location-row select.input {
+  flex: 0 1 240px;
+  min-width: 0;
+}
+
+.fc-editor .fc-add-block {
+  align-self: flex-start;
+}
+
+.wp-standard-day {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.wp-options-label {
+  align-self: center;
+  margin-right: 2px;
+}
+
+.wp-parent-names {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  max-width: 460px;
+}
+
+/* Too narrow for seven columns, so each day stacks and labels its own rows. */
+@media (max-width: 860px) {
+  .wp-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-auto-flow: row;
+  }
+
+  .wp-labels {
+    display: none;
+  }
+
+  .wp-label,
+  .wp-head,
+  .wp-cell,
+  .wp-col:last-child > * {
+    border-right: none;
+  }
+
+  .wp-cell-label {
+    display: block;
+  }
+
+  /* Nothing on the calendar that day, so skip the row. */
+  .wp-cell--calendar:has(> .wp-cell-label:only-child) {
+    display: none;
+  }
+
+  .wp-issues {
+    padding-left: 14px;
+    padding-right: 14px;
   }
 }

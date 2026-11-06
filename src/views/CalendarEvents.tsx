@@ -18,7 +18,12 @@ import {
   normalizeTime,
   startOfMonth,
   statusForSchedule,
+  WEEK_ORDER,
+  weekDates,
+  weekdayOf,
   WEEKDAYS,
+  weekendLabel,
+  weekendsFrom,
 } from "../config/familyCalendar";
 import { formatDate, today } from "../config/homeRecords";
 import { getErrorMessage } from "../lib/errors";
@@ -27,6 +32,16 @@ import type { ShowToast } from "./HomeRecordFields";
 
 const UPCOMING_DAYS = 90;
 const UPCOMING_LIMIT = 8;
+const WEEKENDS_SHOWN = 4;
+
+const MODES = [
+  { id: "month", label: "Month" },
+  { id: "week", label: "Week" },
+  { id: "workweek", label: "Work week" },
+  { id: "weekend", label: "Weekends" },
+] as const;
+
+type Mode = (typeof MODES)[number]["id"];
 
 // All-day first, then by time.
 const byTime = (a: CalendarEvent, b: CalendarEvent) =>
@@ -220,11 +235,96 @@ const TaskBookingForm = ({
 
 type OpenForm = { event?: CalendarEvent; date: string } | null;
 
+// One day's events, tasks and holidays. Month cells only have room for the date and
+// cut long titles off; the other views name the day and show titles in full.
+const DayCell = ({
+  date,
+  now,
+  mode,
+  outside,
+  showFree,
+  events,
+  tasks,
+  onAdd,
+  onOpenEvent,
+  onOpenTask,
+}: {
+  date: string;
+  now: string;
+  mode: Mode;
+  outside?: boolean;
+  showFree?: boolean;
+  events: CalendarEvent[];
+  tasks: Item[];
+  onAdd: () => void;
+  onOpenEvent: (event: CalendarEvent) => void;
+  onOpenTask: (task: Item) => void;
+}) => (
+  <div
+    className={`fc-day${mode === "month" ? "" : " fc-day--tall"}${outside ? " fc-day--outside" : ""}${
+      date === now ? " fc-day--today" : ""
+    }`}
+    onClick={onAdd}
+  >
+    <div className="fc-day-head">
+      {mode !== "month" && <span className="fc-day-name">{WEEKDAYS[weekdayOf(date)].slice(0, 3)}</span>}
+      <button
+        type="button"
+        className="fc-day-number"
+        aria-label={`Add an event on ${formatDay(date)}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onAdd();
+        }}
+      >
+        {Number(date.slice(8))}
+      </button>
+    </div>
+    {holidaysOn(date).map((title) => (
+      <div key={title} className="fc-chip fc-chip--holiday" title={title}>
+        {title}
+      </div>
+    ))}
+    {events.map((event) => (
+      <button
+        key={event.id}
+        type="button"
+        className="fc-chip fc-chip--event"
+        title={event.title}
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenEvent(event);
+        }}
+      >
+        {event.start_time && <span className="fc-chip-time">{formatTime(normalizeTime(event.start_time))} </span>}
+        {event.title}
+      </button>
+    ))}
+    {tasks.map((task) => (
+      <button
+        key={task.id}
+        type="button"
+        className={`fc-chip fc-chip--task${task.done ? " fc-chip--done" : ""}`}
+        title={`Task: ${task.title}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenTask(task);
+        }}
+      >
+        {task.scheduled_time && <span className="fc-chip-time">{formatTime(normalizeTime(task.scheduled_time))} </span>}
+        {task.title}
+      </button>
+    ))}
+    {showFree && events.length === 0 && tasks.every((t) => t.done) && <span className="fc-free">Free</span>}
+  </div>
+);
+
 const CalendarEvents = ({ showToast }: { showToast: ShowToast }) => {
   const now = today();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [month, setMonth] = useState(startOfMonth(now));
+  const [mode, setMode] = useState<Mode>("month");
+  const [anchor, setAnchor] = useState(now);
   const [open, setOpen] = useState<OpenForm>(null);
   const [tasks, setTasks] = useState<Item[]>([]);
   const [openTask, setOpenTask] = useState<Item | null>(null);
@@ -258,6 +358,52 @@ const CalendarEvents = ({ showToast }: { showToast: ShowToast }) => {
     return map;
   }, [tasks]);
 
+  const month = startOfMonth(anchor);
+
+  const visibleDates = useMemo(() => {
+    if (mode === "month") return monthGrid(startOfMonth(anchor));
+    if (mode === "week") return weekDates(anchor);
+    if (mode === "workweek") return weekDates(anchor, 5);
+    return weekendsFrom(anchor, WEEKENDS_SHOWN).flatMap((saturday) => [saturday, addDays(saturday, 1)]);
+  }, [mode, anchor]);
+
+  const title =
+    mode === "month"
+      ? formatMonth(month)
+      : `${formatDate(visibleDates[0])} – ${formatDate(visibleDates[visibleDates.length - 1])}`;
+
+  const move = (direction: number) =>
+    setAnchor((a) =>
+      mode === "month"
+        ? addMonthsToMonth(startOfMonth(a), direction)
+        : addDays(a, direction * (mode === "weekend" ? WEEKENDS_SHOWN * 7 : 7))
+    );
+
+  const periodName = mode === "month" ? "month" : mode === "weekend" ? "weekends" : "week";
+
+  // Brings a date you just saved into view, without jumping if it's already showing.
+  const reveal = (date: string) => {
+    if (!visibleDates.includes(date)) setAnchor(date);
+  };
+
+  const dayCell = (date: string, props: { outside?: boolean; showFree?: boolean } = {}) => (
+    <DayCell
+      key={date}
+      date={date}
+      now={now}
+      mode={mode}
+      events={eventsByDate.get(date) ?? []}
+      tasks={tasksByDate.get(date) ?? []}
+      onAdd={() => openEventForm({ date })}
+      onOpenEvent={(event) => openEventForm({ event, date })}
+      onOpenTask={(task) => {
+        setOpen(null);
+        setOpenTask(task);
+      }}
+      {...props}
+    />
+  );
+
   const openEventForm = (form: OpenForm) => {
     setOpenTask(null);
     setOpen(form);
@@ -288,7 +434,7 @@ const CalendarEvents = ({ showToast }: { showToast: ShowToast }) => {
     setEvents((prev) =>
       prev.some((e) => e.id === saved.id) ? prev.map((e) => (e.id === saved.id ? saved : e)) : [...prev, saved]
     );
-    setMonth(startOfMonth(saved.event_on));
+    reveal(saved.event_on);
     setOpen(null);
     showToast("Event saved");
   };
@@ -300,27 +446,42 @@ const CalendarEvents = ({ showToast }: { showToast: ShowToast }) => {
           <button
             type="button"
             className="record-secondary fc-arrow"
-            aria-label="Previous month"
-            onClick={() => setMonth((m) => addMonthsToMonth(m, -1))}
+            aria-label={`Previous ${periodName}`}
+            onClick={() => move(-1)}
           >
             ‹
           </button>
           <button
             type="button"
             className="record-secondary fc-arrow"
-            aria-label="Next month"
-            onClick={() => setMonth((m) => addMonthsToMonth(m, 1))}
+            aria-label={`Next ${periodName}`}
+            onClick={() => move(1)}
           >
             ›
           </button>
-          <button type="button" className="record-secondary" onClick={() => setMonth(startOfMonth(now))}>
+          <button type="button" className="record-secondary" onClick={() => setAnchor(now)}>
             Today
           </button>
-          <span className="fc-title">{formatMonth(month)}</span>
+          <span className="fc-title">{title}</span>
         </div>
-        <button className="btn" type="button" onClick={() => openEventForm({ date: now })}>
-          Add event
-        </button>
+        <div className="fc-nav">
+          <div className="view-toggle" role="group" aria-label="Calendar range">
+            {MODES.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                className={mode === m.id ? "view-toggle--active" : undefined}
+                aria-pressed={mode === m.id}
+                onClick={() => setMode(m.id)}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+          <button className="btn" type="button" onClick={() => openEventForm({ date: now })}>
+            Add event
+          </button>
+        </div>
       </div>
 
       {open && (
@@ -345,7 +506,7 @@ const CalendarEvents = ({ showToast }: { showToast: ShowToast }) => {
           task={openTask}
           onChanged={(updated, message) => {
             setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-            if (updated.scheduled_on) setMonth(startOfMonth(updated.scheduled_on));
+            if (updated.scheduled_on) reveal(updated.scheduled_on);
             setOpenTask(null);
             showToast(message);
           }}
@@ -355,75 +516,38 @@ const CalendarEvents = ({ showToast }: { showToast: ShowToast }) => {
       )}
 
       <div className="fc-grid-wrap">
-        <div className="fc-grid fc-grid--head" aria-hidden="true">
-          {WEEKDAYS.map((day) => (
-            <div key={day} className="fc-weekday">
-              {day.slice(0, 3)}
+        {mode === "month" && (
+          <>
+            <div className="fc-grid fc-grid--head" aria-hidden="true">
+              {WEEK_ORDER.map((weekday) => (
+                <div key={weekday} className="fc-weekday">
+                  {WEEKDAYS[weekday].slice(0, 3)}
+                </div>
+              ))}
+            </div>
+            <div className="fc-grid">
+              {visibleDates.map((date) => dayCell(date, { outside: date.slice(0, 7) !== month.slice(0, 7) }))}
+            </div>
+          </>
+        )}
+        {mode === "week" && <div className="fc-grid fc-grid--stack">{visibleDates.map((date) => dayCell(date))}</div>}
+        {mode === "workweek" && (
+          <div className="fc-grid fc-grid--five fc-grid--stack">{visibleDates.map((date) => dayCell(date))}</div>
+        )}
+        {mode === "weekend" &&
+          weekendsFrom(anchor, WEEKENDS_SHOWN).map((saturday) => (
+            <div key={saturday} className="fc-weekend">
+              <div className="fc-weekend-head">
+                <span className="fc-subhead">{weekendLabel(saturday, now)}</span>
+                <span className="item-meta">
+                  {formatDate(saturday)} – {formatDate(addDays(saturday, 1))}
+                </span>
+              </div>
+              <div className="fc-grid fc-grid--two">
+                {[saturday, addDays(saturday, 1)].map((date) => dayCell(date, { showFree: !loading }))}
+              </div>
             </div>
           ))}
-        </div>
-        <div className="fc-grid">
-          {monthGrid(month).map((date) => {
-            const outside = date.slice(0, 7) !== month.slice(0, 7);
-            return (
-              <div
-                key={date}
-                className={`fc-day${outside ? " fc-day--outside" : ""}${date === now ? " fc-day--today" : ""}`}
-                onClick={() => openEventForm({ date })}
-              >
-                <button
-                  type="button"
-                  className="fc-day-number"
-                  aria-label={`Add an event on ${formatDay(date)}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openEventForm({ date });
-                  }}
-                >
-                  {Number(date.slice(8))}
-                </button>
-                {holidaysOn(date).map((title) => (
-                  <div key={title} className="fc-chip fc-chip--holiday" title={title}>
-                    {title}
-                  </div>
-                ))}
-                {(eventsByDate.get(date) ?? []).map((event) => (
-                  <button
-                    key={event.id}
-                    type="button"
-                    className="fc-chip fc-chip--event"
-                    title={event.title}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openEventForm({ event, date });
-                    }}
-                  >
-                    {event.start_time && <span className="fc-chip-time">{formatTime(normalizeTime(event.start_time))} </span>}
-                    {event.title}
-                  </button>
-                ))}
-                {(tasksByDate.get(date) ?? []).map((task) => (
-                  <button
-                    key={task.id}
-                    type="button"
-                    className={`fc-chip fc-chip--task${task.done ? " fc-chip--done" : ""}`}
-                    title={`Task: ${task.title}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setOpen(null);
-                      setOpenTask(task);
-                    }}
-                  >
-                    {task.scheduled_time && (
-                      <span className="fc-chip-time">{formatTime(normalizeTime(task.scheduled_time))} </span>
-                    )}
-                    {task.title}
-                  </button>
-                ))}
-              </div>
-            );
-          })}
-        </div>
       </div>
 
       <div className="fc-upcoming">
