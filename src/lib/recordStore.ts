@@ -2,11 +2,12 @@
 // local mode rows are written to .local-data/<file>.json so they survive restarts.
 
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { isLocalMode } from "@/lib/local";
+import { replaceFile } from "@/lib/replaceFile";
 import { createClient } from "@/lib/supabase/server";
 
 export type ParseResult<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -51,24 +52,28 @@ const readLocal = async (file: string): Promise<LocalData> => {
   }
 };
 
-// Changes run one at a time and swap the file in whole, so overlapping saves
-// can't lose each other's work and a crash can't leave half a file.
+// Reads and changes run one at a time. Changes swap the file in whole, so overlapping
+// saves can't lose each other's work and a crash can't leave half a file. Reads wait
+// their turn too: on Windows, reading while the file is swapped in makes the swap fail.
 let localQueue: Promise<unknown> = Promise.resolve();
 
-const changeLocal = <R>(file: string, change: (data: LocalData) => R): Promise<R> => {
-  const run = localQueue.then(async () => {
+const queued = <R>(task: () => Promise<R>): Promise<R> => {
+  const run = localQueue.then(task);
+  localQueue = run.catch(() => {});
+  return run;
+};
+
+const changeLocal = <R>(file: string, change: (data: LocalData) => R): Promise<R> =>
+  queued(async () => {
     const data = await readLocal(file);
     const result = change(data);
     const target = localPath(file);
     await mkdir(path.dirname(target), { recursive: true });
     const temp = `${target}.tmp`;
     await writeFile(temp, JSON.stringify(data, null, 2) + "\n");
-    await rename(temp, target);
+    await replaceFile(temp, target);
     return result;
   });
-  localQueue = run.catch(() => {});
-  return run;
-};
 
 // One table: `table` in Supabase, or that key of .local-data/<file>.json in local
 // mode. onChange runs after an update (with the new row) or delete (without), for
@@ -79,7 +84,7 @@ export const recordStore = <Row extends StoredRow, Input extends object>(
   onChange?: (before: Row, after?: Row) => Promise<void>
 ) => ({
   list: async (userId: string): Promise<Row[]> => {
-    if (isLocalMode) return ((await readLocal(file))[table] ?? []) as Row[];
+    if (isLocalMode) return ((await queued(() => readLocal(file)))[table] ?? []) as Row[];
     const supabase = await createClient();
     const { data, error } = await supabase.from(table).select("*").eq("user_id", userId);
     if (error) throw error;

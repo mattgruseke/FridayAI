@@ -38,6 +38,7 @@ export const AREA_LABELS: Record<ItemCategory, string> = {
   home: "Home",
   food: "Food",
   entertainment: "Entertainment",
+  none: "No area",
 };
 
 export const AREAS = Object.keys(AREA_LABELS) as ItemCategory[];

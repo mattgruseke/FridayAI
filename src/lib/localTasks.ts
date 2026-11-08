@@ -2,9 +2,10 @@
 // separate from lib/local.ts because that file also reaches the browser, and this one
 // needs the file system.
 
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { localStore } from "@/lib/local";
+import { replaceFile } from "@/lib/replaceFile";
 
 const filePath = () => path.join(process.cwd(), ".local-data", "tasks.json");
 
@@ -39,7 +40,7 @@ export const saveLocalTasks = () => {
     await mkdir(path.dirname(target), { recursive: true });
     const temp = `${target}.tmp`;
     await writeFile(temp, JSON.stringify({ items: localStore.items }, null, 2) + "\n");
-    await rename(temp, target);
+    await replaceFile(temp, target);
   });
   queue = run.catch(() => {});
   return run;

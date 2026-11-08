@@ -116,6 +116,12 @@ alter table public.items add column if not exists scheduled_time time;
 alter table public.items add column if not exists status text not null default 'not_started'
   check (status in ('needs_research', 'not_started', 'in_progress', 'scheduled'));
 
+-- "none" is for tasks sorted from the Brain Dump before they get an area. Keep in sync
+-- with ITEM_CATEGORIES (src/api/client.ts).
+alter table public.items drop constraint if exists items_category_check;
+alter table public.items add constraint items_category_check
+  check (category in ('home', 'entertainment', 'food', 'none'));
+
 -- Which Eisenhower box it's in. Null means it hasn't been sorted yet. Keep in sync with
 -- ITEM_BOXES (src/api/client.ts).
 alter table public.items add column if not exists box text
@@ -564,6 +570,79 @@ create policy "Users create own grocery weeks" on public.grocery_weeks
   for insert with check (auth.uid() = user_id);
 create policy "Users update own grocery weeks" on public.grocery_weeks
   for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Brain Dump (/brain-dump): everything goes in here first, then gets sorted into a task
+-- or an entry. Entries are goals, ideas and notes in one table, so moving one between
+-- lists only changes kind. Links join any two of task, entry or Brain Dump item, both ways.
+create table if not exists public.brain_dump (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  text       text not null check (char_length(text) between 1 and 5000),
+  state      text not null default 'open' check (state in ('open', 'sorted', 'archived')),
+  sorted_as  text check (sorted_as in ('task', 'goal', 'idea', 'note')),
+  sorted_id  text,
+  sorted_at  timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists brain_dump_user_id_idx on public.brain_dump (user_id, state);
+
+alter table public.brain_dump enable row level security;
+
+create policy "Users read own brain dump" on public.brain_dump
+  for select using (auth.uid() = user_id);
+create policy "Users create own brain dump" on public.brain_dump
+  for insert with check (auth.uid() = user_id);
+create policy "Users update own brain dump" on public.brain_dump
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users delete own brain dump" on public.brain_dump
+  for delete using (auth.uid() = user_id);
+
+create table if not exists public.entries (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  kind       text not null check (kind in ('goal', 'idea', 'note')),
+  title      text not null check (char_length(title) between 1 and 500),
+  details    text check (char_length(details) <= 10000),
+  archived   boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists entries_user_id_idx on public.entries (user_id, kind);
+
+alter table public.entries enable row level security;
+
+create policy "Users read own entries" on public.entries
+  for select using (auth.uid() = user_id);
+create policy "Users create own entries" on public.entries
+  for insert with check (auth.uid() = user_id);
+create policy "Users update own entries" on public.entries
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users delete own entries" on public.entries
+  for delete using (auth.uid() = user_id);
+
+create table if not exists public.links (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  a_type     text not null check (a_type in ('task', 'entry', 'dump')),
+  a_id       text not null,
+  b_type     text not null check (b_type in ('task', 'entry', 'dump')),
+  b_id       text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists links_user_id_idx on public.links (user_id);
+
+alter table public.links enable row level security;
+
+create policy "Users read own links" on public.links
+  for select using (auth.uid() = user_id);
+create policy "Users create own links" on public.links
+  for insert with check (auth.uid() = user_id);
+create policy "Users update own links" on public.links
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users delete own links" on public.links
+  for delete using (auth.uid() = user_id);
 
 -- ─── Signup trigger ─────────────────────────────────────────────────────────
 -- On every new auth user: redeem the invite code passed in signup metadata,

@@ -3,6 +3,8 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { isLocalMode, localStore } from "@/lib/local";
 import { loadLocalTasks, saveLocalTasks } from "@/lib/localTasks";
+import { removeLinksFor } from "@/lib/listRecords";
+import { createTask } from "@/lib/taskStore";
 import { ITEM_BOXES, ITEM_CATEGORIES, ITEM_STATUSES, type ItemBox, type ItemCategory, type ItemStatus } from "@/api/client";
 import { isValidTime, normalizeTime } from "@/config/familyCalendar";
 import { isRealDate } from "@/lib/recordStore";
@@ -68,36 +70,11 @@ export async function POST(request: Request) {
     return jsonResponse({ message: "Invalid box" }, 400);
   }
 
-  if (isLocalMode) {
-    await loadLocalTasks();
-    const item = {
-      id: crypto.randomUUID(),
-      title: title.trim(),
-      category,
-      done: false,
-      status: "not_started" as const,
-      box,
-      notes: null,
-      scheduled_on: null,
-      scheduled_time: null,
-      created_at: new Date().toISOString(),
-      completed_at: null,
-      sort_order: Math.max(0, ...localStore.items.map((i) => i.sort_order)) + 1,
-    };
-    localStore.items.push(item);
-    await saveLocalTasks();
-    return jsonResponse(item, 201);
+  try {
+    return jsonResponse(await createTask(user!.id, { title: title.trim(), category, box, notes: null }), 201);
+  } catch (err) {
+    return jsonResponse({ message: (err as { message?: string })?.message || "Couldn't add the task" }, 500);
   }
-
-  const { data, error } = await supabase
-    .from("items")
-    .insert({ user_id: user!.id, title: title.trim(), category, box })
-    .select("*")
-    .single();
-
-  if (error) return jsonResponse({ message: error.message }, 500);
-
-  return jsonResponse(data, 201);
 }
 
 // PUT /api/items?id=xxx
@@ -186,6 +163,8 @@ export async function DELETE(request: Request) {
 
   const id = new URL(request.url).searchParams.get("id");
   if (!id) return jsonResponse({ message: "Missing id" }, 400);
+
+  await removeLinksFor(user!.id, "task", id);
 
   if (isLocalMode) {
     await loadLocalTasks();

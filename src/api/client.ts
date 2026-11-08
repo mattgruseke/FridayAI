@@ -65,7 +65,8 @@ const toQueryString = (params: QueryParams) =>
   ).toString();
 
 // Items API — the sample feature. Copy this shape for your own resources.
-export const ITEM_CATEGORIES = ["home", "entertainment", "food"] as const;
+// "none" is for tasks sorted from the Brain Dump that haven't been given an area yet.
+export const ITEM_CATEGORIES = ["home", "entertainment", "food", "none"] as const;
 export type ItemCategory = (typeof ITEM_CATEGORIES)[number];
 
 // Where an open item stands. Finishing is tracked by `done`, so reopening an
@@ -503,6 +504,68 @@ export type GroceryWeekDraft = GroceryWeekInput & { id?: string };
 export const mealsAPI = recordsAPI<Meal, MealInput>("/meals");
 export const groceriesAPI = recordsAPI<GroceryWeek, GroceryWeekInput>("/groceries");
 
+// Brain Dump, Goals, Ideas and Notes, and links between things. Goals, ideas and notes
+// share one table, so moving one between lists only changes its kind.
+export const ENTRY_KINDS = ["goal", "idea", "note"] as const;
+export type EntryKind = (typeof ENTRY_KINDS)[number];
+
+export const SORT_TARGETS = ["task", "goal", "idea", "note"] as const;
+export type SortTarget = (typeof SORT_TARGETS)[number];
+
+export const DUMP_STATES = ["open", "sorted", "archived"] as const;
+export type DumpState = (typeof DUMP_STATES)[number];
+
+export type DumpItem = {
+  id: string;
+  text: string;
+  state: DumpState;
+  sorted_as: SortTarget | null; // what it became
+  sorted_id: string | null; // the task or entry it became
+  sorted_at: string | null;
+  created_at: string;
+};
+
+export type DumpItemInput = Omit<DumpItem, "id" | "created_at">;
+
+export type Entry = {
+  id: string;
+  kind: EntryKind;
+  title: string;
+  details: string | null;
+  archived: boolean;
+  created_at: string;
+};
+
+export type EntryInput = Omit<Entry, "id" | "created_at">;
+
+// Entries link as "entry" rather than by kind, so moving one between lists keeps its links.
+export const LINK_TYPES = ["task", "entry", "dump"] as const;
+export type LinkType = (typeof LINK_TYPES)[number];
+
+export type Link = {
+  id: string;
+  a_type: LinkType;
+  a_id: string;
+  b_type: LinkType;
+  b_id: string;
+  created_at: string;
+};
+
+export type LinkInput = Omit<Link, "id" | "created_at">;
+
+export const listsAPI = {
+  dump: {
+    ...recordsAPI<DumpItem, DumpItemInput>("/brain-dump"),
+    sort: (id: string, as: SortTarget) =>
+      fetchAPI<{ item: DumpItem; target: Item | Entry }>("/brain-dump/sort", {
+        method: "POST",
+        body: JSON.stringify({ id, as }),
+      }),
+  },
+  entries: recordsAPI<Entry, EntryInput>("/entries"),
+  links: recordsAPI<Link, LinkInput>("/links"),
+};
+
 // Profile API
 export const profileAPI = {
   update: (data: { full_name?: string }) =>
@@ -539,6 +602,7 @@ export const api = {
   planner: plannerAPI,
   meals: mealsAPI,
   groceries: groceriesAPI,
+  lists: listsAPI,
   profile: profileAPI,
   notifications: notificationsAPI,
 };

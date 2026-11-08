@@ -24,6 +24,7 @@ import type { Item, ItemBox, ItemCategory, ItemStatus } from "../api/client";
 import { formatScheduled, normalizeTime, statusForSchedule } from "../config/familyCalendar";
 import { AREA_LABELS, AREAS, BOX_SECTIONS, BOXES, NOT_CATEGORIZED, STATUS_LABELS } from "../config/tasks";
 import { getErrorMessage } from "../lib/errors";
+import LinkPanel from "./LinkPanel";
 import "./TaskList.css";
 
 const STATUSES = Object.keys(STATUS_LABELS) as ItemStatus[];
@@ -194,6 +195,7 @@ const TaskDetails = ({
           onBlur={saveNotes}
         />
       </label>
+      <LinkPanel type="task" id={item.id} />
       <button type="button" className="btn-link" onClick={onClose}>
         close
       </button>
@@ -411,16 +413,23 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false, gro
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  // The calendar links to a task as #task-<id>: open it and bring it into view.
+  // Links to a task (#task-<id>) from the calendar, the Dashboard or another item:
+  // open it and bring it into view, including when it's already on this page.
   useEffect(() => {
-    const target = window.location.hash.match(/^#task-(.+)$/)?.[1];
-    const item = target ? items.find((i) => i.id === target) : undefined;
-    if (!item) return;
-    setExpandedId(item.id);
-    if (item.done) setShowFinished(true);
-    requestAnimationFrame(() =>
-      document.getElementById(`task-${item.id}`)?.scrollIntoView({ block: "center" })
-    );
+    const open = () => {
+      const target = window.location.hash.match(/^#task-(.+)$/)?.[1];
+      const item = target ? items.find((i) => i.id === target) : undefined;
+      if (!item) return;
+      setFilter("all");
+      setExpandedId(item.id);
+      if (item.done) setShowFinished(true);
+      requestAnimationFrame(() =>
+        document.getElementById(`task-${item.id}`)?.scrollIntoView({ block: "center" })
+      );
+    };
+    open();
+    window.addEventListener("hashchange", open);
+    return () => window.removeEventListener("hashchange", open);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

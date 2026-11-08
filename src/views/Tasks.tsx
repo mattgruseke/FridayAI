@@ -206,6 +206,14 @@ const Tasks = () => {
   }, []);
 
   useEffect(() => {
+    const toList = () => {
+      if (window.location.hash.startsWith("#task-")) setView("list");
+    };
+    window.addEventListener("hashchange", toList);
+    return () => window.removeEventListener("hashchange", toList);
+  }, []);
+
+  useEffect(() => {
     if (status === "ready") window.dispatchEvent(new CustomEvent(SORTING_EVENT, { detail: needsSorting(items) }));
   }, [items, status]);
 

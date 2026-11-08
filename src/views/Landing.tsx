@@ -17,6 +17,7 @@ const AREA_LABELS: Record<ItemCategory, string> = {
   home: "Household",
   entertainment: "Entertainment",
   food: "Meals and food",
+  none: "Tasks",
 };
 
 const greetingFor = (hour: number) =>
