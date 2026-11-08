@@ -8,8 +8,8 @@ import api from "../api/client";
 import type { Item, ItemCategory } from "../api/client";
 import { useToast } from "../hooks/useToast";
 
-// Signed-in landing page: greeting, ask bar, and "On your radar" — the open
-// items across every area, highest priority first.
+// The Dashboard, and the signed-in landing page for now: greeting, ask bar, and
+// "On your radar" — the open items across every area, highest priority first.
 
 const RADAR_LIMIT = 4;
 
@@ -78,7 +78,7 @@ const Landing = () => {
       </form>
 
       <div className="chip-row">
-        <Link href="/all" className="chip">
+        <Link href="/today" className="chip">
           Show me today
         </Link>
         <button type="button" className="chip" onClick={() => prefill("Help me plan ")}>
@@ -100,7 +100,7 @@ const Landing = () => {
       ) : (
         <div className="feed">
           {radar.map((item) => (
-            <Link key={item.id} href={`/${item.category}`} className="feed-item">
+            <Link key={item.id} href={`/tasks#task-${item.id}`} className="feed-item">
               <span className="feed-marker" />
               <span className="feed-body">
                 <span className="feed-agent">{AREA_LABELS[item.category]}</span>
@@ -108,7 +108,7 @@ const Landing = () => {
                 <span className="feed-sub">
                   Added {new Date(item.created_at).toLocaleDateString(undefined, { month: "long", day: "numeric" })}
                 </span>
-                <span className="feed-cta">Open {AREA_LABELS[item.category].toLowerCase()} →</span>
+                <span className="feed-cta">Open task →</span>
               </span>
             </Link>
           ))}
@@ -116,7 +116,7 @@ const Landing = () => {
       )}
 
       {open.length > RADAR_LIMIT && (
-        <Link href="/all" className="radar-more">
+        <Link href="/tasks" className="radar-more">
           + {open.length - RADAR_LIMIT} more — {moreAreas.join(", ")} →
         </Link>
       )}

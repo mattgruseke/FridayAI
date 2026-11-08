@@ -28,11 +28,30 @@ export const siteConfig = {
   // Sidebar nav (and the mobile menu) once signed in.
   nav: [
     {
-      label: "Main",
+      label: "Overview",
       items: [
-        { href: "/", label: "Home" },
-        { href: "/all", label: "All items" },
+        { href: "/how-friday-works", label: "How Friday works" },
+        { href: "/intake", label: "Home intake" },
+        { href: "/personal-intake", label: "Personal intake" },
+        { href: "/profile", label: "Profile" },
+      ],
+    },
+    {
+      label: "Home",
+      items: [
+        { href: "/", label: "Dashboard" },
+        { href: "/brain-dump", label: "Brain Dump" },
         { href: "/calendar", label: "Calendar" },
+        { href: "/today", label: "Today" },
+      ],
+    },
+    {
+      label: "Lists",
+      items: [
+        { href: "/tasks", label: "Tasks" },
+        { href: "/goals", label: "Goals" },
+        { href: "/ideas", label: "Ideas" },
+        { href: "/notes", label: "Notes" },
       ],
     },
     {
@@ -44,16 +63,11 @@ export const siteConfig = {
       ],
     },
     {
-      label: "Home",
+      label: "House",
       items: [
-        { href: "/home", label: "Household tasks" },
         { href: "/improvements", label: "Capital improvements" },
         { href: "/maintenance", label: "Maintenance" },
-        { href: "/intake", label: "Home intake" },
       ],
-    },
-    {
-      items: [{ href: "/profile", label: "Profile" }],
     },
   ] satisfies NavGroup[],
 

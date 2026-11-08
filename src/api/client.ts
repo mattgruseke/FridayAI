@@ -73,12 +73,17 @@ export type ItemCategory = (typeof ITEM_CATEGORIES)[number];
 export const ITEM_STATUSES = ["needs_research", "not_started", "in_progress", "scheduled"] as const;
 export type ItemStatus = (typeof ITEM_STATUSES)[number];
 
+// Which of the four Eisenhower boxes a task is in. Null means it hasn't been sorted yet.
+export const ITEM_BOXES = ["urgent_important", "important", "urgent", "backlog"] as const;
+export type ItemBox = (typeof ITEM_BOXES)[number];
+
 export type Item = {
   id: string;
   title: string;
   category: ItemCategory;
   done: boolean;
   status: ItemStatus;
+  box: ItemBox | null;
   notes: string | null;
   scheduled_on: string | null; // YYYY-MM-DD; a date puts the item on the calendar
   scheduled_time: string | null; // HH:MM, null means no set time
@@ -92,13 +97,13 @@ export const itemsAPI = {
   getAll: (category?: ItemCategory) =>
     fetchAPI<Item[]>(category ? `/items?${toQueryString({ category })}` : "/items"),
 
-  create: (title: string, category: ItemCategory) =>
+  create: (title: string, category: ItemCategory, box: ItemBox | null = null) =>
     fetchAPI<Item>("/items", {
       method: "POST",
-      body: JSON.stringify({ title, category }),
+      body: JSON.stringify({ title, category, box }),
     }),
 
-  update: (id: string, data: Partial<Pick<Item, "title" | "done" | "status" | "notes" | "scheduled_on" | "scheduled_time">>) =>
+  update: (id: string, data: Partial<Pick<Item, "title" | "done" | "status" | "box" | "category" | "notes" | "scheduled_on" | "scheduled_time">>) =>
     fetchAPI<Item>(`/items?id=${encodeURIComponent(id)}`, {
       method: "PUT",
       body: JSON.stringify(data),

@@ -116,6 +116,11 @@ alter table public.items add column if not exists scheduled_time time;
 alter table public.items add column if not exists status text not null default 'not_started'
   check (status in ('needs_research', 'not_started', 'in_progress', 'scheduled'));
 
+-- Which Eisenhower box it's in. Null means it hasn't been sorted yet. Keep in sync with
+-- ITEM_BOXES (src/api/client.ts).
+alter table public.items add column if not exists box text
+  check (box in ('urgent_important', 'important', 'urgent', 'backlog'));
+
 create sequence if not exists public.items_sort_order_seq;
 grant usage, select on sequence public.items_sort_order_seq to authenticated;
 

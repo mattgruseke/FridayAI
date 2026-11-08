@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import Link from "next/link";
 import {
@@ -20,17 +20,11 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import api from "../api/client";
-import type { Item, ItemStatus } from "../api/client";
+import type { Item, ItemBox, ItemCategory, ItemStatus } from "../api/client";
 import { formatScheduled, normalizeTime, statusForSchedule } from "../config/familyCalendar";
+import { AREA_LABELS, AREAS, BOX_SECTIONS, BOXES, NOT_CATEGORIZED, STATUS_LABELS } from "../config/tasks";
 import { getErrorMessage } from "../lib/errors";
 import "./TaskList.css";
-
-const STATUS_LABELS: Record<ItemStatus, string> = {
-  needs_research: "Needs research",
-  not_started: "Not started",
-  in_progress: "In progress",
-  scheduled: "Scheduled",
-};
 
 const STATUSES = Object.keys(STATUS_LABELS) as ItemStatus[];
 
@@ -65,6 +59,9 @@ type RowActions = {
   onToggle: (item: Item) => void;
   onStatus: (item: Item, status: ItemStatus) => void;
   onEdit: (item: Item, edit: Partial<ItemEdit>) => void;
+  onBox: (item: Item, box: ItemBox | null) => void;
+  onArea: (item: Item, category: ItemCategory) => void;
+  grouped: boolean;
   onSchedule: (item: Item, date: string | null, time: string | null) => void;
   onDelete: (item: Item) => void;
   onExpand: (id: string | null) => void;
@@ -81,10 +78,14 @@ type RowBodyProps = RowActions & {
 const TaskDetails = ({
   item,
   onEdit,
+  onArea,
+  grouped,
   onSchedule,
   onClose,
 }: {
   item: Item;
+  onArea: RowActions["onArea"];
+  grouped: boolean;
   onEdit: RowActions["onEdit"];
   onSchedule: RowActions["onSchedule"];
   onClose: () => void;
@@ -136,6 +137,22 @@ const TaskDetails = ({
           }}
         />
       </label>
+      {grouped && (
+        <label className="task-field">
+          <span className="task-field-label">Area</span>
+          <select
+            className="input"
+            value={item.category}
+            onChange={(e) => onArea(item, e.target.value as ItemCategory)}
+          >
+            {AREAS.map((area) => (
+              <option key={area} value={area}>
+                {AREA_LABELS[area]}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <div className="task-schedule">
         <label className="task-field">
           <span className="task-field-label">Scheduled for</span>
@@ -190,6 +207,9 @@ const RowBody = ({
   onToggle,
   onStatus,
   onEdit,
+  onBox,
+  onArea,
+  grouped,
   onSchedule,
   onDelete,
   onExpand,
@@ -240,10 +260,31 @@ const RowBody = ({
         </span>
       </button>
     </div>
-    {showArea && (
-      <Link href={`/${item.category}`} className="area-tag">
-        {item.category}
-      </Link>
+    {grouped ? (
+      <>
+        <span className="area-tag">{AREA_LABELS[item.category]}</span>
+        {!item.done && (
+          <select
+            className="task-box-select"
+            aria-label={`Box for ${item.title}`}
+            value={item.box ?? ""}
+            onChange={(e) => onBox(item, (e.target.value || null) as ItemBox | null)}
+          >
+            <option value="">{NOT_CATEGORIZED}</option>
+            {BOXES.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.label}
+              </option>
+            ))}
+          </select>
+        )}
+      </>
+    ) : (
+      showArea && (
+        <Link href={`/${item.category}`} className="area-tag">
+          {item.category}
+        </Link>
+      )
     )}
     <button className="btn-link btn-link--danger" onClick={() => onDelete(item)}>
       delete
@@ -279,7 +320,14 @@ const RowBody = ({
       </button>
     </div>
     {expandedId === item.id && (
-      <TaskDetails item={item} onEdit={onEdit} onSchedule={onSchedule} onClose={() => onExpand(null)} />
+      <TaskDetails
+        item={item}
+        onEdit={onEdit}
+        onArea={onArea}
+        grouped={grouped}
+        onSchedule={onSchedule}
+        onClose={() => onExpand(null)}
+      />
     )}
   </>
 );
@@ -349,11 +397,12 @@ type TaskListProps = {
   showToast: (message: string, type?: "success" | "error" | "info") => void;
   emptyHint: string; // shown when there are no items at all
   showArea?: boolean; // tag each row with its category
+  grouped?: boolean; // split open items by Eisenhower box, unsorted ones first
 };
 
 // Open items, in priority order and drag-to-reorder, above a collapsible list
 // of finished ones. Used by the Items and Overview pages, which own the data.
-const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false }: TaskListProps) => {
+const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false, grouped = false }: TaskListProps) => {
   const [showFinished, setShowFinished] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<StatusFilter>("all");
@@ -383,7 +432,15 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false }: T
   const visible = open.filter(
     (i) => filter === "all" || i.status === filter || i.id === expandedId
   );
-  const priorities = visible.map((i) => open.indexOf(i) + 1);
+
+  // Each section reorders on its own, numbered from 1. Without sections it's one list,
+  // numbered by each row's place among all open items, even with a filter on.
+  const groups = grouped
+    ? BOX_SECTIONS.map((section) => {
+        const rows = visible.filter((i) => (i.box ?? null) === section.id);
+        return { id: section.id ?? "none", label: section.label, rows, priorities: rows.map((_, i) => i + 1) };
+      }).filter((group) => group.rows.length > 0)
+    : [{ id: "all", label: null, rows: visible, priorities: visible.map((i) => open.indexOf(i) + 1) }];
 
   // A new task might not match the filter, which would look like it never saved.
   const itemCount = useRef(items.length);
@@ -431,6 +488,10 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false }: T
 
   const handleEdit = (item: Item, edit: Partial<ItemEdit>) => saveChanges(item, edit, edit);
 
+  const handleBox = (item: Item, box: ItemBox | null) => saveChanges(item, { box }, { box });
+
+  const handleArea = (item: Item, category: ItemCategory) => saveChanges(item, { category }, { category });
+
   const handleSchedule = (item: Item, date: string | null, time: string | null) => {
     const changes = {
       scheduled_on: date,
@@ -453,14 +514,17 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false }: T
 
   const handleDragEnd = async ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return;
-    const from = visible.findIndex((i) => i.id === active.id);
-    const to = visible.findIndex((i) => i.id === over.id);
-    const reordered = arrayMove(visible, from, to);
+    const rows = groups.find((group) => group.rows.some((i) => i.id === active.id))?.rows ?? [];
+    const from = rows.findIndex((i) => i.id === active.id);
+    const to = rows.findIndex((i) => i.id === over.id);
+    // Dropped in another section: moving between boxes is what the box control is for.
+    if (from < 0 || to < 0) return;
+    const reordered = arrayMove(rows, from, to);
 
     // Same swap the API makes: these items trade the sort_order values they hold,
     // so tasks hidden by the filter keep their places.
-    const newOrder = new Map(reordered.map((item, i) => [item.id, visible[i].sort_order]));
-    const previous = items;
+    const newOrder = new Map(reordered.map((item, i) => [item.id, rows[i].sort_order]));
+    const oldOrder = new Map(rows.map((item) => [item.id, item.sort_order]));
     setItems((prev) =>
       prev.map((i) => {
         const sort_order = newOrder.get(i.id);
@@ -470,7 +534,13 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false }: T
     try {
       await api.items.reorder(reordered.map((i) => i.id));
     } catch (err) {
-      setItems(previous);
+      // Only these rows changed. `items` can be just one area, so it can't be restored whole.
+      setItems((prev) =>
+        prev.map((i) => {
+          const sort_order = oldOrder.get(i.id);
+          return sort_order === undefined ? i : { ...i, sort_order };
+        })
+      );
       showToast(getErrorMessage(err), "error");
     }
   };
@@ -479,6 +549,9 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false }: T
     onToggle: handleToggle,
     onStatus: handleStatus,
     onEdit: handleEdit,
+    onBox: handleBox,
+    onArea: handleArea,
+    grouped,
     onSchedule: handleSchedule,
     onDelete: handleDelete,
     onExpand: setExpandedId,
@@ -539,13 +612,22 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false }: T
           modifiers={[verticalOnly]}
           onDragEnd={handleDragEnd}
         >
-          <SortableContext items={visible.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-            <div>
-              {visible.map((item) => (
-                <OpenRow key={item.id} item={item} priorities={priorities} {...actions} />
-              ))}
-            </div>
-          </SortableContext>
+          {groups.map((group) => (
+            <Fragment key={group.id}>
+              {group.label && (
+                <div className={`task-group-head${group.id === "none" ? " task-group-head--unsorted" : ""}`}>
+                  {group.label} <span className="task-count">{group.rows.length}</span>
+                </div>
+              )}
+              <SortableContext items={group.rows.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+                <div>
+                  {group.rows.map((item) => (
+                    <OpenRow key={item.id} item={item} priorities={group.priorities} {...actions} />
+                  ))}
+                </div>
+              </SortableContext>
+            </Fragment>
+          ))}
         </DndContext>
       )}
 

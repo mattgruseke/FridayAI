@@ -202,7 +202,7 @@ const TaskBookingForm = ({
         <button type="button" className="btn-link" onClick={onClose}>
           cancel
         </button>
-        <Link className="fc-task-link" href={`/${task.category}#task-${task.id}`}>
+        <Link className="fc-task-link" href={`/tasks#task-${task.id}`}>
           open task
         </Link>
         <button

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { isLocalMode, localStore } from "@/lib/local";
+import { loadLocalTasks, saveLocalTasks } from "@/lib/localTasks";
 
 const jsonResponse = (data: unknown, status = 200) =>
   NextResponse.json(data, { status });
@@ -25,6 +26,7 @@ export async function PUT(request: Request) {
   }
 
   if (isLocalMode) {
+    await loadLocalTasks();
     const items = localStore.items
       .filter((i) => ids.includes(i.id))
       .sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
@@ -32,6 +34,7 @@ export async function PUT(request: Request) {
     items.forEach((item, index) => {
       item.sort_order = slots[index];
     });
+    await saveLocalTasks();
     return new NextResponse(null, { status: 204 });
   }
 

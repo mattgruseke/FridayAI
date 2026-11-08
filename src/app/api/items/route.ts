@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { isLocalMode, localStore } from "@/lib/local";
-import { ITEM_CATEGORIES, ITEM_STATUSES, type ItemCategory, type ItemStatus } from "@/api/client";
+import { loadLocalTasks, saveLocalTasks } from "@/lib/localTasks";
+import { ITEM_BOXES, ITEM_CATEGORIES, ITEM_STATUSES, type ItemBox, type ItemCategory, type ItemStatus } from "@/api/client";
 import { isValidTime, normalizeTime } from "@/config/familyCalendar";
 import { isRealDate } from "@/lib/recordStore";
 
@@ -11,6 +12,8 @@ const isCategory = (value: unknown): value is ItemCategory =>
 
 const isStatus = (value: unknown): value is ItemStatus =>
   ITEM_STATUSES.includes(value as ItemStatus);
+
+const isBox = (value: unknown): value is ItemBox => ITEM_BOXES.includes(value as ItemBox);
 
 // Sample resource. Row-level security on `items` (supabase/schema.sql) limits
 // every query to the signed-in user's rows; the user_id filters below are
@@ -27,6 +30,7 @@ export async function GET(request: Request) {
     return jsonResponse({ message: "Invalid category" }, 400);
   }
   if (isLocalMode) {
+    await loadLocalTasks();
     const items = category
       ? localStore.items.filter((i) => i.category === category)
       : localStore.items;
@@ -53,21 +57,26 @@ export async function POST(request: Request) {
   const { user, errorResponse } = await requireUser();
   if (errorResponse) return errorResponse;
 
-  const { title, category } = await request.json();
+  const { title, category, box = null } = await request.json();
   if (typeof title !== "string" || !title.trim()) {
     return jsonResponse({ message: "Title is required" }, 400);
   }
   if (!isCategory(category)) {
     return jsonResponse({ message: "Invalid category" }, 400);
   }
+  if (box !== null && !isBox(box)) {
+    return jsonResponse({ message: "Invalid box" }, 400);
+  }
 
   if (isLocalMode) {
+    await loadLocalTasks();
     const item = {
       id: crypto.randomUUID(),
       title: title.trim(),
       category,
       done: false,
       status: "not_started" as const,
+      box,
       notes: null,
       scheduled_on: null,
       scheduled_time: null,
@@ -76,12 +85,13 @@ export async function POST(request: Request) {
       sort_order: Math.max(0, ...localStore.items.map((i) => i.sort_order)) + 1,
     };
     localStore.items.push(item);
+    await saveLocalTasks();
     return jsonResponse(item, 201);
   }
 
   const { data, error } = await supabase
     .from("items")
-    .insert({ user_id: user!.id, title: title.trim(), category })
+    .insert({ user_id: user!.id, title: title.trim(), category, box })
     .select("*")
     .single();
 
@@ -114,6 +124,16 @@ export async function PUT(request: Request) {
   if (isStatus(payload.status)) {
     update.status = payload.status;
   }
+  if ("box" in payload) {
+    if (payload.box !== null && !isBox(payload.box)) {
+      return jsonResponse({ message: "Invalid box" }, 400);
+    }
+    update.box = payload.box;
+  }
+  if ("category" in payload) {
+    if (!isCategory(payload.category)) return jsonResponse({ message: "Invalid category" }, 400);
+    update.category = payload.category;
+  }
   if (payload.notes === null || typeof payload.notes === "string") {
     const notes = payload.notes?.trim() || null;
     if (notes && notes.length > 5000) {
@@ -136,9 +156,11 @@ export async function PUT(request: Request) {
   }
 
   if (isLocalMode) {
+    await loadLocalTasks();
     const item = localStore.items.find((i) => i.id === id);
     if (!item) return jsonResponse({ message: "Not found" }, 404);
     Object.assign(item, update);
+    await saveLocalTasks();
     return jsonResponse(item);
   }
 
@@ -166,7 +188,9 @@ export async function DELETE(request: Request) {
   if (!id) return jsonResponse({ message: "Missing id" }, 400);
 
   if (isLocalMode) {
+    await loadLocalTasks();
     localStore.items = localStore.items.filter((i) => i.id !== id);
+    await saveLocalTasks();
     return new NextResponse(null, { status: 204 });
   }
 

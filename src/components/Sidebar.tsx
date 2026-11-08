@@ -1,13 +1,31 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import api from "@/api/client";
 import { siteConfig } from "@/config/site";
+import { needsSorting, SORTING_EVENT } from "@/config/tasks";
 
 // Left-hand nav (desktop). Groups and links come from siteConfig.nav; on
 // narrow screens the header's mobile menu shows the same links.
 const Sidebar = () => {
   const pathname = usePathname();
+  const [toSort, setToSort] = useState(0);
+
+  useEffect(() => {
+    api.items
+      .getAll()
+      .then((items) => setToSort(needsSorting(items)))
+      .catch(() => {});
+  }, [pathname]);
+
+  // The Tasks page says when the count changes, so the badge keeps up as you sort.
+  useEffect(() => {
+    const update = (e: Event) => setToSort((e as CustomEvent<number>).detail);
+    window.addEventListener(SORTING_EVENT, update);
+    return () => window.removeEventListener(SORTING_EVENT, update);
+  }, []);
 
   return (
     <aside className="sidebar">
@@ -28,6 +46,11 @@ const Sidebar = () => {
               >
                 <span className="nav-dot" />
                 {item.label}
+                {item.href === "/tasks" && toSort > 0 && (
+                  <span className="nav-count" aria-label={`${toSort} to sort`}>
+                    {toSort}
+                  </span>
+                )}
               </Link>
             ))}
           </div>
