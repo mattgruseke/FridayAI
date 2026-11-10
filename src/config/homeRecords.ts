@@ -86,3 +86,6 @@ export const dueState = (nextDue: string, now = today()): DueState => {
   soon.setDate(soon.getDate() + 30);
   return nextDue <= toDateString(soon) ? "soon" : "ok";
 };
+
+// A phone number as a tap-to-call link: "(203) 555-0100" → tel:2035550100.
+export const telHref = (phone: string) => `tel:${phone.replace(/[^\d+]/g, "")}`;

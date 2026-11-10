@@ -286,22 +286,29 @@ export const TIER_B: Question[] = [
 ];
 
 // Standing Provider Checklist (Part 1). Offered as categories, never asked as a question.
+// Also the trades on the Service providers page (/providers), which saves the label, so
+// renaming one leaves providers already saved under the old name in "Other".
 export const PROVIDER_CATEGORIES = [
-  "HVAC / furnace",
   "Plumber",
   "Electrician",
+  "HVAC / furnace",
+  "Oil delivery",
+  "Oil tank service",
+  "Propane delivery",
+  "Landscaper / lawn care",
+  "Handyman",
   "Roofer",
   "Chimney sweep",
-  "Landscaper / lawn care",
   "Snow removal",
   "Gutter cleaning",
-  "Oil delivery",
-  "Propane delivery",
   "Pest control",
-  "Handyman",
+  "Tree service",
   "Mason / hardscape",
+  "Painter",
   "Appliance repair",
+  "Garage door",
   "Well / septic",
   "Windows / screens",
+  "House cleaning",
   "Other",
 ];

@@ -201,6 +201,29 @@
   padding: 0 0 10px;
 }
 
+.task-who {
+  color: var(--text);
+}
+
+.task-provider {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 14px;
+  width: 100%;
+  max-width: 640px;
+}
+
+.task-provider .task-field {
+  flex: 1 1 220px;
+  width: auto;
+}
+
+.task-provider .btn-link {
+  padding: 0 0 10px;
+  color: var(--accent-text);
+}
+
 .task-field {
   display: block;
   width: 100%;

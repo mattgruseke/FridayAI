@@ -62,4 +62,5 @@ for (const item of localStore.items) {
   item.notes ??= null;
   item.scheduled_on ??= null;
   item.scheduled_time ??= null;
+  item.provider_id ??= null;
 }

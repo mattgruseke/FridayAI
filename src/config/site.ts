@@ -67,6 +67,7 @@ export const siteConfig = {
       items: [
         { href: "/improvements", label: "Capital improvements" },
         { href: "/maintenance", label: "Maintenance" },
+        { href: "/providers", label: "Service providers" },
       ],
     },
   ] satisfies NavGroup[],

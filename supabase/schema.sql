@@ -365,6 +365,38 @@ create policy "Users update own services" on public.maintenance_services
 create policy "Users delete own services" on public.maintenance_services
   for delete using (auth.uid() = user_id);
 
+-- Who you call for the house (/providers). category is a label from
+-- PROVIDER_CATEGORIES (src/config/homeManagerIntake.ts). Tasks can be assigned to one.
+create table if not exists public.service_providers (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  name       text not null check (char_length(name) between 1 and 200),
+  category   text not null check (char_length(category) between 1 and 100),
+  company    text check (char_length(company) <= 200),
+  phone      text check (char_length(phone) <= 50),
+  email      text check (char_length(email) <= 200),
+  website    text check (char_length(website) <= 500),
+  notes      text check (char_length(notes) <= 5000),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists service_providers_user_id_idx on public.service_providers (user_id);
+
+alter table public.service_providers enable row level security;
+
+create policy "Users read own service providers" on public.service_providers
+  for select using (auth.uid() = user_id);
+create policy "Users create own service providers" on public.service_providers
+  for insert with check (auth.uid() = user_id);
+create policy "Users update own service providers" on public.service_providers
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users delete own service providers" on public.service_providers
+  for delete using (auth.uid() = user_id);
+
+-- Deleting a provider leaves their tasks in place, unassigned.
+alter table public.items add column if not exists provider_id uuid
+  references public.service_providers (id) on delete set null;
+
 -- Private bucket; each user can only touch files under a folder named with their user id.
 insert into storage.buckets (id, name, public)
   values ('home-records', 'home-records', false)

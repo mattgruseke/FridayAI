@@ -10,6 +10,8 @@ import { jsonResponse, optionalDate, recordRoutes, recordStore, text } from "@/l
 import type { ParseResult } from "@/lib/recordStore";
 import { createClient } from "@/lib/supabase/server";
 import { IMPROVEMENT_TYPES, MAINTENANCE_FREQUENCIES } from "@/config/homeRecords";
+import { PROVIDER_CATEGORIES } from "@/config/homeManagerIntake";
+import { unassignProvider } from "@/lib/taskStore";
 import type {
   HomeImprovement,
   HomeImprovementInput,
@@ -18,6 +20,8 @@ import type {
   MaintenanceService,
   MaintenanceServiceInput,
   Receipt,
+  ServiceProvider,
+  ServiceProviderInput,
 } from "@/api/client";
 
 export { jsonResponse };
@@ -145,6 +149,42 @@ const parseService = async (
   };
 };
 
+// Websites are saved with their scheme, so "smithplumbing.com" becomes a working link.
+const optionalWebsite = (value: unknown) => {
+  const site = text(value, 500);
+  if (!site) return null;
+  const withScheme = /^https?:\/\//i.test(site) ? site : `https://${site}`;
+  try {
+    const url = new URL(withScheme);
+    return url.hostname.includes(".") ? withScheme : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const parseProvider = async (body: Record<string, unknown>): Promise<ParseResult<ServiceProviderInput>> => {
+  const name = text(body.name, 200);
+  if (!name) return { ok: false, error: "Name is required" };
+  if (!PROVIDER_CATEGORIES.includes(body.category as string)) return { ok: false, error: "Pick what they do" };
+  const email = text(body.email, 200);
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, error: "That email doesn't look right" };
+  const website = optionalWebsite(body.website);
+  if (website === undefined) return { ok: false, error: "That website doesn't look right" };
+
+  return {
+    ok: true,
+    data: {
+      name,
+      category: body.category as string,
+      company: text(body.company, 200),
+      phone: text(body.phone, 50),
+      email,
+      website,
+      notes: text(body.notes, 5000),
+    },
+  };
+};
+
 // ─── Tables ────────────────────────────────────────────────────────────────
 
 const receiptPaths = (row: { receipts?: Receipt[] }) => (row.receipts ?? []).map((r) => r.path);
@@ -168,6 +208,14 @@ const maintenanceServices = recordStore<MaintenanceService, MaintenanceServiceIn
   "maintenance_services",
   cleanUpReceipts
 );
+
+const serviceProviders = recordStore<ServiceProvider, ServiceProviderInput>(LOCAL_FILE, "service_providers");
+
+export const providerExists = async (userId: string, id: unknown) =>
+  typeof id === "string" && (await serviceProviders.list(userId)).some((p) => p.id === id);
+
+// Deleting a provider takes them off their tasks; the tasks themselves stay.
+export const providerRoutes = recordRoutes(serviceProviders, parseProvider, unassignProvider);
 
 export const improvementRoutes = recordRoutes(homeImprovements, parseImprovement);
 

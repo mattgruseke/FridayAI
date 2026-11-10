@@ -21,6 +21,7 @@ export const createTask = async (
       notes,
       scheduled_on: null,
       scheduled_time: null,
+      provider_id: null,
       created_at: new Date().toISOString(),
       completed_at: null,
       sort_order: Math.max(0, ...localStore.items.map((i) => i.sort_order)) + 1,
@@ -38,6 +39,26 @@ export const createTask = async (
     .single();
   if (error) throw error;
   return data as Item;
+};
+
+// Takes a deleted service provider off every task it was assigned to. In Supabase the
+// foreign key does this too (on delete set null); this keeps local mode the same.
+export const unassignProvider = async (userId: string, providerId: string) => {
+  if (isLocalMode) {
+    await loadLocalTasks();
+    const assigned = localStore.items.filter((i) => i.provider_id === providerId);
+    if (assigned.length === 0) return;
+    for (const item of assigned) item.provider_id = null;
+    await saveLocalTasks();
+    return;
+  }
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("items")
+    .update({ provider_id: null })
+    .eq("provider_id", providerId)
+    .eq("user_id", userId);
+  if (error) throw error;
 };
 
 export const deleteTask = async (userId: string, id: string) => {

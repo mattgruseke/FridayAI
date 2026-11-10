@@ -88,6 +88,7 @@ export type Item = {
   notes: string | null;
   scheduled_on: string | null; // YYYY-MM-DD; a date puts the item on the calendar
   scheduled_time: string | null; // HH:MM, null means no set time
+  provider_id?: string | null; // the service provider it's assigned to; missing on older rows
   created_at: string;
   completed_at: string | null;
   sort_order: number; // lower is higher priority
@@ -104,7 +105,7 @@ export const itemsAPI = {
       body: JSON.stringify({ title, category, box }),
     }),
 
-  update: (id: string, data: Partial<Pick<Item, "title" | "done" | "status" | "box" | "category" | "notes" | "scheduled_on" | "scheduled_time">>) =>
+  update: (id: string, data: Partial<Pick<Item, "title" | "done" | "status" | "box" | "category" | "notes" | "scheduled_on" | "scheduled_time" | "provider_id">>) =>
     fetchAPI<Item>(`/items?id=${encodeURIComponent(id)}`, {
       method: "PUT",
       body: JSON.stringify(data),
@@ -275,6 +276,21 @@ export type MaintenanceService = {
 
 export type MaintenanceServiceInput = Omit<MaintenanceService, "id" | "created_at">;
 
+// Someone you call for the house: a plumber, the oil company, the landscaper.
+export type ServiceProvider = {
+  id: string;
+  name: string; // the person, or the company when there's no one person
+  category: string; // one of PROVIDER_CATEGORIES (src/config/homeManagerIntake.ts)
+  company: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
+export type ServiceProviderInput = Omit<ServiceProvider, "id" | "created_at">;
+
 const recordsAPI = <Row, Input>(endpoint: string) => ({
   getAll: () => fetchAPI<Row[]>(endpoint),
 
@@ -300,6 +316,7 @@ export const homeAPI = {
   improvements: recordsAPI<HomeImprovement, HomeImprovementInput>("/home/improvements"),
   maintenance: recordsAPI<MaintenanceItem, MaintenanceItemInput>("/home/maintenance"),
   services: recordsAPI<MaintenanceService, MaintenanceServiceInput>("/home/maintenance/services"),
+  providers: recordsAPI<ServiceProvider, ServiceProviderInput>("/home/providers"),
 
   // Multipart upload, so this bypasses fetchAPI's JSON body handling.
   uploadReceipt: async (file: File) => {

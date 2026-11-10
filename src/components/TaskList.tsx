@@ -20,8 +20,10 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import api from "../api/client";
-import type { Item, ItemBox, ItemCategory, ItemStatus } from "../api/client";
+import type { Item, ItemBox, ItemCategory, ItemStatus, ServiceProvider } from "../api/client";
 import { formatScheduled, normalizeTime, statusForSchedule } from "../config/familyCalendar";
+import { telHref } from "../config/homeRecords";
+import { PROVIDER_CATEGORIES } from "../config/homeManagerIntake";
 import { AREA_LABELS, AREAS, BOX_SECTIONS, BOXES, NOT_CATEGORIZED, STATUS_LABELS } from "../config/tasks";
 import { getErrorMessage } from "../lib/errors";
 import LinkPanel from "./LinkPanel";
@@ -64,6 +66,8 @@ type RowActions = {
   onArea: (item: Item, category: ItemCategory) => void;
   grouped: boolean;
   onSchedule: (item: Item, date: string | null, time: string | null) => void;
+  onProvider: (item: Item, providerId: string | null) => void;
+  providers: ServiceProvider[];
   onDelete: (item: Item) => void;
   onExpand: (id: string | null) => void;
   expandedId: string | null;
@@ -75,6 +79,68 @@ type RowBodyProps = RowActions & {
   meta: string;
 };
 
+const providerFor = (item: Item, providers: ServiceProvider[]) =>
+  item.provider_id ? providers.find((p) => p.id === item.provider_id) : undefined;
+
+// Who the task is handed to, picked from the Service providers page, grouped by trade.
+const ProviderField = ({
+  item,
+  providers,
+  onProvider,
+}: {
+  item: Item;
+  providers: ServiceProvider[];
+  onProvider: RowActions["onProvider"];
+}) => {
+  const assigned = providerFor(item, providers);
+  const trades = [
+    ...PROVIDER_CATEGORIES,
+    ...new Set(providers.map((p) => p.category).filter((c) => !PROVIDER_CATEGORIES.includes(c))),
+  ]
+    .map((trade) => ({
+      trade,
+      rows: providers.filter((p) => p.category === trade).sort((a, b) => a.name.localeCompare(b.name)),
+    }))
+    .filter((g) => g.rows.length > 0);
+
+  return (
+    <div className="task-provider">
+      <label className="task-field">
+        <span className="task-field-label">Service provider</span>
+        <select
+          className="input"
+          value={assigned?.id ?? ""}
+          onChange={(e) => onProvider(item, e.target.value || null)}
+        >
+          <option value="">{providers.length === 0 ? "None added yet" : "Not assigned"}</option>
+          {trades.map((g) => (
+            <optgroup key={g.trade} label={g.trade}>
+              {g.rows.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.company ? `${p.name} (${p.company})` : p.name}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </label>
+      {assigned?.phone && (
+        <a className="btn-link" href={telHref(assigned.phone)}>
+          call {assigned.phone}
+        </a>
+      )}
+      {assigned?.email && (
+        <a className="btn-link" href={`mailto:${assigned.email}`}>
+          email
+        </a>
+      )}
+      <Link className="btn-link" href="/providers">
+        {providers.length === 0 ? "add providers" : "manage providers"}
+      </Link>
+    </div>
+  );
+};
+
 // The opened view of a task. Each field saves when it loses focus.
 const TaskDetails = ({
   item,
@@ -82,6 +148,8 @@ const TaskDetails = ({
   onArea,
   grouped,
   onSchedule,
+  onProvider,
+  providers,
   onClose,
 }: {
   item: Item;
@@ -89,6 +157,8 @@ const TaskDetails = ({
   grouped: boolean;
   onEdit: RowActions["onEdit"];
   onSchedule: RowActions["onSchedule"];
+  onProvider: RowActions["onProvider"];
+  providers: ServiceProvider[];
   onClose: () => void;
 }) => {
   const savedTime = item.scheduled_time ? normalizeTime(item.scheduled_time) : "";
@@ -183,6 +253,7 @@ const TaskDetails = ({
           </button>
         )}
       </div>
+      <ProviderField item={item} providers={providers} onProvider={onProvider} />
       <label className="task-field">
         <span className="task-field-label">Notes</span>
         <textarea
@@ -213,11 +284,15 @@ const RowBody = ({
   onArea,
   grouped,
   onSchedule,
+  onProvider,
+  providers,
   onDelete,
   onExpand,
   expandedId,
   showArea,
-}: RowBodyProps) => (
+}: RowBodyProps) => {
+  const assigned = providerFor(item, providers);
+  return (
   <>
     <input
       type="checkbox"
@@ -246,9 +321,9 @@ const RowBody = ({
               strokeLinecap="round"
               strokeLinejoin="round"
               role="img"
-              aria-label="Has notes"
+              aria-label={`Notes: ${item.notes}`}
             >
-              <title>Has notes</title>
+              <title>{item.notes}</title>
               <path d="M3 1.5h7l3 3v10H3z" />
               <path d="M5.5 7h5M5.5 10h5" />
             </svg>
@@ -258,6 +333,13 @@ const RowBody = ({
           {meta}
           {item.scheduled_on && (
             <span className="task-when"> · Scheduled {formatScheduled(item.scheduled_on, item.scheduled_time)}</span>
+          )}
+          {assigned && (
+            <span className="task-who">
+              {" "}
+              · {assigned.name}
+              {assigned.phone && ` ${assigned.phone}`}
+            </span>
           )}
         </span>
       </button>
@@ -328,11 +410,14 @@ const RowBody = ({
         onArea={onArea}
         grouped={grouped}
         onSchedule={onSchedule}
+        onProvider={onProvider}
+        providers={providers}
         onClose={() => onExpand(null)}
       />
     )}
   </>
-);
+  );
+};
 
 // `priorities` holds the number shown at each position in the current list. With
 // a filter on, they're the rows' places among all open items, not 1, 2, 3.
@@ -408,6 +493,7 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false, gro
   const [showFinished, setShowFinished] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<StatusFilter>("all");
+  const [providers, setProviders] = useState<ServiceProvider[]>([]);
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -431,6 +517,11 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false, gro
     window.addEventListener("hashchange", open);
     return () => window.removeEventListener("hashchange", open);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // A task still works without its provider's details, so a failed load stays quiet.
+  useEffect(() => {
+    api.home.providers.getAll().then(setProviders).catch(() => {});
   }, []);
 
   const open = items.filter((i) => !i.done).sort((a, b) => a.sort_order - b.sort_order);
@@ -510,6 +601,9 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false, gro
     saveChanges(item, changes, changes);
   };
 
+  const handleProvider = (item: Item, provider_id: string | null) =>
+    saveChanges(item, { provider_id }, { provider_id });
+
   const handleDelete = async (item: Item) => {
     setItems((prev) => prev.filter((i) => i.id !== item.id));
     try {
@@ -562,6 +656,8 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false, gro
     onArea: handleArea,
     grouped,
     onSchedule: handleSchedule,
+    onProvider: handleProvider,
+    providers,
     onDelete: handleDelete,
     onExpand: setExpandedId,
     expandedId,

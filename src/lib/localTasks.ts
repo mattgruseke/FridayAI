@@ -18,6 +18,7 @@ export const loadLocalTasks = async () => {
     localStore.items = (saved.items ?? []).map((item: (typeof localStore.items)[number]) => ({
       ...item,
       box: item.box ?? null,
+      provider_id: item.provider_id ?? null,
     }));
   } catch (err) {
     // Only a missing file means "nothing saved yet". Treating a damaged file as

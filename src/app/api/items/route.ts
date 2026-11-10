@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isLocalMode, localStore } from "@/lib/local";
 import { loadLocalTasks, saveLocalTasks } from "@/lib/localTasks";
 import { removeLinksFor } from "@/lib/listRecords";
+import { providerExists } from "@/lib/homeRecords";
 import { createTask } from "@/lib/taskStore";
 import { ITEM_BOXES, ITEM_CATEGORIES, ITEM_STATUSES, type ItemBox, type ItemCategory, type ItemStatus } from "@/api/client";
 import { isValidTime, normalizeTime } from "@/config/familyCalendar";
@@ -79,7 +80,8 @@ export async function POST(request: Request) {
 
 // PUT /api/items?id=xxx
 // Body: { title?: string, done?: boolean, status?: ItemStatus, notes?: string | null,
-//         scheduled_on?: string | null, scheduled_time?: string | null }
+//         scheduled_on?: string | null, scheduled_time?: string | null,
+//         provider_id?: string | null }
 // scheduled_time is read along with scheduled_on, since a time needs a date.
 export async function PUT(request: Request) {
   const supabase = await createClient();
@@ -127,6 +129,13 @@ export async function PUT(request: Request) {
     }
     update.scheduled_on = date;
     update.scheduled_time = time && normalizeTime(String(time));
+  }
+  if ("provider_id" in payload) {
+    const providerId = payload.provider_id || null;
+    if (providerId !== null && !(await providerExists(user!.id, providerId))) {
+      return jsonResponse({ message: "Unknown service provider" }, 400);
+    }
+    update.provider_id = providerId;
   }
   if (Object.keys(update).length === 0) {
     return jsonResponse({ message: "No valid fields to update" }, 400);
