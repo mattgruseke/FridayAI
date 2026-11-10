@@ -57,6 +57,23 @@ const MealDetail = ({ id }: { id: string }) => {
     }
   };
 
+  // A meal becomes a task only from here, as a plain to-do that points back to the meal.
+  const [addingTask, setAddingTask] = useState(false);
+  const addTask = async (title: string) => {
+    if (!meal) return;
+    setAddingTask(true);
+    try {
+      await api.items.create(title, {
+        notes: `From Meals and food: ${meal.name}${meal.recipe_url ? `\n${meal.recipe_url}` : ""}`,
+      });
+      showToast(`Added "${title}" to Tasks`);
+    } catch (err) {
+      showToast(getErrorMessage(err), "error");
+    } finally {
+      setAddingTask(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!meal) return;
     if (!window.confirm(`Delete ${meal.name}? Days it's already planned for keep the name, but lose its grocery list.`)) {
@@ -167,6 +184,30 @@ const MealDetail = ({ id }: { id: string }) => {
             ) : (
               <PlanDishPicker meal={meal} days={days} events={events} onPlanned={upsertDay} showToast={showToast} />
             )}
+          </div>
+
+          <div className="rest-section">
+            <div className="rest-section-title">Add as a task</div>
+            <p className="item-meta meal-upcoming">
+              Meals stay off your task list unless you add one here.
+            </p>
+            <div className="meal-task-row">
+              {[
+                { label: "Make this", title: `Make ${meal.name}` },
+                { label: "Order this", title: `Order ${meal.name}` },
+                { label: "Buy the ingredients", title: `Buy ingredients for ${meal.name}` },
+              ].map((option) => (
+                <button
+                  key={option.label}
+                  type="button"
+                  className="rc-btn"
+                  disabled={addingTask}
+                  onClick={() => addTask(option.title)}
+                >
+                  + {option.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="rest-section">

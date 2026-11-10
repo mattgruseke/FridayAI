@@ -5,20 +5,13 @@ import type { FormEvent } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import api from "../api/client";
-import type { Item, ItemCategory } from "../api/client";
+import type { Item } from "../api/client";
 import { useToast } from "../hooks/useToast";
 
 // The Dashboard, and the signed-in landing page for now: greeting, ask bar, and
-// "On your radar" — the open items across every area, highest priority first.
+// "On your radar" — open tasks, highest priority first.
 
 const RADAR_LIMIT = 4;
-
-const AREA_LABELS: Record<ItemCategory, string> = {
-  home: "Household",
-  entertainment: "Entertainment",
-  food: "Meals and food",
-  none: "Tasks",
-};
 
 const greetingFor = (hour: number) =>
   hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
@@ -40,7 +33,6 @@ const Landing = () => {
   const name = fullName.split(" ")[0] || user?.email?.split("@")[0] || "there";
   const open = (items ?? []).filter((i) => !i.done);
   const radar = open.slice(0, RADAR_LIMIT);
-  const moreAreas = [...new Set(open.slice(RADAR_LIMIT).map((i) => AREA_LABELS[i.category]))];
 
   const handleAsk = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -104,7 +96,7 @@ const Landing = () => {
             <Link key={item.id} href={`/tasks#task-${item.id}`} className="feed-item">
               <span className="feed-marker" />
               <span className="feed-body">
-                <span className="feed-agent">{AREA_LABELS[item.category]}</span>
+                <span className="feed-agent">Task</span>
                 <span className="feed-title">{item.title}</span>
                 <span className="feed-sub">
                   Added {new Date(item.created_at).toLocaleDateString(undefined, { month: "long", day: "numeric" })}
@@ -118,7 +110,7 @@ const Landing = () => {
 
       {open.length > RADAR_LIMIT && (
         <Link href="/tasks" className="radar-more">
-          + {open.length - RADAR_LIMIT} more — {moreAreas.join(", ")} →
+          + {open.length - RADAR_LIMIT} more tasks →
         </Link>
       )}
 

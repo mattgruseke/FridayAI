@@ -130,8 +130,173 @@
   gap: 6px;
 }
 
-.task-open .item-meta {
-  display: block;
+/* The name, then the due date right after it. */
+.task-title-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.task-title-line .task-open {
+  width: auto;
+  min-width: 0;
+}
+
+.task-meta {
+  cursor: pointer;
+}
+
+.task-due-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.task-due {
+  padding: 1px 8px;
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  color: var(--muted-dim);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.task-due--set {
+  border-style: solid;
+  color: var(--muted);
+}
+
+.task-due--soon {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+/* Due within 3 days: filled in, so it can't be missed. */
+.task-due--pressing {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.task-due--overdue {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: #fff;
+}
+
+.task-due-wrap:hover .task-due--pressing {
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.task-due-wrap:hover .task-due--overdue {
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.item-title--pressing {
+  font-weight: 700;
+}
+
+/* Flags: must do, nice to do, one day. Same colors as the statuses. */
+.task-flag {
+  --flag-color: var(--muted-dim);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  color: var(--muted-dim);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.task-flag--must,
+.task-flag--nice,
+.task-flag--someday {
+  border-style: solid;
+  border-color: var(--flag-color);
+  background: color-mix(in srgb, var(--flag-color) 14%, transparent);
+  color: var(--flag-color);
+}
+
+.task-flag--must {
+  --flag-color: var(--danger);
+}
+
+.task-flag--nice {
+  --flag-color: #3B6AA8;
+}
+
+body.dark-mode .task-flag--nice {
+  --flag-color: #8DB4E8;
+}
+
+.task-flag--someday {
+  --flag-color: var(--muted);
+}
+
+.task-due-wrap:hover .task-flag:not(.task-flag--must):not(.task-flag--nice):not(.task-flag--someday) {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.task-due-wrap:has(select.task-due-input:focus-visible) .task-flag {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Invisible, but sits over the chip so clicks and taps land on the real date field. */
+.task-due-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.task-due-input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.task-due-wrap:hover .task-due {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.task-due-wrap:has(.task-due-input:focus-visible) .task-due {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.task-due-clear {
+  position: relative;
+  margin-left: 2px;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  color: var(--muted-dim);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.task-due-clear:hover {
+  color: var(--danger);
 }
 
 .task-open:hover .item-title > span {

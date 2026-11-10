@@ -1,5 +1,5 @@
-import Items from "@/views/Items";
+import Entertainment from "@/views/Entertainment";
 
 export default function Page() {
-  return <Items category="entertainment" heading="Entertainment" />;
+  return <Entertainment />;
 }

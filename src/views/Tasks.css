@@ -13,14 +13,6 @@
   min-width: 0;
 }
 
-.tasks-areas {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 10px 20px;
-  border-bottom: 1px solid var(--border);
-}
-
 .tasks-ask-date .wp-times {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
@@ -244,7 +236,6 @@
 }
 
 @media (max-width: 600px) {
-  .tasks-areas,
   .task-boxes,
   .task-board {
     padding-left: 14px;

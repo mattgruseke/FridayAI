@@ -22,6 +22,7 @@ export const LIST_INFO: Record<SortTarget, { label: string; title: string; path:
     path: "/notes",
     blurb: "Things to keep with nothing to do, including principles you want to hold on to.",
   },
+  watch: { label: "Entertainment", title: "Entertainment", path: "/entertainment", blurb: "" },
 };
 
 // Long or multi-line Brain Dump text keeps a short title, with the whole thing as details.

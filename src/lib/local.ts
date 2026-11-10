@@ -5,6 +5,7 @@
 
 import type { User } from "@supabase/supabase-js";
 import type { Item } from "@/api/client";
+import { flagForBox } from "@/config/tasks";
 
 export const isLocalMode = !process.env.NEXT_PUBLIC_SUPABASE_URL;
 
@@ -63,4 +64,6 @@ for (const item of localStore.items) {
   item.scheduled_on ??= null;
   item.scheduled_time ??= null;
   item.provider_id ??= null;
+  item.due_on ??= null;
+  if (item.flag === undefined) item.flag = flagForBox(item.box);
 }

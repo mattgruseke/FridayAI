@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
 import { SORT_TARGETS, type SortTarget } from "@/api/client";
 import { requireUser } from "@/lib/auth";
-import { dumpStore, entryStore, moveLinks } from "@/lib/listRecords";
+import { dumpStore, entryStore, moveLinks, removeLinksFor } from "@/lib/listRecords";
+import { createFromDump, watchStore } from "@/lib/watchlist";
 import { createTask, deleteTask } from "@/lib/taskStore";
 import { splitDumpText } from "@/config/lists";
 
 const jsonResponse = (data: unknown, status = 200) => NextResponse.json(data, { status });
 
-// POST /api/brain-dump/sort  Body: { id, as: "task" | "goal" | "idea" | "note" }
+// POST /api/brain-dump/sort  Body: { id, as: "task" | "goal" | "idea" | "note" | "watch" }
 // Makes the item into that kind of thing, marks it sorted, and carries its links over.
-// A task lands with no area and no box, so it waits in Tasks' Not categorized.
+// A task lands with no box, so it waits in Tasks' Not categorized. "watch" puts it on the
+// Entertainment list, looked up for a poster ("watch The Witcher" → The Witcher); the
+// list can't hold links, so the item's links are dropped.
 export async function POST(request: Request) {
   const { user, errorResponse } = await requireUser();
   if (errorResponse) return errorResponse;
@@ -25,11 +28,13 @@ export async function POST(request: Request) {
     const { title, details } = splitDumpText(item.text);
     const target =
       as === "task"
-        ? { type: "task" as const, row: await createTask(userId, { title, category: "none", box: null, notes: details }) }
-        : {
-            type: "entry" as const,
-            row: await entryStore.create(userId, { kind: as, title, details, archived: false }),
-          };
+        ? { type: "task" as const, row: await createTask(userId, { title, notes: details }) }
+        : as === "watch"
+          ? { type: "watch" as const, row: await createFromDump(userId, title, details) }
+          : {
+              type: "entry" as const,
+              row: await entryStore.create(userId, { kind: as, title, details, archived: false }),
+            };
 
     try {
       const sorted = await dumpStore.update(userId, item.id, {
@@ -39,11 +44,13 @@ export async function POST(request: Request) {
         sorted_id: target.row.id,
         sorted_at: new Date().toISOString(),
       });
-      await moveLinks(userId, { type: "dump", id: item.id }, { type: target.type, id: target.row.id });
+      if (target.type === "watch") await removeLinksFor(userId, "dump", item.id);
+      else await moveLinks(userId, { type: "dump", id: item.id }, { type: target.type, id: target.row.id });
       return jsonResponse({ item: sorted, target: target.row });
     } catch (err) {
       // Marking it sorted failed, so take back what was made rather than leave a copy.
       if (target.type === "task") await deleteTask(userId, target.row.id);
+      else if (target.type === "watch") await watchStore.remove(userId, target.row.id);
       else await entryStore.remove(userId, target.row.id);
       throw err;
     }

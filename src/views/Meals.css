@@ -404,3 +404,9 @@
     grid-template-columns: 76px minmax(0, 1fr) auto;
   }
 }
+
+.meal-task-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

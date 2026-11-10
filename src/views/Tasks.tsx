@@ -13,14 +13,16 @@ import {
 } from "@dnd-kit/core";
 import type { DragEndEvent } from "@dnd-kit/core";
 import api, { ITEM_STATUSES } from "../api/client";
-import type { Item, ItemBox, ItemCategory, ItemStatus } from "../api/client";
+import type { Item, ItemBox, ItemFlag, ItemStatus } from "../api/client";
 import TaskList from "../components/TaskList";
 import { formatScheduled } from "../config/familyCalendar";
 import {
-  AREA_LABELS,
-  AREAS,
   BOXES,
+  boxFor,
   boxLabel,
+  FLAGS,
+  flagForBox,
+  flagLabel,
   needsSorting,
   NOT_CATEGORIZED,
   SORTING_EVENT,
@@ -41,10 +43,9 @@ const VIEWS = [
 ] as const;
 
 type View = (typeof VIEWS)[number]["id"];
-type Area = ItemCategory | "all";
 
 const VIEW_KEY = "friday.tasks.view";
-const NO_BOX = "none";
+const NO_FLAG = "none";
 
 // ─── Cards and the zones they're dropped on ────────────────────────────────
 
@@ -82,10 +83,11 @@ const TaskCard = ({
           {item.title}
         </button>
       </div>
-      <div className="task-card-meta">
-        {AREA_LABELS[item.category]}
-        {item.scheduled_on && <span className="task-when"> · {formatScheduled(item.scheduled_on, item.scheduled_time)}</span>}
-      </div>
+      {item.scheduled_on && (
+        <div className="task-card-meta">
+          <span className="task-when">{formatScheduled(item.scheduled_on, item.scheduled_time)}</span>
+        </div>
+      )}
       {children}
     </div>
   );
@@ -126,17 +128,17 @@ const DropZone = ({
   );
 };
 
-const BoxSelect = ({ item, onChange }: { item: Item; onChange: (box: ItemBox | null) => void }) => (
+const FlagSelect = ({ item, onChange }: { item: Item; onChange: (flag: ItemFlag | null) => void }) => (
   <select
     className="task-card-select"
-    aria-label={`Box for ${item.title}`}
-    value={item.box ?? NO_BOX}
-    onChange={(e) => onChange(e.target.value === NO_BOX ? null : (e.target.value as ItemBox))}
+    aria-label={`Flag for ${item.title}`}
+    value={item.flag ?? NO_FLAG}
+    onChange={(e) => onChange(e.target.value === NO_FLAG ? null : (e.target.value as ItemFlag))}
   >
-    <option value={NO_BOX}>{NOT_CATEGORIZED}</option>
-    {BOXES.map((b) => (
-      <option key={b.id} value={b.id}>
-        {b.label}
+    <option value={NO_FLAG}>No flag</option>
+    {FLAGS.map((f) => (
+      <option key={f.id} value={f.id}>
+        {f.label}
       </option>
     ))}
   </select>
@@ -159,15 +161,14 @@ const StatusSelect = ({ item, onChange }: { item: Item; onChange: (status: ItemS
 
 // ─── The page ──────────────────────────────────────────────────────────────
 
-// Every task, whatever area it's in, as a list, the four boxes, or a status board.
+// Every task as a list, the four boxes, or a status board. Only to-dos live here:
+// entertainment has its own list, and a meal becomes a task only when you add it as one.
 const Tasks = () => {
   const [items, setItems] = useState<Item[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
   const [view, setView] = useState<View>("list");
-  const [area, setArea] = useState<Area>("all");
   const [title, setTitle] = useState("");
-  const [newArea, setNewArea] = useState<ItemCategory>("home");
-  const [newBox, setNewBox] = useState<string>(NO_BOX);
+  const [newFlag, setNewFlag] = useState<string>(NO_FLAG);
   const [adding, setAdding] = useState(false);
   const [showFinished, setShowFinished] = useState(false);
   const [askDate, setAskDate] = useState<Item | null>(null);
@@ -183,12 +184,6 @@ const Tasks = () => {
 
   useEffect(() => {
     // A link to one task (#task-<id>) opens in the list, where its details are.
-    const params = new URLSearchParams(window.location.search);
-    const linkedArea = params.get("area");
-    if (AREAS.includes(linkedArea as ItemCategory)) {
-      setArea(linkedArea as ItemCategory);
-      setNewArea(linkedArea as ItemCategory);
-    }
     const saved = window.localStorage.getItem(VIEW_KEY);
     if (!window.location.hash && VIEWS.some((v) => v.id === saved)) setView(saved as View);
 
@@ -223,14 +218,8 @@ const Tasks = () => {
     window.localStorage.setItem(VIEW_KEY, next);
   };
 
-  const chooseArea = (next: Area) => {
-    setArea(next);
-    if (next !== "all") setNewArea(next);
-  };
-
-  const inArea = useMemo(() => (area === "all" ? items : items.filter((i) => i.category === area)), [items, area]);
-  const open = useMemo(() => inArea.filter((i) => !i.done).sort((a, b) => a.sort_order - b.sort_order), [inArea]);
-  const finished = inArea.filter((i) => i.done);
+  const open = useMemo(() => items.filter((i) => !i.done).sort((a, b) => a.sort_order - b.sort_order), [items]);
+  const finished = items.filter((i) => i.done);
 
   // Shows the change right away, and puts it back if it doesn't save.
   const patch = async (item: Item, changes: Partial<Item>, payload: Parameters<typeof api.items.update>[1]) => {
@@ -246,8 +235,19 @@ const Tasks = () => {
     }
   };
 
+  const setFlag = (item: Item, flag: ItemFlag | null) => {
+    if ((item.flag ?? null) !== flag) patch(item, { flag }, { flag });
+  };
+
+  // Dropping into a box sets the flag that leads there. "Urgent, not important" also
+  // needs a due date within a week, so say so if it won't land there yet.
   const moveToBox = (item: Item, box: ItemBox | null) => {
-    if ((item.box ?? null) !== box) patch(item, { box }, { box });
+    const flag = flagForBox(box);
+    setFlag(item, flag);
+    const lands = boxFor({ ...item, flag });
+    if (box && lands !== box) {
+      showToast(`Flagged ${flagLabel(flag)}. A due date in the next week makes it urgent.`, "info");
+    }
   };
 
   // Scheduled needs a date to reach the calendar, so ask for one first.
@@ -286,7 +286,7 @@ const Tasks = () => {
     if (!item || !target) return;
     if (target.startsWith("box:")) {
       const box = target.slice(4);
-      moveToBox(item, box === NO_BOX ? null : (box as ItemBox));
+      moveToBox(item, box === NO_FLAG ? null : (box as ItemBox));
     } else if (target.startsWith("status:")) {
       moveToStatus(item, target.slice(7) as ItemStatus);
     }
@@ -297,12 +297,11 @@ const Tasks = () => {
     if (!title.trim()) return;
     setAdding(true);
     try {
-      const created = await api.items.create(title, newArea, newBox === NO_BOX ? null : (newBox as ItemBox));
+      const created = await api.items.create(title, { flag: newFlag === NO_FLAG ? null : (newFlag as ItemFlag) });
       setItems((prev) => [...prev, created]);
       setTitle("");
-      setNewBox(NO_BOX);
-      if (area !== "all" && area !== created.category) setArea("all");
-      showToast(created.box ? `Added to ${boxLabel(created.box)}` : "Added to Not categorized");
+      setNewFlag(NO_FLAG);
+      showToast(created.flag ? `Added as ${flagLabel(created.flag)}` : "Added. Flag it when you know how much it matters.");
     } catch (err) {
       showToast(getErrorMessage(err), "error");
     } finally {
@@ -312,7 +311,7 @@ const Tasks = () => {
 
   const boxCard = (item: Item) => (
     <TaskCard key={item.id} item={item} onToggle={toggleDone} onOpen={openInList}>
-      <BoxSelect item={item} onChange={(box) => moveToBox(item, box)} />
+      <FlagSelect item={item} onChange={(flag) => setFlag(item, flag)} />
       <div className="task-card-status">{STATUS_LABELS[item.status]}</div>
     </TaskCard>
   );
@@ -384,18 +383,11 @@ const Tasks = () => {
               placeholder="Add a task..."
               aria-label="New task"
             />
-            <select className="input tasks-add-select" aria-label="Area" value={newArea} onChange={(e) => setNewArea(e.target.value as ItemCategory)}>
-              {AREAS.map((a) => (
-                <option key={a} value={a}>
-                  {AREA_LABELS[a]}
-                </option>
-              ))}
-            </select>
-            <select className="input tasks-add-select" aria-label="Box" value={newBox} onChange={(e) => setNewBox(e.target.value)}>
-              <option value={NO_BOX}>Pick a box...</option>
-              {BOXES.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.label}
+            <select className="input tasks-add-select" aria-label="Flag" value={newFlag} onChange={(e) => setNewFlag(e.target.value)}>
+              <option value={NO_FLAG}>Flag...</option>
+              {FLAGS.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.label}
                 </option>
               ))}
             </select>
@@ -403,20 +395,6 @@ const Tasks = () => {
               {adding ? "Adding..." : "Add"}
             </button>
           </form>
-
-          <div className="tasks-areas" role="group" aria-label="Filter by area">
-            {(["all", ...AREAS] as Area[]).map((a) => (
-              <button
-                key={a}
-                type="button"
-                className="task-status task-filter"
-                aria-pressed={area === a}
-                onClick={() => chooseArea(a)}
-              >
-                {a === "all" ? "All" : AREA_LABELS[a]}
-              </button>
-            ))}
-          </div>
 
           {status === "loading" && (
             <div className="list-item">
@@ -459,13 +437,10 @@ const Tasks = () => {
 
           {status === "ready" && view === "list" && (
             <TaskList
-              key={area}
-              items={inArea}
+              items={items}
               setItems={setItems}
               showToast={showToast}
               emptyHint="Add one above to get started."
-              showArea
-              grouped
             />
           )}
 
@@ -474,7 +449,7 @@ const Tasks = () => {
               <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
                 <div className="task-boxes">
                   {BOXES.map((b) => {
-                    const cards = open.filter((i) => i.box === b.id);
+                    const cards = open.filter((i) => boxFor(i) === b.id);
                     return (
                       <DropZone key={b.id} id={`box:${b.id}`} title={b.label} hint={b.hint} count={cards.length} empty="Nothing here">
                         {cards.map(boxCard)}
@@ -482,14 +457,14 @@ const Tasks = () => {
                     );
                   })}
                   <DropZone
-                    id={`box:${NO_BOX}`}
+                    id={`box:${NO_FLAG}`}
                     className="task-zone--unsorted"
                     title={NOT_CATEGORIZED}
-                    hint="Drag each one into a box"
-                    count={open.filter((i) => !i.box).length}
-                    empty="All sorted"
+                    hint="Flag each one, or drag it into a box"
+                    count={open.filter((i) => !boxFor(i)).length}
+                    empty="All flagged"
                   >
-                    {open.filter((i) => !i.box).map(boxCard)}
+                    {open.filter((i) => !boxFor(i)).map(boxCard)}
                   </DropZone>
                 </div>
               </DndContext>
@@ -508,8 +483,8 @@ const Tasks = () => {
                         {cards.map((item) => (
                           <TaskCard key={item.id} item={item} onToggle={toggleDone} onOpen={openInList}>
                             <StatusSelect item={item} onChange={(next) => moveToStatus(item, next)} />
-                            <div className={`task-card-status${item.box ? "" : " task-card-status--unsorted"}`}>
-                              {item.box ? boxLabel(item.box) : "No box yet"}
+                            <div className={`task-card-status${item.flag ? "" : " task-card-status--unsorted"}`}>
+                              {item.flag ? `${flagLabel(item.flag)} · ${boxLabel(boxFor(item))}` : "No flag yet"}
                             </div>
                           </TaskCard>
                         ))}

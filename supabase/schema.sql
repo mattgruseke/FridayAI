@@ -111,6 +111,18 @@ alter table public.items add column if not exists notes text
 -- When it's booked for. A date puts the item on the calendar (/calendar).
 alter table public.items add column if not exists scheduled_on date;
 alter table public.items add column if not exists scheduled_time time;
+-- When it has to be done by. Separate from scheduled_on, which is when it's booked.
+alter table public.items add column if not exists due_on date;
+-- How much it matters (ITEM_FLAGS in src/api/client.ts). With due_on it decides the
+-- Eisenhower box, so box is only kept for old rows. Boxes picked before flags become
+-- flags here; safe to re-run, since it only fills flags that are still empty.
+alter table public.items add column if not exists flag text check (flag in ('must', 'nice', 'someday'));
+update public.items set flag = case box
+    when 'urgent_important' then 'must'
+    when 'important' then 'nice'
+    else 'someday'
+  end
+  where flag is null and box is not null;
 -- Where an open item stands. "Done" is the done column, so reopening an item
 -- returns it to the status it had. Keep in sync with ITEM_STATUSES (src/api/client.ts).
 alter table public.items add column if not exists status text not null default 'not_started'
@@ -611,7 +623,7 @@ create table if not exists public.brain_dump (
   user_id    uuid not null default auth.uid() references auth.users (id) on delete cascade,
   text       text not null check (char_length(text) between 1 and 5000),
   state      text not null default 'open' check (state in ('open', 'sorted', 'archived')),
-  sorted_as  text check (sorted_as in ('task', 'goal', 'idea', 'note')),
+  sorted_as  text check (sorted_as in ('task', 'goal', 'idea', 'note', 'watch')),
   sorted_id  text,
   sorted_at  timestamptz,
   created_at timestamptz not null default now()
@@ -675,6 +687,49 @@ create policy "Users update own links" on public.links
   for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "Users delete own links" on public.links
   for delete using (auth.uid() = user_id);
+
+-- "watch" (sorted onto the Entertainment list) came later; safe to re-run.
+alter table public.brain_dump drop constraint if exists brain_dump_sorted_as_check;
+alter table public.brain_dump add constraint brain_dump_sorted_as_check
+  check (sorted_as in ('task', 'goal', 'idea', 'note', 'watch'));
+
+-- ─── Entertainment ─────────────────────────────────────────────────────────
+-- Things to watch, read or listen to (/entertainment). Its own list, never a task.
+-- Options for media_kind, platform and vibes are in src/config/entertainment.ts;
+-- a null platform means unknown.
+create table if not exists public.watchlist (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  title      text not null check (char_length(title) between 1 and 500),
+  media_kind text check (media_kind in ('movie', 'tv', 'book', 'podcast')),
+  platform   text check (char_length(platform) <= 100),
+  vibes      text[] not null default '{}',
+  image_url  text check (char_length(image_url) <= 500),
+  notes      text check (char_length(notes) <= 5000),
+  done       boolean not null default false,
+  done_at    timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists watchlist_user_id_idx on public.watchlist (user_id);
+
+alter table public.watchlist enable row level security;
+
+create policy "Users read own watchlist" on public.watchlist
+  for select using (auth.uid() = user_id);
+create policy "Users create own watchlist" on public.watchlist
+  for insert with check (auth.uid() = user_id);
+create policy "Users update own watchlist" on public.watchlist
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users delete own watchlist" on public.watchlist
+  for delete using (auth.uid() = user_id);
+
+-- Entertainment used to be tasks in an "entertainment" area. Move any across and take
+-- them out of Tasks. (The app does the same the first time either list loads.)
+insert into public.watchlist (user_id, title, notes, done, done_at, created_at)
+  select user_id, title, notes, done, completed_at, created_at
+  from public.items where category = 'entertainment';
+delete from public.items where category = 'entertainment';
 
 -- ─── Signup trigger ─────────────────────────────────────────────────────────
 -- On every new auth user: redeem the invite code passed in signup metadata,

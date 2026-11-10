@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import Link from "next/link";
 import {
@@ -20,11 +20,19 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import api from "../api/client";
-import type { Item, ItemBox, ItemCategory, ItemStatus, ServiceProvider } from "../api/client";
+import type { Item, ItemFlag, ItemStatus, ServiceProvider } from "../api/client";
 import { formatScheduled, normalizeTime, statusForSchedule } from "../config/familyCalendar";
-import { telHref } from "../config/homeRecords";
+import { fromDateString, telHref, today } from "../config/homeRecords";
 import { PROVIDER_CATEGORIES } from "../config/homeManagerIntake";
-import { AREA_LABELS, AREAS, BOX_SECTIONS, BOXES, NOT_CATEGORIZED, STATUS_LABELS } from "../config/tasks";
+import {
+  boxFor,
+  boxLabel,
+  FLAGS,
+  flagLabel,
+  isPressing,
+  isUrgent,
+  STATUS_LABELS,
+} from "../config/tasks";
 import { getErrorMessage } from "../lib/errors";
 import LinkPanel from "./LinkPanel";
 import "./TaskList.css";
@@ -58,20 +66,134 @@ const formatCompleted = (completedAt: string | null) =>
 
 type ItemEdit = Pick<Item, "title" | "notes">;
 
+const daysUntil = (date: string) =>
+  Math.round((fromDateString(date).getTime() - fromDateString(today()).getTime()) / 86_400_000);
+
+// "today", "tomorrow", "Nov 12", or "Nov 12, 2027" outside this year.
+const formatDue = (date: string) => {
+  const days = daysUntil(date);
+  if (days === 0) return "today";
+  if (days === 1) return "tomorrow";
+  if (days === -1) return "yesterday";
+  const d = fromDateString(date);
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: d.getFullYear() === new Date().getFullYear() ? undefined : "numeric",
+  });
+};
+
+// The due date next to a task's name. The date input sits invisibly over the chip, so
+// a tap opens the phone's own picker; on a computer, clicking asks the browser to open
+// its calendar. A finished task only shows a date it already had.
+const DueDate = ({ item, onDue }: { item: Item; onDue: RowActions["onDue"] }) => {
+  const due = item.due_on ?? null;
+  if (item.done && !due) return null;
+
+  // Overdue is red; due within 3 days is filled in so it stands out; within a week it
+  // is outlined. Due within a week is what makes a task urgent (see boxFor).
+  const days = due ? daysUntil(due) : null;
+  const tone =
+    item.done || days === null
+      ? ""
+      : days < 0
+        ? " task-due--overdue"
+        : isPressing(item)
+          ? " task-due--pressing"
+          : isUrgent(item)
+            ? " task-due--soon"
+            : "";
+
+  return (
+    <span className="task-due-wrap">
+      <span className={`task-due${due ? " task-due--set" : ""}${tone}`} aria-hidden="true">
+        {due ? `Due ${formatDue(due)}` : "+ Due date"}
+      </span>
+      <input
+        type="date"
+        className="task-due-input"
+        aria-label={due ? `Due ${formatDue(due)}. Change the due date for ${item.title}` : `Set a due date for ${item.title}`}
+        value={due ?? ""}
+        onClick={(e) => {
+          try {
+            e.currentTarget.showPicker();
+          } catch {
+            // Older browsers: clicking focuses the field, which still lets you type a date.
+          }
+        }}
+        onChange={(e) => {
+          // Typing a date over a saved one passes through blank, so blank isn't a clear;
+          // the × next to the date is.
+          const next = e.target.value;
+          if (next && next !== due) onDue(item, next);
+        }}
+      />
+      {due && (
+        <button
+          type="button"
+          className="task-due-clear"
+          aria-label={`Clear the due date for ${item.title}`}
+          title="Clear due date"
+          onClick={() => onDue(item, null)}
+        >
+          ×
+        </button>
+      )}
+    </span>
+  );
+};
+
+// The flag next to the due date: must do, nice to do, or one day. Like the due date,
+// a native picker sits invisibly over the chip. The tooltip says which box that puts it in.
+const FlagChip = ({ item, onFlag }: { item: Item; onFlag: RowActions["onFlag"] }) => {
+  const flag = item.flag ?? null;
+  if (item.done && !flag) return null;
+  const box = boxFor(item);
+  return (
+    <span className="task-due-wrap" title={box ? boxLabel(box) : undefined}>
+      <span className={`task-flag${flag ? ` task-flag--${flag}` : ""}`} aria-hidden="true">
+        {flag ? (
+          <>
+            <svg width="9" height="10" viewBox="0 0 9 10" fill="currentColor" aria-hidden="true">
+              <path d="M1 0h1v10H1zM2 1h6L6.5 3.5 8 6H2z" />
+            </svg>
+            {flagLabel(flag)}
+          </>
+        ) : (
+          "+ Flag"
+        )}
+      </span>
+      <select
+        className="task-due-input"
+        aria-label={
+          flag ? `${flagLabel(flag)} (${boxLabel(box)}). Change the flag for ${item.title}` : `Flag ${item.title}`
+        }
+        value={flag ?? ""}
+        onChange={(e) => onFlag(item, (e.target.value || null) as ItemFlag | null)}
+      >
+        <option value="">No flag</option>
+        {FLAGS.map((f) => (
+          <option key={f.id} value={f.id}>
+            {f.label} — {f.hint}
+          </option>
+        ))}
+      </select>
+    </span>
+  );
+};
+
 type RowActions = {
   onToggle: (item: Item) => void;
   onStatus: (item: Item, status: ItemStatus) => void;
   onEdit: (item: Item, edit: Partial<ItemEdit>) => void;
-  onBox: (item: Item, box: ItemBox | null) => void;
-  onArea: (item: Item, category: ItemCategory) => void;
-  grouped: boolean;
+  onFlag: (item: Item, flag: ItemFlag | null) => void;
   onSchedule: (item: Item, date: string | null, time: string | null) => void;
   onProvider: (item: Item, providerId: string | null) => void;
   providers: ServiceProvider[];
+  onDue: (item: Item, date: string | null) => void;
   onDelete: (item: Item) => void;
   onExpand: (id: string | null) => void;
   expandedId: string | null;
-  showArea: boolean;
 };
 
 type RowBodyProps = RowActions & {
@@ -145,16 +267,12 @@ const ProviderField = ({
 const TaskDetails = ({
   item,
   onEdit,
-  onArea,
-  grouped,
   onSchedule,
   onProvider,
   providers,
   onClose,
 }: {
   item: Item;
-  onArea: RowActions["onArea"];
-  grouped: boolean;
   onEdit: RowActions["onEdit"];
   onSchedule: RowActions["onSchedule"];
   onProvider: RowActions["onProvider"];
@@ -208,22 +326,6 @@ const TaskDetails = ({
           }}
         />
       </label>
-      {grouped && (
-        <label className="task-field">
-          <span className="task-field-label">Area</span>
-          <select
-            className="input"
-            value={item.category}
-            onChange={(e) => onArea(item, e.target.value as ItemCategory)}
-          >
-            {AREAS.map((area) => (
-              <option key={area} value={area}>
-                {AREA_LABELS[area]}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
       <div className="task-schedule">
         <label className="task-field">
           <span className="task-field-label">Scheduled for</span>
@@ -280,16 +382,14 @@ const RowBody = ({
   onToggle,
   onStatus,
   onEdit,
-  onBox,
-  onArea,
-  grouped,
+  onFlag,
   onSchedule,
   onProvider,
   providers,
+  onDue,
   onDelete,
   onExpand,
   expandedId,
-  showArea,
 }: RowBodyProps) => {
   const assigned = providerFor(item, providers);
   return (
@@ -301,75 +401,54 @@ const RowBody = ({
       aria-label={item.done ? "Mark as open" : "Mark as done"}
     />
     <div className="item-content">
-      <button
-        type="button"
-        className="task-open"
-        aria-expanded={expandedId === item.id}
-        onClick={() => onExpand(expandedId === item.id ? null : item.id)}
-      >
-        <span className={`item-title${item.done ? " item-title--done" : ""}`}>
-          <span>{item.title}</span>
-          {item.notes && (
-            <svg
-              className="task-note-flag"
-              width="13"
-              height="13"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              role="img"
-              aria-label={`Notes: ${item.notes}`}
-            >
-              <title>{item.notes}</title>
-              <path d="M3 1.5h7l3 3v10H3z" />
-              <path d="M5.5 7h5M5.5 10h5" />
-            </svg>
-          )}
-        </span>
-        <span className="item-meta">
-          {meta}
-          {item.scheduled_on && (
-            <span className="task-when"> · Scheduled {formatScheduled(item.scheduled_on, item.scheduled_time)}</span>
-          )}
-          {assigned && (
-            <span className="task-who">
-              {" "}
-              · {assigned.name}
-              {assigned.phone && ` ${assigned.phone}`}
-            </span>
-          )}
-        </span>
-      </button>
-    </div>
-    {grouped ? (
-      <>
-        <span className="area-tag">{AREA_LABELS[item.category]}</span>
-        {!item.done && (
-          <select
-            className="task-box-select"
-            aria-label={`Box for ${item.title}`}
-            value={item.box ?? ""}
-            onChange={(e) => onBox(item, (e.target.value || null) as ItemBox | null)}
-          >
-            <option value="">{NOT_CATEGORIZED}</option>
-            {BOXES.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.label}
-              </option>
-            ))}
-          </select>
+      <div className="task-title-line">
+        <button
+          type="button"
+          className="task-open"
+          aria-expanded={expandedId === item.id}
+          onClick={() => onExpand(expandedId === item.id ? null : item.id)}
+        >
+          <span className={`item-title${item.done ? " item-title--done" : isPressing(item) ? " item-title--pressing" : ""}`}>
+            <span>{item.title}</span>
+            {item.notes && (
+              <svg
+                className="task-note-flag"
+                width="13"
+                height="13"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                role="img"
+                aria-label={`Notes: ${item.notes}`}
+              >
+                <title>{item.notes}</title>
+                <path d="M3 1.5h7l3 3v10H3z" />
+                <path d="M5.5 7h5M5.5 10h5" />
+              </svg>
+            )}
+          </span>
+        </button>
+        <DueDate item={item} onDue={onDue} />
+        <FlagChip item={item} onFlag={onFlag} />
+      </div>
+      {/* Clicking the line under the name opens the task too; the name is the keyboard way in. */}
+      <div className="item-meta task-meta" onClick={() => onExpand(expandedId === item.id ? null : item.id)}>
+        {meta}
+        {item.scheduled_on && (
+          <span className="task-when"> · Scheduled {formatScheduled(item.scheduled_on, item.scheduled_time)}</span>
         )}
-      </>
-    ) : (
-      showArea && (
-        <Link href={`/${item.category}`} className="area-tag">
-          {item.category}
-        </Link>
-      )
-    )}
+        {assigned && (
+          <span className="task-who">
+            {" "}
+            · {assigned.name}
+            {assigned.phone && ` ${assigned.phone}`}
+          </span>
+        )}
+      </div>
+    </div>
     <button className="btn-link btn-link--danger" onClick={() => onDelete(item)}>
       delete
     </button>
@@ -407,8 +486,6 @@ const RowBody = ({
       <TaskDetails
         item={item}
         onEdit={onEdit}
-        onArea={onArea}
-        grouped={grouped}
         onSchedule={onSchedule}
         onProvider={onProvider}
         providers={providers}
@@ -483,13 +560,11 @@ type TaskListProps = {
   setItems: Dispatch<SetStateAction<Item[]>>;
   showToast: (message: string, type?: "success" | "error" | "info") => void;
   emptyHint: string; // shown when there are no items at all
-  showArea?: boolean; // tag each row with its category
-  grouped?: boolean; // split open items by Eisenhower box, unsorted ones first
 };
 
 // Open items, in priority order and drag-to-reorder, above a collapsible list
-// of finished ones. Used by the Items and Overview pages, which own the data.
-const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false, grouped = false }: TaskListProps) => {
+// of finished ones. One list: flags and due dates mark what matters, not sections.
+const TaskList = ({ items, setItems, showToast, emptyHint }: TaskListProps) => {
   const [showFinished, setShowFinished] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<StatusFilter>("all");
@@ -533,14 +608,8 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false, gro
     (i) => filter === "all" || i.status === filter || i.id === expandedId
   );
 
-  // Each section reorders on its own, numbered from 1. Without sections it's one list,
-  // numbered by each row's place among all open items, even with a filter on.
-  const groups = grouped
-    ? BOX_SECTIONS.map((section) => {
-        const rows = visible.filter((i) => (i.box ?? null) === section.id);
-        return { id: section.id ?? "none", label: section.label, rows, priorities: rows.map((_, i) => i + 1) };
-      }).filter((group) => group.rows.length > 0)
-    : [{ id: "all", label: null, rows: visible, priorities: visible.map((i) => open.indexOf(i) + 1) }];
+  // Numbered by each row's place among all open items, even with a filter on.
+  const priorities = visible.map((i) => open.indexOf(i) + 1);
 
   // A new task might not match the filter, which would look like it never saved.
   const itemCount = useRef(items.length);
@@ -588,9 +657,8 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false, gro
 
   const handleEdit = (item: Item, edit: Partial<ItemEdit>) => saveChanges(item, edit, edit);
 
-  const handleBox = (item: Item, box: ItemBox | null) => saveChanges(item, { box }, { box });
+  const handleFlag = (item: Item, flag: ItemFlag | null) => saveChanges(item, { flag }, { flag });
 
-  const handleArea = (item: Item, category: ItemCategory) => saveChanges(item, { category }, { category });
 
   const handleSchedule = (item: Item, date: string | null, time: string | null) => {
     const changes = {
@@ -603,6 +671,8 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false, gro
 
   const handleProvider = (item: Item, provider_id: string | null) =>
     saveChanges(item, { provider_id }, { provider_id });
+
+  const handleDue = (item: Item, due_on: string | null) => saveChanges(item, { due_on }, { due_on });
 
   const handleDelete = async (item: Item) => {
     setItems((prev) => prev.filter((i) => i.id !== item.id));
@@ -617,10 +687,9 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false, gro
 
   const handleDragEnd = async ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return;
-    const rows = groups.find((group) => group.rows.some((i) => i.id === active.id))?.rows ?? [];
+    const rows = visible;
     const from = rows.findIndex((i) => i.id === active.id);
     const to = rows.findIndex((i) => i.id === over.id);
-    // Dropped in another section: moving between boxes is what the box control is for.
     if (from < 0 || to < 0) return;
     const reordered = arrayMove(rows, from, to);
 
@@ -637,7 +706,7 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false, gro
     try {
       await api.items.reorder(reordered.map((i) => i.id));
     } catch (err) {
-      // Only these rows changed. `items` can be just one area, so it can't be restored whole.
+      // Only these rows changed, so only they go back.
       setItems((prev) =>
         prev.map((i) => {
           const sort_order = oldOrder.get(i.id);
@@ -652,16 +721,14 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false, gro
     onToggle: handleToggle,
     onStatus: handleStatus,
     onEdit: handleEdit,
-    onBox: handleBox,
-    onArea: handleArea,
-    grouped,
+    onFlag: handleFlag,
     onSchedule: handleSchedule,
     onProvider: handleProvider,
     providers,
+    onDue: handleDue,
     onDelete: handleDelete,
     onExpand: setExpandedId,
     expandedId,
-    showArea,
   };
 
   return (
@@ -717,22 +784,13 @@ const TaskList = ({ items, setItems, showToast, emptyHint, showArea = false, gro
           modifiers={[verticalOnly]}
           onDragEnd={handleDragEnd}
         >
-          {groups.map((group) => (
-            <Fragment key={group.id}>
-              {group.label && (
-                <div className={`task-group-head${group.id === "none" ? " task-group-head--unsorted" : ""}`}>
-                  {group.label} <span className="task-count">{group.rows.length}</span>
-                </div>
-              )}
-              <SortableContext items={group.rows.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-                <div>
-                  {group.rows.map((item) => (
-                    <OpenRow key={item.id} item={item} priorities={group.priorities} {...actions} />
-                  ))}
-                </div>
-              </SortableContext>
-            </Fragment>
-          ))}
+          <SortableContext items={visible.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+            <div>
+              {visible.map((item) => (
+                <OpenRow key={item.id} item={item} priorities={priorities} {...actions} />
+              ))}
+            </div>
+          </SortableContext>
         </DndContext>
       )}
 

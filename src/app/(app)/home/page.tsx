@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-// Household tasks moved into Tasks, as the Home area.
+// Household tasks moved into Tasks, which no longer splits tasks by area.
 export default function Page() {
-  redirect("/tasks?area=home");
+  redirect("/tasks");
 }

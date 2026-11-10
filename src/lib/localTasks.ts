@@ -5,6 +5,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { localStore } from "@/lib/local";
+import { flagForBox } from "@/config/tasks";
 import { replaceFile } from "@/lib/replaceFile";
 
 const filePath = () => path.join(process.cwd(), ".local-data", "tasks.json");
@@ -19,6 +20,9 @@ export const loadLocalTasks = async () => {
       ...item,
       box: item.box ?? null,
       provider_id: item.provider_id ?? null,
+      due_on: item.due_on ?? null,
+      // Tasks from before flags keep the box they were given, as a flag.
+      flag: item.flag !== undefined ? item.flag : flagForBox(item.box),
     }));
   } catch (err) {
     // Only a missing file means "nothing saved yet". Treating a damaged file as

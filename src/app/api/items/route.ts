@@ -6,17 +6,17 @@ import { loadLocalTasks, saveLocalTasks } from "@/lib/localTasks";
 import { removeLinksFor } from "@/lib/listRecords";
 import { providerExists } from "@/lib/homeRecords";
 import { createTask } from "@/lib/taskStore";
-import { ITEM_BOXES, ITEM_CATEGORIES, ITEM_STATUSES, type ItemBox, type ItemCategory, type ItemStatus } from "@/api/client";
+import { ITEM_BOXES, ITEM_FLAGS, ITEM_STATUSES, type ItemBox, type ItemFlag, type ItemStatus } from "@/api/client";
 import { isValidTime, normalizeTime } from "@/config/familyCalendar";
 import { isRealDate } from "@/lib/recordStore";
-
-const isCategory = (value: unknown): value is ItemCategory =>
-  ITEM_CATEGORIES.includes(value as ItemCategory);
+import { moveEntertainmentOutOfTasks } from "@/lib/watchlist";
 
 const isStatus = (value: unknown): value is ItemStatus =>
   ITEM_STATUSES.includes(value as ItemStatus);
 
 const isBox = (value: unknown): value is ItemBox => ITEM_BOXES.includes(value as ItemBox);
+
+const isFlag = (value: unknown): value is ItemFlag => ITEM_FLAGS.includes(value as ItemFlag);
 
 // Sample resource. Row-level security on `items` (supabase/schema.sql) limits
 // every query to the signed-in user's rows; the user_id filters below are
@@ -25,54 +25,50 @@ const isBox = (value: unknown): value is ItemBox => ITEM_BOXES.includes(value as
 const jsonResponse = (data: unknown, status = 200) =>
   NextResponse.json(data, { status });
 
-// GET /api/items[?category=xxx] — the current user's items in priority order,
-// optionally limited to one category
-export async function GET(request: Request) {
-  const category = new URL(request.url).searchParams.get("category");
-  if (category !== null && !isCategory(category)) {
-    return jsonResponse({ message: "Invalid category" }, 400);
-  }
-  if (isLocalMode) {
-    await loadLocalTasks();
-    const items = category
-      ? localStore.items.filter((i) => i.category === category)
-      : localStore.items;
-    return jsonResponse([...items].sort((a, b) => a.sort_order - b.sort_order));
-  }
-
-  const supabase = await createClient();
+// GET /api/items — the current user's tasks in priority order. Tasks are only tasks:
+// entertainment saved as tasks before it had its own list moves there first.
+export async function GET() {
   const { user, errorResponse } = await requireUser();
   if (errorResponse) return errorResponse;
 
-  let query = supabase.from("items").select("*").eq("user_id", user!.id);
-  if (category) query = query.eq("category", category);
-  const { data, error } = await query.order("sort_order");
+  try {
+    await moveEntertainmentOutOfTasks(user!.id);
+  } catch {
+    // The tasks still load; the move is tried again next time.
+  }
 
+  if (isLocalMode) {
+    await loadLocalTasks();
+    return jsonResponse([...localStore.items].sort((a, b) => a.sort_order - b.sort_order));
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("items").select("*").eq("user_id", user!.id).order("sort_order");
   if (error) return jsonResponse({ message: error.message }, 500);
-
   return jsonResponse(data || []);
 }
 
 // POST /api/items
-// Body: { title: string, category: ItemCategory }
+// Body: { title: string, flag?: ItemFlag | null, notes?: string | null }
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { user, errorResponse } = await requireUser();
   if (errorResponse) return errorResponse;
 
-  const { title, category, box = null } = await request.json();
+  const { title, flag = null, notes = null } = await request.json();
   if (typeof title !== "string" || !title.trim()) {
     return jsonResponse({ message: "Title is required" }, 400);
   }
-  if (!isCategory(category)) {
-    return jsonResponse({ message: "Invalid category" }, 400);
+  if (flag !== null && !isFlag(flag)) {
+    return jsonResponse({ message: "Invalid flag" }, 400);
   }
-  if (box !== null && !isBox(box)) {
-    return jsonResponse({ message: "Invalid box" }, 400);
+
+  if (notes !== null && (typeof notes !== "string" || notes.length > 5000)) {
+    return jsonResponse({ message: "Notes can be at most 5000 characters" }, 400);
   }
 
   try {
-    return jsonResponse(await createTask(user!.id, { title: title.trim(), category, box, notes: null }), 201);
+    return jsonResponse(await createTask(user!.id, { title: title.trim(), flag, notes: notes?.trim() || null }), 201);
   } catch (err) {
     return jsonResponse({ message: (err as { message?: string })?.message || "Couldn't add the task" }, 500);
   }
@@ -81,7 +77,7 @@ export async function POST(request: Request) {
 // PUT /api/items?id=xxx
 // Body: { title?: string, done?: boolean, status?: ItemStatus, notes?: string | null,
 //         scheduled_on?: string | null, scheduled_time?: string | null,
-//         provider_id?: string | null }
+//         due_on?: string | null, provider_id?: string | null, flag?: ItemFlag | null }
 // scheduled_time is read along with scheduled_on, since a time needs a date.
 export async function PUT(request: Request) {
   const supabase = await createClient();
@@ -109,10 +105,6 @@ export async function PUT(request: Request) {
     }
     update.box = payload.box;
   }
-  if ("category" in payload) {
-    if (!isCategory(payload.category)) return jsonResponse({ message: "Invalid category" }, 400);
-    update.category = payload.category;
-  }
   if (payload.notes === null || typeof payload.notes === "string") {
     const notes = payload.notes?.trim() || null;
     if (notes && notes.length > 5000) {
@@ -129,6 +121,15 @@ export async function PUT(request: Request) {
     }
     update.scheduled_on = date;
     update.scheduled_time = time && normalizeTime(String(time));
+  }
+  if ("flag" in payload) {
+    if (payload.flag !== null && !isFlag(payload.flag)) return jsonResponse({ message: "Invalid flag" }, 400);
+    update.flag = payload.flag;
+  }
+  if ("due_on" in payload) {
+    const due = payload.due_on || null;
+    if (due && !isRealDate(due)) return jsonResponse({ message: "Invalid due date" }, 400);
+    update.due_on = due;
   }
   if ("provider_id" in payload) {
     const providerId = payload.provider_id || null;

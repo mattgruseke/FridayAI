@@ -1,6 +1,7 @@
 import axios from "axios";
 import type { Cuisine, Occasion, Service } from "@/config/restaurants";
 import type { ImprovementType } from "@/config/homeRecords";
+import type { MediaKind, Vibe } from "@/config/entertainment";
 import type { IngredientGroup, MealCuisine, MealKind, MealMethod } from "@/config/meals";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
@@ -64,8 +65,9 @@ const toQueryString = (params: QueryParams) =>
     Object.entries(params).map(([key, value]) => [key, String(value)])
   ).toString();
 
-// Items API — the sample feature. Copy this shape for your own resources.
-// "none" is for tasks sorted from the Brain Dump that haven't been given an area yet.
+// Tasks. They used to have an area (category); that's gone from the app, and the column
+// stays only because older rows have one. New tasks are saved as "none". Entertainment
+// lives on its own list (WatchItem), and meals become tasks only when you ask.
 export const ITEM_CATEGORIES = ["home", "entertainment", "food", "none"] as const;
 export type ItemCategory = (typeof ITEM_CATEGORIES)[number];
 
@@ -74,38 +76,79 @@ export type ItemCategory = (typeof ITEM_CATEGORIES)[number];
 export const ITEM_STATUSES = ["needs_research", "not_started", "in_progress", "scheduled"] as const;
 export type ItemStatus = (typeof ITEM_STATUSES)[number];
 
-// Which of the four Eisenhower boxes a task is in. Null means it hasn't been sorted yet.
+// How much a task matters: must do, nice to do, or one day. Null means not flagged yet.
+// Together with the due date it decides the task's Eisenhower box (boxFor in
+// src/config/tasks.ts), so the box is never set by hand.
+export const ITEM_FLAGS = ["must", "nice", "someday"] as const;
+export type ItemFlag = (typeof ITEM_FLAGS)[number];
+
+// Which of the four Eisenhower boxes a task is in. Worked out from the flag and due
+// date; the box column itself is only read for old tasks that predate flags.
 export const ITEM_BOXES = ["urgent_important", "important", "urgent", "backlog"] as const;
 export type ItemBox = (typeof ITEM_BOXES)[number];
 
 export type Item = {
   id: string;
   title: string;
-  category: ItemCategory;
+  category: ItemCategory; // no longer used; see above
   done: boolean;
   status: ItemStatus;
   box: ItemBox | null;
   notes: string | null;
   scheduled_on: string | null; // YYYY-MM-DD; a date puts the item on the calendar
   scheduled_time: string | null; // HH:MM, null means no set time
+  due_on?: string | null; // YYYY-MM-DD deadline, separate from when it's scheduled; missing on older rows
   provider_id?: string | null; // the service provider it's assigned to; missing on older rows
+  flag?: ItemFlag | null; // missing on older rows
   created_at: string;
   completed_at: string | null;
   sort_order: number; // lower is higher priority
 };
 
-export const itemsAPI = {
-  // Omit category to get every item.
-  getAll: (category?: ItemCategory) =>
-    fetchAPI<Item[]>(category ? `/items?${toQueryString({ category })}` : "/items"),
+// Entertainment: things to watch, read or listen to. Its own list, never a task.
+export type WatchItem = {
+  id: string;
+  title: string;
+  media_kind: MediaKind | null; // null means not sorted yet
+  platform: string | null; // null means unknown
+  vibes: Vibe[];
+  image_url: string | null; // poster or cover, from the title search
+  notes: string | null;
+  done: boolean;
+  done_at: string | null;
+  created_at: string;
+};
 
-  create: (title: string, category: ItemCategory, box: ItemBox | null = null) =>
+export type WatchItemInput = Omit<WatchItem, "id" | "created_at">;
+
+// A title search result for the Entertainment list (src/lib/mediaSearch.ts).
+export type MediaMatch = {
+  id: string;
+  title: string;
+  kind: MediaKind;
+  year: number | null;
+  byline: string | null;
+  platform: string | null;
+  image_url: string | null;
+};
+
+export const mediaAPI = {
+  search: (q: string, kind: MediaKind | null, signal?: AbortSignal) =>
+    apiClient
+      .get<MediaMatch[]>("/media/search", { params: kind ? { q, kind } : { q }, signal })
+      .then((res) => res.data),
+};
+
+export const itemsAPI = {
+  getAll: () => fetchAPI<Item[]>("/items"),
+
+  create: (title: string, { flag = null, notes = null }: { flag?: ItemFlag | null; notes?: string | null } = {}) =>
     fetchAPI<Item>("/items", {
       method: "POST",
-      body: JSON.stringify({ title, category, box }),
+      body: JSON.stringify({ title, flag, notes }),
     }),
 
-  update: (id: string, data: Partial<Pick<Item, "title" | "done" | "status" | "box" | "category" | "notes" | "scheduled_on" | "scheduled_time" | "provider_id">>) =>
+  update: (id: string, data: Partial<Pick<Item, "title" | "done" | "status" | "box" | "notes" | "scheduled_on" | "scheduled_time" | "due_on" | "provider_id" | "flag">>) =>
     fetchAPI<Item>(`/items?id=${encodeURIComponent(id)}`, {
       method: "PUT",
       body: JSON.stringify(data),
@@ -526,7 +569,8 @@ export const groceriesAPI = recordsAPI<GroceryWeek, GroceryWeekInput>("/grocerie
 export const ENTRY_KINDS = ["goal", "idea", "note"] as const;
 export type EntryKind = (typeof ENTRY_KINDS)[number];
 
-export const SORT_TARGETS = ["task", "goal", "idea", "note"] as const;
+// "watch" puts it on the Entertainment list.
+export const SORT_TARGETS = ["task", "goal", "idea", "note", "watch"] as const;
 export type SortTarget = (typeof SORT_TARGETS)[number];
 
 export const DUMP_STATES = ["open", "sorted", "archived"] as const;
@@ -574,7 +618,7 @@ export const listsAPI = {
   dump: {
     ...recordsAPI<DumpItem, DumpItemInput>("/brain-dump"),
     sort: (id: string, as: SortTarget) =>
-      fetchAPI<{ item: DumpItem; target: Item | Entry }>("/brain-dump/sort", {
+      fetchAPI<{ item: DumpItem; target: Item | Entry | WatchItem }>("/brain-dump/sort", {
         method: "POST",
         body: JSON.stringify({ id, as }),
       }),
@@ -612,6 +656,7 @@ export const notificationsAPI = {
 // Export combined API object
 export const api = {
   items: itemsAPI,
+  media: mediaAPI,
   intake: intakeAPI,
   restaurants: restaurantsAPI,
   home: homeAPI,
@@ -620,6 +665,7 @@ export const api = {
   meals: mealsAPI,
   groceries: groceriesAPI,
   lists: listsAPI,
+  watchlist: recordsAPI<WatchItem, WatchItemInput>("/watchlist"),
   profile: profileAPI,
   notifications: notificationsAPI,
 };

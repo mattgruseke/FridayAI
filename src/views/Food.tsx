@@ -31,7 +31,6 @@ import type { MealCuisine, MealKind, MealMethod, TimeFilter } from "../config/me
 import { useToast } from "../hooks/useToast";
 import { getErrorMessage } from "../lib/errors";
 import GroceryPanel from "./GroceryPanel";
-import Items from "./Items";
 import MealForm from "./MealForm";
 import PlanMealPicker, { PlanDishPicker } from "./PlanMealPicker";
 import { Chips, toggleIn } from "./RestaurantForm";
@@ -42,13 +41,13 @@ const TABS = [
   { id: "meals", label: "Meals" },
   { id: "extras", label: "Sides & desserts" },
   { id: "groceries", label: "Groceries" },
-  { id: "tasks", label: "Tasks" },
 ] as const;
 
 type Tab = (typeof TABS)[number]["id"];
 
 // Meals and food: meals for the week, sides and desserts to bring places, this week's
-// groceries, and any food tasks. Meals and sides & desserts share one list of recipes.
+// groceries. Meals and sides & desserts share one list of recipes. A meal only becomes a
+// task when you add it as one from its page; listing meals never makes tasks.
 const Food = () => {
   const now = today();
   const [tab, setTab] = useState<Tab>("meals");
@@ -174,9 +173,8 @@ const Food = () => {
         </div>
       </div>
 
-      {tab === "tasks" && <Items category="food" heading="Food tasks" />}
 
-      {tab !== "tasks" && status === "failed" && (
+      {status === "failed" && (
         <div className="rest-empty">
           <div className="rest-empty-title">Couldn&apos;t load your meals</div>
           <div className="item-meta">Refresh the page to try again.</div>

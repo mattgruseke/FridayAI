@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import api, { SORT_TARGETS } from "../api/client";
-import type { DumpItem, DumpItemInput, Entry, Item, SortTarget } from "../api/client";
+import type { DumpItem, DumpItemInput, Entry, Item, SortTarget, WatchItem } from "../api/client";
 import LinkPanel from "../components/LinkPanel";
 import { COUNTS_EVENT, findTarget, LIST_INFO } from "../config/lists";
 import { useToast } from "../hooks/useToast";
@@ -65,6 +65,7 @@ const BrainDump = () => {
   const [items, setItems] = useState<DumpItem[]>([]);
   const [tasks, setTasks] = useState<Item[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [watching, setWatching] = useState<WatchItem[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
   const [text, setText] = useState("");
   const [adding, setAdding] = useState(false);
@@ -75,11 +76,17 @@ const BrainDump = () => {
   const { showToast, toastElement } = useToast();
 
   useEffect(() => {
-    Promise.all([api.lists.dump.getAll(), api.items.getAll(), api.lists.entries.getAll()])
-      .then(([loaded, loadedTasks, loadedEntries]) => {
+    Promise.all([
+      api.lists.dump.getAll(),
+      api.items.getAll(),
+      api.lists.entries.getAll(),
+      api.watchlist.getAll().catch(() => [] as WatchItem[]),
+    ])
+      .then(([loaded, loadedTasks, loadedEntries, loadedWatching]) => {
         setItems(loaded);
         setTasks(loadedTasks);
         setEntries(loadedEntries);
+        setWatching(loadedWatching);
         setStatus("ready");
       })
       .catch((err) => {
@@ -156,6 +163,7 @@ const BrainDump = () => {
       const { item: done, target } = await api.lists.dump.sort(item.id, as);
       replace(done);
       if (as === "task") setTasks((prev) => [...prev, target as Item]);
+      else if (as === "watch") setWatching((prev) => [...prev, target as WatchItem]);
       else setEntries((prev) => [...prev, target as Entry]);
       if (expanded === item.id) setExpanded(null);
       showToast(`Sorted into ${LIST_INFO[as].title}`);
@@ -181,6 +189,13 @@ const BrainDump = () => {
 
   const sortedTo = (item: DumpItem) => {
     if (!item.sorted_as || !item.sorted_id) return null;
+    if (item.sorted_as === "watch") {
+      const watch = watching.find((w) => w.id === item.sorted_id);
+      return {
+        label: LIST_INFO.watch.label,
+        target: watch ? { title: watch.title, href: `${LIST_INFO.watch.path}#watch-${watch.id}` } : null,
+      };
+    }
     const target = findTarget(item.sorted_as === "task" ? "task" : "entry", item.sorted_id, {
       tasks,
       entries,
