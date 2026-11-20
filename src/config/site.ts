@@ -55,19 +55,19 @@ export const siteConfig = {
       ],
     },
     {
-      label: "Life",
-      items: [
-        { href: "/restaurants", label: "Restaurants" },
-        { href: "/entertainment", label: "Entertainment" },
-        { href: "/food", label: "Meals and food" },
-      ],
-    },
-    {
       label: "House",
       items: [
         { href: "/improvements", label: "Capital improvements" },
         { href: "/maintenance", label: "Maintenance" },
         { href: "/providers", label: "Service providers" },
+      ],
+    },
+    {
+      label: "Life",
+      items: [
+        { href: "/restaurants", label: "Restaurants" },
+        { href: "/entertainment", label: "Entertainment" },
+        { href: "/food", label: "Meals and food" },
       ],
     },
   ] satisfies NavGroup[],
