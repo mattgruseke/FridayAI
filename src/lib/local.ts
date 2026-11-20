@@ -1,9 +1,11 @@
 // Local mode: runs the app with no Supabase project. Turned on when
-// NEXT_PUBLIC_SUPABASE_URL is unset. Everyone is signed in as LOCAL_USER and
-// data lives in memory, so it resets when the dev server restarts.
+// NEXT_PUBLIC_SUPABASE_URL is unset. Everyone is signed in as LOCAL_USER. The profile
+// and notifications live in memory, so they reset when the dev server restarts; tasks
+// are saved to disk by lib/localTasks.ts.
 
 import type { User } from "@supabase/supabase-js";
 import type { Item } from "@/api/client";
+import { flagForBox } from "@/config/tasks";
 
 export const isLocalMode = !process.env.NEXT_PUBLIC_SUPABASE_URL;
 
@@ -53,3 +55,15 @@ export const localStore: Store = (g.__localStore ??= {
     },
   ],
 });
+
+// The store outlives hot reloads, so it can hold items from before these fields existed.
+for (const item of localStore.items) {
+  item.status ??= "not_started";
+  item.box ??= null;
+  item.notes ??= null;
+  item.scheduled_on ??= null;
+  item.scheduled_time ??= null;
+  item.provider_id ??= null;
+  item.due_on ??= null;
+  if (item.flag === undefined) item.flag = flagForBox(item.box);
+}

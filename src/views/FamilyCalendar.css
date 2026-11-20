@@ -1,0 +1,952 @@
+/* Family calendar page */
+
+.fc-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.fc-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.fc-nav .record-secondary {
+  margin-right: 0;
+}
+
+.fc-arrow {
+  width: 34px;
+  padding: 0;
+  font-size: 16px;
+}
+
+.fc-title {
+  margin-left: 6px;
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.fc-subhead {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Month grid */
+.fc-grid-wrap {
+  border-bottom: 1px solid var(--border);
+}
+
+.fc-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.fc-grid--head {
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.fc-weekday {
+  padding: 6px 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.fc-day {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  min-height: 96px;
+  padding: 6px;
+  border: none;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fc-day:nth-child(7n) {
+  border-right: none;
+}
+
+.fc-day:hover {
+  background: var(--hover);
+}
+
+.fc-day--outside {
+  opacity: 0.45;
+}
+
+.fc-day-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fc-day-name {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.fc-day-number {
+  align-self: flex-start;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  border: none;
+  border-radius: 11px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  line-height: 22px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.fc-day--today .fc-day-number {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.fc-chip {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  padding: 2px 5px;
+  border: none;
+  border-radius: 4px;
+  font-family: var(--font);
+  font-size: 11px;
+  line-height: 1.35;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fc-chip--holiday {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.fc-chip--event {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fc-chip--event:hover {
+  background: var(--accent-hover);
+}
+
+.fc-chip-time {
+  font-weight: 400;
+}
+
+/* Week, work week and weekend views: taller days, with titles shown in full. */
+.fc-day--tall {
+  min-height: 150px;
+}
+
+.fc-day--tall .fc-chip {
+  flex-shrink: 0;
+  white-space: normal;
+}
+
+.fc-grid--five {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.fc-grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fc-grid--five .fc-day:nth-child(n),
+.fc-grid--two .fc-day:nth-child(n) {
+  border-right: 1px solid var(--border);
+}
+
+.fc-grid--five .fc-day:nth-child(5n),
+.fc-grid--two .fc-day:nth-child(2n) {
+  border-right: none;
+}
+
+.fc-weekend .fc-day--tall {
+  min-height: 92px;
+}
+
+.fc-weekend-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 12px;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.fc-free {
+  color: var(--muted-dim);
+  font-size: 12px;
+}
+
+/* Tasks with a date: outlined, to tell them from events. */
+.fc-chip--task {
+  box-shadow: inset 0 0 0 1px var(--accent);
+  background: none;
+  color: var(--text);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.fc-chip--task:hover {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.fc-chip--done {
+  color: var(--muted);
+  text-decoration: line-through;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.fc-upcoming-tag {
+  margin-left: 8px;
+  padding: 0 6px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--accent-text);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.fc-task-link {
+  color: var(--accent-text);
+  font-size: 13px;
+}
+
+/* Coming up */
+.fc-upcoming {
+  padding: 14px 20px 16px;
+}
+
+.fc-upcoming-list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fc-upcoming-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.fc-upcoming-item:last-child {
+  border-bottom: none;
+}
+
+.fc-upcoming-when {
+  flex-shrink: 0;
+  width: 84px;
+  color: var(--accent-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.fc-upcoming-date {
+  margin: 0 0 0 auto;
+}
+
+/* Editors */
+.fc-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.fc-editor-day {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.fc-editor-day-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.fc-editor-day-head .btn-link {
+  padding: 0;
+}
+
+.fc-block-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-bottom: 6px;
+}
+
+.fc-block-row select.input {
+  flex: 1 1 150px;
+  min-width: 0;
+}
+
+.fc-block-row input.input {
+  flex: 0 1 130px;
+  min-width: 0;
+}
+
+.fc-add-block {
+  padding: 2px 0;
+  color: var(--accent-text);
+}
+
+.fc-help {
+  margin: -6px 0 0;
+}
+
+.fc-coverage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.fc-coverage .record-field {
+  flex: 0 1 180px;
+}
+
+.fc-coverage-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.fc-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+}
+
+.fc-check input {
+  accent-color: var(--accent);
+}
+
+.fc-person-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.fc-person-row .input {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.fc-swatches {
+  display: flex;
+  gap: 4px;
+}
+
+.fc-swatch {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.fc-swatch--on {
+  border-color: var(--text);
+  box-shadow: inset 0 0 0 2px var(--surface-2);
+}
+
+.fc-swatch--small {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: none;
+  cursor: default;
+}
+
+.fc-person-add {
+  display: flex;
+  gap: 8px;
+  max-width: 460px;
+}
+
+.fc-person-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Totals */
+.fc-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.fc-totals:empty {
+  display: none;
+}
+
+.fc-total {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.fc-total-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.fc-total--gap {
+  color: var(--danger);
+}
+
+/* Week view */
+.fc-week {
+  padding: 8px 20px 12px;
+}
+
+.fc-week-axis {
+  position: relative;
+  height: 18px;
+  margin-left: 58px;
+  color: var(--muted-dim);
+  font-size: 11px;
+}
+
+.fc-week-axis span {
+  position: absolute;
+  transform: translateX(-50%);
+}
+
+.fc-week-axis span:first-child {
+  transform: none;
+}
+
+.fc-week-axis span:last-child {
+  transform: translateX(-100%);
+}
+
+.fc-week-day {
+  display: flex;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+
+.fc-week-label {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 48px;
+  padding: 2px 0;
+  border: none;
+  border-radius: var(--radius);
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.fc-week-label:hover {
+  background: var(--hover);
+}
+
+.fc-week-name {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.fc-week-date {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.fc-week-day--today .fc-week-date {
+  color: var(--accent-text);
+}
+
+.fc-week-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.fc-bar {
+  position: relative;
+  height: 28px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--hover);
+}
+
+.fc-seg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  padding: 0 6px;
+  border-right: 1px solid var(--surface);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.fc-seg-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fc-seg--gap {
+  background: repeating-linear-gradient(
+    45deg,
+    color-mix(in srgb, var(--danger) 35%, transparent),
+    color-mix(in srgb, var(--danger) 35%, transparent) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+  color: var(--danger);
+  box-shadow: inset 0 0 0 1px var(--danger);
+}
+
+.fc-day-summary {
+  margin-top: 4px;
+}
+
+.fc-gap-text {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.fc-changed {
+  color: var(--accent-text);
+}
+
+/* Month view */
+.fc-day--care {
+  min-height: 72px;
+}
+
+.fc-mini-bar {
+  display: flex;
+  width: 100%;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 2px;
+}
+
+.fc-mini-bar span {
+  flex-basis: 0;
+  min-width: 1px;
+}
+
+.fc-gap-small {
+  font-size: 10.5px;
+}
+
+@media (max-width: 600px) {
+  .fc-toolbar,
+  .fc-editor,
+  .fc-totals {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .fc-week {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .fc-week-axis {
+    margin-left: 44px;
+  }
+
+  .fc-week-day {
+    gap: 6px;
+  }
+
+  .fc-week-label {
+    width: 38px;
+  }
+
+  .fc-upcoming {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .fc-day {
+    min-height: 62px;
+    padding: 3px;
+  }
+
+  /* Week views are too narrow for columns on a phone, so days stack. */
+  .fc-grid--stack {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fc-grid--stack .fc-day:nth-child(n) {
+    min-height: 64px;
+    padding: 6px;
+    border-right: none;
+  }
+
+  .fc-weekend-head {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .fc-chip {
+    padding: 1px 3px;
+    font-size: 10px;
+  }
+
+  .fc-gap-small {
+    font-size: 9.5px;
+  }
+
+  .fc-upcoming-date {
+    width: 100%;
+    margin-left: 96px;
+  }
+}
+
+/* Weekly plan: one column per day, one row per topic. */
+.wp-issues {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.wp-issues--clear {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.wp-issue-list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wp-issue-row {
+  display: flex;
+  gap: 10px;
+  padding: 4px 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.wp-issue-day {
+  flex-shrink: 0;
+  width: 58px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wp-issue-text {
+  color: var(--danger);
+}
+
+.wp-grid {
+  display: grid;
+  grid-template-columns: 84px repeat(7, minmax(0, 1fr));
+  grid-template-rows: repeat(6, auto);
+  grid-auto-flow: column;
+}
+
+.wp-col {
+  display: contents;
+}
+
+.wp-label,
+.wp-head,
+.wp-cell {
+  min-width: 0;
+  padding: 8px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.wp-col:last-child > * {
+  border-right: none;
+}
+
+.wp-label {
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.wp-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.wp-head-date {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.wp-head--today .wp-head-date {
+  color: var(--accent-text);
+}
+
+.wp-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  width: 100%;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+button.wp-cell {
+  border-top: none;
+  border-left: none;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+button.wp-cell:hover {
+  background: var(--hover);
+}
+
+.wp-cell-label {
+  display: none;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.wp-location {
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.wp-missing {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.wp-empty {
+  color: var(--muted-dim);
+}
+
+.wp-strong {
+  font-weight: 600;
+}
+
+.wp-note {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.wp-care-row {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+/* Editors */
+.wp-editor-title {
+  margin-left: 0;
+}
+
+.wp-editor-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.wp-editor-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wp-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wp-option {
+  padding: 4px 11px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.wp-option:hover {
+  border-color: var(--accent);
+}
+
+.wp-option--on {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.wp-times {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  max-width: 800px;
+}
+
+.wp-home-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 13px;
+}
+
+.wp-home-name {
+  min-width: 70px;
+  font-weight: 600;
+}
+
+.wp-location-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.wp-location-row input.input {
+  flex: 1 1 170px;
+  min-width: 0;
+}
+
+.wp-location-row select.input {
+  flex: 0 1 240px;
+  min-width: 0;
+}
+
+.fc-editor .fc-add-block {
+  align-self: flex-start;
+}
+
+.wp-standard-day {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.wp-options-label {
+  align-self: center;
+  margin-right: 2px;
+}
+
+.wp-parent-names {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  max-width: 460px;
+}
+
+/* Too narrow for seven columns, so each day stacks and labels its own rows. */
+@media (max-width: 860px) {
+  .wp-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-auto-flow: row;
+  }
+
+  .wp-labels {
+    display: none;
+  }
+
+  .wp-label,
+  .wp-head,
+  .wp-cell,
+  .wp-col:last-child > * {
+    border-right: none;
+  }
+
+  .wp-cell-label {
+    display: block;
+  }
+
+  /* Nothing on the calendar that day, so skip the row. */
+  .wp-cell--calendar:has(> .wp-cell-label:only-child) {
+    display: none;
+  }
+
+  .wp-issues {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+}

@@ -1,14 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { KeyboardEvent } from "react";
+import type { ChangeEvent, KeyboardEvent } from "react";
 import api from "../api/client";
 import type { IntakeProvider } from "../api/client";
 import { useToast } from "../hooks/useToast";
 import { getErrorMessage } from "../lib/errors";
 import {
   HOME_MANAGER_AGENT as AGENT,
+  hasInspectionReport,
+  INSPECTION_REPORT_FIELD,
+  INSPECTION_REPORT_NAME,
+  INSPECTION_REPORT_PATH,
   isAnswered,
+  isCovered,
   PROVIDER_CATEGORIES,
   TIER_A,
   TIER_B,
@@ -27,14 +32,17 @@ const filled = (v: string | undefined) => !!v && v.trim() !== "";
 
 type Step =
   | { kind: "question"; q: Question; required: boolean }
+  | { kind: "inspection" }
   | { kind: "providers" }
   | { kind: "checkpoint" }
   | { kind: "done" };
 
-// Tier A in interview order (providers before known_problems), a checkpoint
-// once the agent can activate, then Tier B.
+// Tier A in interview order (inspection report after move-in date, providers
+// before known_problems), a checkpoint once the agent can activate, then Tier B.
 const STEPS: Step[] = [
-  ...TIER_A.slice(0, 5).map((q) => ({ kind: "question" as const, q, required: true })),
+  ...TIER_A.slice(0, 4).map((q) => ({ kind: "question" as const, q, required: true })),
+  { kind: "inspection" },
+  ...TIER_A.slice(4, 5).map((q) => ({ kind: "question" as const, q, required: true })),
   { kind: "providers" },
   ...TIER_A.slice(5).map((q) => ({ kind: "question" as const, q, required: true })),
   { kind: "checkpoint" },
@@ -45,6 +53,10 @@ const STEPS: Step[] = [
 const CHECKPOINT = STEPS.findIndex((s) => s.kind === "checkpoint");
 const DONE = STEPS.length - 1;
 
+const INSPECTION_COVERS = TIER_B.filter((q) => q.inInspection);
+
+const REPORT_ACCEPT = "application/pdf,image/jpeg,image/png,image/heic";
+
 const Intake = () => {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [providers, setProviders] = useState<Provider[]>([emptyProvider()]);
@@ -52,6 +64,7 @@ const Intake = () => {
   const [loaded, setLoaded] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   // JSON of the last payload saved or loaded, so autosave only fires on real changes.
   const lastSaved = useRef<string | null>(null);
   const { showToast, toastElement } = useToast();
@@ -114,18 +127,39 @@ const Intake = () => {
   const updateProvider = (index: number, patch: Partial<Provider>) =>
     setProviders((prev) => prev.map((p, i) => (i === index ? { ...p, ...patch } : p)));
 
+  const hasReport = hasInspectionReport(answers);
+
+  // With a report uploaded, questions it usually answers are skipped (unless
+  // they were already answered by hand).
+  const isSkipped = (i: number) => {
+    const s = STEPS[i];
+    return s.kind === "question" && !!s.q.inInspection && hasReport && !isAnswered(s.q, answers);
+  };
+
   const goTo = (index: number) => setStepIndex(Math.max(0, Math.min(DONE, index)));
-  const next = () => goTo(stepIndex + 1);
-  const back = () => goTo(stepIndex - 1);
+  const next = () => {
+    let i = stepIndex + 1;
+    while (i < DONE && isSkipped(i)) i++;
+    goTo(i);
+  };
+  const back = () => {
+    let i = stepIndex - 1;
+    while (i > 0 && isSkipped(i)) i--;
+    goTo(i);
+  };
 
   // Part 7 completeness. known_providers counts as a Tier A field.
   const tierAMissing =
     TIER_A.filter((q) => !isAnswered(q, answers)).length + (hasProvider ? 0 : 1);
   const tierBTotal = TIER_B.reduce((sum, q) => sum + (q.weight ?? 0), 0);
   const tierBDone = TIER_B.reduce(
-    (sum, q) => sum + (isAnswered(q, answers) ? q.weight ?? 0 : 0),
+    (sum, q) => sum + (isCovered(q, answers) ? q.weight ?? 0 : 0),
     0
   );
+  const tierBRemaining = TIER_B.filter((q) => !isCovered(q, answers)).length;
+  const tierBReport = hasReport
+    ? TIER_B.filter((q) => q.inInspection && !isAnswered(q, answers)).length
+    : 0;
 
   const status =
     tierAMissing > 0
@@ -144,6 +178,43 @@ const Intake = () => {
       : step.kind === "providers"
         ? hasProvider
         : true;
+
+  const handleUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    try {
+      const previous = answers[INSPECTION_REPORT_PATH];
+      const { name, path } = await api.intake.uploadReport(file);
+      setAnswers((prev) => ({
+        ...prev,
+        [INSPECTION_REPORT_FIELD]: "Yes",
+        [INSPECTION_REPORT_NAME]: name,
+        [INSPECTION_REPORT_PATH]: path,
+      }));
+      if (previous) api.intake.deleteReport(previous).catch(() => {});
+      showToast("Inspection report uploaded");
+    } catch (err) {
+      showToast(getErrorMessage(err), "error");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveReport = async () => {
+    const path = answers[INSPECTION_REPORT_PATH];
+    try {
+      if (path) await api.intake.deleteReport(path);
+      setAnswers((prev) => ({
+        ...prev,
+        [INSPECTION_REPORT_NAME]: "",
+        [INSPECTION_REPORT_PATH]: "",
+      }));
+    } catch (err) {
+      showToast(getErrorMessage(err), "error");
+    }
+  };
 
   const handleSave = async () => {
     await save();
@@ -296,8 +367,68 @@ const Intake = () => {
     </>
   );
 
+  const renderInspection = () => {
+    const choice = answers[INSPECTION_REPORT_FIELD];
+    return (
+      <>
+        <h2 className="step-question">Do you have a home inspection report?</h2>
+        <p className="step-hint">
+          If you upload it, you can probably skip about {INSPECTION_COVERS.length} questions. Things
+          like the electrical panel, water heater, roof, sump pump and drainage are usually all in
+          there.
+        </p>
+        {hasReport ? (
+          <div className="report-file">
+            <span className="report-file-name">📄 {answers[INSPECTION_REPORT_NAME]}</span>
+            <label className="btn-link">
+              {uploading ? "Uploading…" : "Replace"}
+              <input type="file" accept={REPORT_ACCEPT} onChange={handleUpload} hidden disabled={uploading} />
+            </label>
+            <button type="button" className="btn-link btn-link--danger" onClick={handleRemoveReport}>
+              remove
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="bubbles" role="radiogroup" aria-label="Do you have a home inspection report?">
+              {[
+                { value: "Yes", label: "Yes" },
+                { value: "No", label: "No / not sure" },
+              ].map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={choice === o.value}
+                  className={`bubble${choice === o.value ? " bubble--selected" : ""}`}
+                  onClick={() => {
+                    set(INSPECTION_REPORT_FIELD, o.value);
+                    if (o.value === "No") next();
+                  }}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+            {choice === "Yes" && (
+              <label className={`report-drop${uploading ? " report-drop--busy" : ""}`}>
+                <span className="report-drop-title">
+                  {uploading ? "Uploading…" : "Choose your inspection report"}
+                </span>
+                <span className="report-drop-sub">PDF or photos (JPG, PNG, HEIC), up to 25 MB</span>
+                <input type="file" accept={REPORT_ACCEPT} onChange={handleUpload} hidden disabled={uploading} />
+              </label>
+            )}
+          </>
+        )}
+      </>
+    );
+  };
+
   const renderStep = () => {
     switch (step.kind) {
+      case "inspection":
+        return renderInspection();
       case "question":
         return (
           <>
@@ -315,7 +446,7 @@ const Intake = () => {
           <>
             <h2 className="step-question">That&apos;s enough to get started.</h2>
             <p className="step-hint">
-              {status.copy} There are {TIER_B.length} more questions that make it noticeably
+              {status.copy} There are {tierBRemaining} more questions that make it noticeably
               sharper — skip any you don&apos;t know, or stop here and come back later.
             </p>
             <div className="step-choices">
@@ -335,7 +466,7 @@ const Intake = () => {
             <p className="step-hint">
               {tierAMissing > 0
                 ? "Go back and fill in the basics to switch it on."
-                : `You answered ${TIER_B.filter((q) => isAnswered(q, answers)).length} of ${TIER_B.length} follow-up questions. You can come back to the rest any time.`}
+                : `You answered ${TIER_B.filter((q) => isAnswered(q, answers)).length} of ${TIER_B.length} follow-up questions${tierBReport ? `, and your inspection report covers ${tierBReport} more` : ""}. You can come back to the rest any time.`}
             </p>
             <div className="step-choices">
               <button type="button" className="btn" onClick={handleSave}>
@@ -352,12 +483,15 @@ const Intake = () => {
 
   const inTierA = stepIndex < CHECKPOINT;
   const stage = inTierA ? "The basics" : stepIndex < DONE ? "Make it sharper" : "Done";
+  // Tier B position among the questions not skipped for the inspection report.
+  const tierBSteps = STEPS.map((_, i) => i).filter((i) => i > CHECKPOINT && i < DONE && !isSkipped(i));
   const stageCount = inTierA
     ? `${stepIndex + 1} of ${CHECKPOINT}`
     : step.kind === "question"
-      ? `${stepIndex - CHECKPOINT} of ${TIER_B.length}`
+      ? `${tierBSteps.indexOf(stepIndex) + 1} of ${tierBSteps.length}`
       : "";
-  const showNav = step.kind === "question" || step.kind === "providers";
+  const showNav = step.kind === "question" || step.kind === "providers" || step.kind === "inspection";
+  const optional = (step.kind === "question" && !step.required) || step.kind === "inspection";
 
   return (
     <div className="container">
@@ -390,7 +524,7 @@ const Intake = () => {
               <div className="step-meta">
                 <span>{stage}</span>
                 {stageCount && <span>{stageCount}</span>}
-                {step.kind === "question" && !step.required && <span>Optional</span>}
+                {optional && <span>Optional</span>}
               </div>
               {renderStep()}
             </div>
@@ -407,7 +541,7 @@ const Intake = () => {
                 ← Back
               </button>
               <div className="step-nav-right">
-                {step.kind === "question" && !step.required && (
+                {optional && (
                   <button type="button" className="btn-secondary" onClick={next}>
                     Skip
                   </button>

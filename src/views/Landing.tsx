@@ -5,19 +5,13 @@ import type { FormEvent } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import api from "../api/client";
-import type { Item, ItemCategory } from "../api/client";
+import type { Item } from "../api/client";
 import { useToast } from "../hooks/useToast";
 
-// Signed-in landing page: greeting, ask bar, and "On your radar" — the open
-// items across every area, newest first.
+// The Dashboard, and the signed-in landing page for now: greeting, ask bar, and
+// "On your radar" — open tasks, highest priority first.
 
 const RADAR_LIMIT = 4;
-
-const AREA_LABELS: Record<ItemCategory, string> = {
-  home: "Household",
-  entertainment: "Entertainment",
-  food: "Food",
-};
 
 const greetingFor = (hour: number) =>
   hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
@@ -39,7 +33,6 @@ const Landing = () => {
   const name = fullName.split(" ")[0] || user?.email?.split("@")[0] || "there";
   const open = (items ?? []).filter((i) => !i.done);
   const radar = open.slice(0, RADAR_LIMIT);
-  const moreAreas = [...new Set(open.slice(RADAR_LIMIT).map((i) => AREA_LABELS[i.category]))];
 
   const handleAsk = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -78,7 +71,7 @@ const Landing = () => {
       </form>
 
       <div className="chip-row">
-        <Link href="/all" className="chip">
+        <Link href="/today" className="chip">
           Show me today
         </Link>
         <button type="button" className="chip" onClick={() => prefill("Help me plan ")}>
@@ -100,15 +93,15 @@ const Landing = () => {
       ) : (
         <div className="feed">
           {radar.map((item) => (
-            <Link key={item.id} href={`/${item.category}`} className="feed-item">
+            <Link key={item.id} href={`/tasks#task-${item.id}`} className="feed-item">
               <span className="feed-marker" />
               <span className="feed-body">
-                <span className="feed-agent">{AREA_LABELS[item.category]}</span>
+                <span className="feed-agent">Task</span>
                 <span className="feed-title">{item.title}</span>
                 <span className="feed-sub">
                   Added {new Date(item.created_at).toLocaleDateString(undefined, { month: "long", day: "numeric" })}
                 </span>
-                <span className="feed-cta">Open {AREA_LABELS[item.category].toLowerCase()} →</span>
+                <span className="feed-cta">Open task →</span>
               </span>
             </Link>
           ))}
@@ -116,8 +109,8 @@ const Landing = () => {
       )}
 
       {open.length > RADAR_LIMIT && (
-        <Link href="/all" className="radar-more">
-          + {open.length - RADAR_LIMIT} more — {moreAreas.join(", ")} →
+        <Link href="/tasks" className="radar-more">
+          + {open.length - RADAR_LIMIT} more tasks →
         </Link>
       )}
 

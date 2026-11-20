@@ -1,5 +1,6 @@
-import Overview from "@/views/Overview";
+import { redirect } from "next/navigation";
 
+// All items became the Brain Dump.
 export default function Page() {
-  return <Overview />;
+  redirect("/brain-dump");
 }

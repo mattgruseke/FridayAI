@@ -1,0 +1,467 @@
+/* Capital Improvements and Maintenance pages */
+
+.record-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 40px;
+  padding: 16px 20px 8px;
+}
+
+.record-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.record-stat-value {
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.record-disclaimer {
+  margin: 0;
+  padding: 0 20px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.record-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Tables */
+.record-table-wrap {
+  overflow-x: auto;
+}
+
+.record-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.record-table th,
+.record-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.record-table th:first-child,
+.record-table td:first-child {
+  padding-left: 20px;
+}
+
+.record-table th:last-child,
+.record-table td:last-child {
+  padding-right: 20px;
+}
+
+.record-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.record-table th {
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.record-table tbody tr:hover td:not(.record-form-cell) {
+  background: var(--hover);
+}
+
+.record-table .record-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.record-nowrap {
+  white-space: nowrap;
+}
+
+.record-sort {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.record-sort:hover {
+  color: var(--text);
+}
+
+.record-open {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.record-open:hover:not(:disabled) {
+  color: var(--accent-text);
+}
+
+.record-open:disabled {
+  cursor: default;
+}
+
+.record-row--open td {
+  background: var(--hover);
+}
+
+.record-table td.record-form-cell {
+  padding: 0;
+}
+
+.record-actions-cell {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.record-actions-cell .btn-link {
+  padding: 0;
+  color: var(--accent-text);
+}
+
+.record-actions-cell .btn-link:disabled {
+  color: var(--muted-dim);
+  cursor: default;
+  text-decoration: none;
+}
+
+.record-due {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 8px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.record-due--overdue {
+  color: var(--danger);
+}
+
+.record-due--soon {
+  color: var(--accent-text);
+}
+
+.record-due--ok {
+  color: var(--success);
+}
+
+.receipt-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Forms */
+.record-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+  font-weight: normal;
+}
+
+.record-form-cell .record-form {
+  border-bottom: none;
+}
+
+.record-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.record-field--wide,
+.record-actions {
+  grid-column: 1 / -1;
+}
+
+.record-field .input {
+  flex: none;
+  width: 100%;
+}
+
+.record-field .record-textarea {
+  height: auto;
+  padding: 8px 12px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.record-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.record-delete {
+  margin-left: auto;
+}
+
+.record-secondary {
+  height: 34px;
+  margin-right: 10px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.record-secondary:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.record-secondary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.record-hint {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.receipt-input {
+  display: none;
+}
+
+.receipt-list {
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.receipt-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.receipt-item a {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--accent-text);
+}
+
+/* Maintenance schedule */
+.record-inline-select {
+  flex-shrink: 0;
+  display: flex;
+  width: 160px;
+}
+
+.record-inline-select .input {
+  width: 100%;
+}
+
+.record-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.record-suggestions .record-label {
+  margin-right: 4px;
+}
+
+.record-chip {
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: none;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.record-chip:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.record-history-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.record-history-bar .input {
+  flex: 0 1 240px;
+}
+
+.record-history-bar .item-meta {
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .record-hide-phone {
+    display: none;
+  }
+
+  .record-table th,
+  .record-table td {
+    padding: 10px 6px;
+  }
+
+  .record-table th:first-child,
+  .record-table td:first-child {
+    padding-left: 14px;
+  }
+
+  .record-table th:last-child,
+  .record-table td:last-child {
+    padding-right: 14px;
+  }
+
+  .record-add-form {
+    flex-wrap: wrap;
+  }
+
+  .record-add-form > .input {
+    flex-basis: 100%;
+  }
+
+  .record-inline-select {
+    flex: 1;
+    width: auto;
+  }
+}
+
+/* Service providers */
+.provider-group-head {
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.provider-count {
+  font-weight: normal;
+  opacity: 0.8;
+}
+
+.provider-row {
+  border-bottom: 1px solid var(--border);
+}
+
+.provider-group:last-child .provider-row:last-child {
+  border-bottom: none;
+}
+
+.provider-row--open {
+  background: var(--hover);
+}
+
+.provider-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 24px;
+  padding: 12px 20px;
+}
+
+.provider-who {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.provider-notes {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.provider-contact {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 13px;
+  text-align: right;
+}
+
+.provider-contact a {
+  color: var(--accent-text);
+  overflow-wrap: anywhere;
+}
+
+.provider-tasks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 0 20px 12px;
+}
+
+.provider-task {
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.provider-task:hover {
+  border-color: var(--accent);
+}
+
+.provider-row .record-form {
+  border-top: 1px solid var(--border);
+  border-bottom: none;
+}
+
+@media (max-width: 600px) {
+  .provider-contact {
+    align-items: flex-start;
+    text-align: left;
+  }
+}

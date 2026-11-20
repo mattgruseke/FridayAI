@@ -1,0 +1,412 @@
+/* ── Food: meals and groceries (see src/views/Food.tsx, MealDetail.tsx, GroceryPanel.tsx) ── */
+.meal-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-bottom: 18px;
+}
+
+/* An open day picker makes one tile taller; the rest of its row stays put. */
+.meal-grid {
+  align-items: start;
+}
+
+.meal-link-row {
+  margin-top: 12px;
+}
+
+.meal-link-row .btn-link {
+  padding: 0;
+  color: var(--accent-text);
+}
+
+.meal-seed {
+  margin: 14px 0 0;
+}
+
+.meal-plan-btn {
+  background: none;
+  font-family: var(--font);
+  cursor: pointer;
+}
+
+.meal-total {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent-text);
+}
+
+.meal-upcoming {
+  margin-bottom: 10px;
+}
+
+.meal-ingredients {
+  margin: 0 0 4px;
+  padding: 0;
+  list-style: none;
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.food-head {
+  flex-wrap: wrap;
+}
+
+.food-tab-intro {
+  margin-bottom: 14px;
+}
+
+/* Day picker */
+.meal-picker-events {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+
+.meal-event--on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.meal-picker .meal-picker-occasion {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.meal-picker {
+  padding: 0 16px 16px;
+}
+
+.rest-section .meal-picker {
+  padding: 0;
+}
+
+.meal-picker-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.meal-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  padding: 4px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: none;
+  color: var(--text);
+  font-family: var(--font);
+  cursor: pointer;
+}
+
+.meal-day:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.meal-day-name,
+.meal-day-state {
+  color: var(--muted);
+  font-size: 9.5px;
+}
+
+.meal-day-date {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.meal-day--taken {
+  opacity: 0.55;
+}
+
+.meal-day--this {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.meal-picker-done {
+  margin-top: 8px;
+  color: var(--accent-text);
+  font-size: 12px;
+}
+
+/* Form */
+.meal-form-help {
+  margin: 0;
+}
+
+.meal-form-group {
+  padding: 8px 0 2px;
+  border-top: 1px solid var(--border);
+}
+
+.meal-form-group-head {
+  margin-bottom: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.meal-ingredient-row {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.meal-ingredient-row .input {
+  width: 100%;
+}
+
+.meal-add-ingredient {
+  padding: 2px 0 6px;
+  color: var(--accent-text);
+}
+
+/* Grocery list */
+.grocery-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 20px 16px;
+}
+
+.grocery-dinners {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.grocery-dinner {
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.grocery-dinner:hover {
+  border-color: var(--accent);
+}
+
+.grocery-dinner-day {
+  margin-right: 6px;
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.grocery-head {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.grocery-help {
+  margin: 0;
+}
+
+.grocery-group {
+  margin-top: 4px;
+}
+
+.grocery-group-name {
+  margin-bottom: 2px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.grocery-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.grocery-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  padding: 3px 0;
+  font-size: 13px;
+}
+
+.grocery-check {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  cursor: pointer;
+}
+
+.grocery-check input {
+  align-self: center;
+  accent-color: var(--accent);
+}
+
+.grocery-check--crossed .grocery-name,
+.grocery-check--crossed .grocery-amount {
+  color: var(--muted-dim);
+  text-decoration: line-through;
+}
+
+.grocery-amount {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.grocery-meals {
+  color: var(--muted-dim);
+  font-size: 11.5px;
+}
+
+.grocery-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.grocery-add > .input {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.grocery-add > .grocery-add-amount {
+  flex: 0 1 110px;
+}
+
+.grocery-add > .grocery-add-group {
+  flex: 0 1 170px;
+}
+
+.grocery-add .record-secondary {
+  margin-right: 0;
+}
+
+.grocery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.grocery-actions .record-secondary {
+  margin-right: 0;
+}
+
+.grocery-total {
+  margin-right: auto;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.grocery-ordered {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* On the weekly plan */
+.wp-groceries {
+  border-bottom: 1px solid var(--border);
+}
+
+.wp-groceries-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 10px 20px;
+}
+
+.wp-groceries-head .btn-link {
+  margin-left: auto;
+  padding: 0;
+}
+
+.wp-grocery-state--due {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.wp-grocery-state--ok {
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.wp-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wp-suggestion {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wp-suggestion:hover {
+  border-color: var(--accent);
+}
+
+.wp-suggestion-why {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.wp-meal-picked {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  font-size: 13px;
+}
+
+.wp-try {
+  color: var(--muted);
+}
+
+@media (max-width: 600px) {
+  .grocery-panel {
+    padding: 12px 14px 14px;
+  }
+
+  .wp-groceries-head {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .meal-ingredient-row {
+    grid-template-columns: 76px minmax(0, 1fr) auto;
+  }
+}
+
+.meal-task-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

@@ -1,5 +1,6 @@
-import Items from "@/views/Items";
+import { redirect } from "next/navigation";
 
+// Household tasks moved into Tasks, which no longer splits tasks by area.
 export default function Page() {
-  return <Items category="home" heading="Home" />;
+  redirect("/tasks");
 }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const sameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() &&
@@ -16,9 +16,9 @@ const Calendar = () => {
     () => new Date(today.getFullYear(), today.getMonth(), 1)
   );
 
-  // Six full weeks starting on the Sunday on or before the 1st.
+  // Six full weeks starting on the Monday on or before the 1st.
   const start = new Date(month);
-  start.setDate(1 - month.getDay());
+  start.setDate(1 - ((month.getDay() + 6) % 7));
   const days = Array.from({ length: 42 }, (_, i) => {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
